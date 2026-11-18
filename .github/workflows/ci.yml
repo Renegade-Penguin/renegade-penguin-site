@@ -62,10 +62,10 @@ jobs:
       build-timeout-minutes: 15
       cache-tool-path: RUNNER_TEMP/hugo-dl
       cache-tool-key-files: '[".hugo-version"]'
-      # audit, not block: the allow-list for these jobs has not been measured yet. Follow-up: switch to
+      # audit, not block (issue #10): the allow-list for these jobs has not been measured yet. Follow-up: switch to
       # block with the endpoints from the first run's report; block also turns the Hugo tarball cache on.
       egress-policy-secretless: audit
-      # TODO(issue #2): the output checker requires a scrub term list. The real list is secret and is not in
+      # TODO(issue #9): the output checker requires a scrub term list. The real list is secret and is not in
       # this repository; real scrub terms come from the secret manager when the owner supplies them. Until
       # then each output check job writes a file with one non-secret placeholder pattern and a comment line.
       jobs: |
@@ -81,6 +81,7 @@ jobs:
       contents: read
     with:
       test-command: ./scripts/test-check-contrast.sh   # needs no Hugo; the ci job runs the Hugo-based tests
+      shfmt-args: "-i 2 -ci"   # the scripts here are 2-space indented; bash-ci defaults to -i 4 -ci
       egress-policy: block
       timeout-minutes: 20
 

@@ -20,11 +20,58 @@ PIN = re.compile(r"@[0-9a-f]{40}$")
 VCOMMENT = re.compile(r"#\s*v\d")
 
 
-def check_workflow(text):
+def block(lines, key, indent):
+    """Lines of the mapping entry `key:` at exactly `indent` spaces, up to the next
+    line indented `indent` or less. Empty list when the key is absent."""
+    head = " " * indent + key + ":"
+    for i, line in enumerate(lines):
+        if line.rstrip() == head or line.startswith(head + " "):
+            out = []
+            for nxt in lines[i + 1:]:
+                if nxt.strip() and len(nxt) - len(nxt.lstrip()) <= indent:
+                    break
+                out.append(nxt)
+            return out
+    return []
+
+
+def direct(blk, key, indent):
+    """Value text of `key:` at exactly `indent` spaces inside a block, else None."""
+    pre = " " * indent + key + ":"
+    for line in blk:
+        if line.startswith(pre) and (len(line) == len(pre) or line[len(pre)] == " "):
+            return line[len(pre):].split(" #")[0].strip()
+    return None
+
+
+def check_gate(lines):
     errs = []
+    jobs = block(lines, "jobs", 0)
+    gate = block(jobs, "ci-green", 2)
+    if not gate:
+        return ["no ci-green job"]
+    if direct(gate, "name", 4) != "CI green":
+        errs.append('ci-green job name is not exactly "CI green" (job level)')
+    if direct(gate, "if", 4) != "always()":
+        errs.append("ci-green job lacks if: always()")
+    needs = direct(gate, "needs", 4)
+    got = sorted(x.strip() for x in needs.strip("[]").split(",")) if needs else []
+    if got != ["ci", "security", "shell"]:
+        errs.append("ci-green needs is not exactly ci, shell, security: %s" % got)
+    sec = block(jobs, "security", 2)
+    perms = block(sec, "permissions", 4)
+    for scope in ("id-token", "security-events", "pull-requests"):
+        if direct(perms, scope, 6) != "write":
+            errs.append("security job does not grant %s: write" % scope)
+    top = [l for l in block(lines, "permissions", 0) if l.strip()]
+    if [l.strip() for l in top] != ["contents: read"]:
+        errs.append("workflow-level permissions are not exactly contents: read: %s" % top)
+    return errs
+
+
+def check_workflow(text):
+    errs = check_gate(text.splitlines())
     lines = text.splitlines()
-    if not re.search(r"^\s+name:\s*CI green\s*$", text, re.M):
-        errs.append('no job named exactly "CI green"')
     if "pull_request_target" in text:
         errs.append("pull_request_target present")
     uses = 0
@@ -71,9 +118,12 @@ def check_dependabot(text):
 
 
 GOOD_WF = (
-    "jobs:\n  a:\n    uses: o/r/.github/workflows/x.yml@"
+    "permissions:\n  contents: read\n\njobs:\n  security:\n    uses: o/r/.github/workflows/x.yml@"
     + "a" * 40
-    + " # v1.0.0\n  g:\n    name: CI green\n"
+    + " # v1.0.0\n    permissions:\n      contents: read\n      security-events: write\n"
+    + "      pull-requests: write\n      id-token: write\n"
+    + "  ci-green:\n    name: CI green\n    if: always()\n    needs: [ci, shell, security]\n"
+    + "    steps:\n      - name: x\n"
 )
 
 
@@ -82,6 +132,14 @@ def self_test():
         "unpinned": GOOD_WF.replace("a" * 40, "main"),
         "no comment": GOOD_WF.replace(" # v1.0.0", ""),
         "no CI green": GOOD_WF.replace("CI green", "done"),
+        "step named CI green only": GOOD_WF.replace("    name: CI green", "    name: done") + "      - name: CI green\n",
+        "no always": GOOD_WF.replace("    if: always()\n", ""),
+        "needs short": GOOD_WF.replace("[ci, shell, security]", "[ci, shell]"),
+        "needs extra": GOOD_WF.replace("[ci, shell, security]", "[ci, shell, security, x]"),
+        "no id-token": GOOD_WF.replace("      id-token: write\n", ""),
+        "no security-events": GOOD_WF.replace("      security-events: write\n", ""),
+        "no pull-requests": GOOD_WF.replace("      pull-requests: write\n", ""),
+        "top perms wider": GOOD_WF.replace("permissions:\n  contents: read\n\njobs", "permissions:\n  contents: read\n  id-token: write\n\njobs", 1),
         "prt": GOOD_WF + "on: pull_request_target\n",
         "event in run": GOOD_WF + "    steps:\n      - run: |\n          echo ${{ github.event.pull_request.title }}\n",
     }
