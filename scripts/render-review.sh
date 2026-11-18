@@ -4,12 +4,11 @@
 # Usage: scripts/render-review.sh [start|stop|status]   (default: start)
 # Env: RENDER_REVIEW_STATE      state dir (default ~/.local/share/renegade-penguin-site-dev)
 #      RENDER_REVIEW_PORT_FIRST first port to try (default 8765; tries 36 ports)
-#      RENDER_REVIEW_KILL_CMD   kill command (default kill; the test swaps in a stub)
 # The local server is for visual review only: Cloudflare Pages applies _headers
 # and a plain http.server does not. Never launches a browser.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEV="$HOME/.local/share/renegade-penguin-site-dev"
 STATE="${RENDER_REVIEW_STATE:-$DEV}"
 OUT="$STATE/out/review"
@@ -19,7 +18,6 @@ LOG="$STATE/serve.log"
 LOCKF="$STATE/serve.lock"
 PORT_FIRST="${RENDER_REVIEW_PORT_FIRST:-8765}"
 PORT_LAST=$((PORT_FIRST + 35))
-KILL_CMD="${RENDER_REVIEW_KILL_CMD:-kill}"
 
 hugo_bin() {
   if command -v hugo >/dev/null 2>&1; then command -v hugo
@@ -62,7 +60,8 @@ is_our_server() { # <pid> <recorded-ticks>
 
 read_pidfile() { # sets REC_PID, REC_TICKS
   REC_PID=""; REC_TICKS=""
-  { read -r REC_PID || true; read -r REC_TICKS || true; } < "$PIDF" 2>/dev/null || true
+  [ -r "$PIDF" ] || return 0
+  { read -r REC_PID || true; read -r REC_TICKS || true; } < "$PIDF"
 }
 
 port_free() { # <port>
@@ -86,6 +85,9 @@ cmd_status() {
   fi
 }
 
+# stop takes no lock on purpose: it only kills a process that passes the full
+# own-server check, so a racing start can at worst make it report not running or
+# kill the server that start is replacing; it never kills anything else (fails closed).
 cmd_stop() {
   if [ ! -e "$PIDF" ]; then
     echo "not running"
@@ -94,7 +96,7 @@ cmd_stop() {
   read_pidfile
   if is_our_server "$REC_PID" "$REC_TICKS"; then
     local err
-    if ! err="$("$KILL_CMD" "$REC_PID" 2>&1)"; then
+    if ! err="$(kill "$REC_PID" 2>&1)"; then
       echo "render-review: could not kill pid $REC_PID: $err (files left in place)" >&2
       return 1
     fi
@@ -103,6 +105,10 @@ cmd_stop() {
       [ -d "/proc/$REC_PID" ] || break
       sleep 0.1
     done
+    if [ -d "/proc/$REC_PID" ] && is_our_server "$REC_PID" "$REC_TICKS"; then
+      echo "server did not exit: pid $REC_PID" >&2
+      return 1
+    fi
     rm -f "$PIDF" "$URLF"
     echo "stopped server pid $REC_PID"
   else
@@ -162,9 +168,11 @@ cmd_start() {
   return 1
 }
 
-case "${1:-start}" in
-  start) cmd_start ;;
-  stop) cmd_stop ;;
-  status) cmd_status ;;
-  *) echo "usage: $0 [start|stop|status]" >&2; exit 2 ;;
-esac
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  case "${1:-start}" in
+    start) cmd_start ;;
+    stop) cmd_stop ;;
+    status) cmd_status ;;
+    *) echo "usage: $0 [start|stop|status]" >&2; exit 2 ;;
+  esac
+fi

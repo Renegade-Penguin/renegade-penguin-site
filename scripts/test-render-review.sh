@@ -6,9 +6,17 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT="${SCRIPT:-$HERE/render-review.sh}"
 REAL="$(cd "$HOME/.local/share/renegade-penguin-site-dev" && pwd -P)"
+# A candidate state dir is acceptable only as a direct rr-test.* child of the real dir.
+state_ok() { # <candidate>
+  local c
+  c="$(realpath -m -- "$1")" || return 1
+  [ "$c" != "$REAL" ] || return 1
+  [ "$(dirname "$c")" = "$REAL" ] || return 1
+  case "$(basename "$c")" in rr-test.*) return 0 ;; *) return 1 ;; esac
+}
 STATE="$(mktemp -d "$REAL/rr-test.XXXXXX")"
+if ! state_ok "$STATE"; then echo "refusing to run against state dir $STATE" >&2; rm -rf "$STATE"; exit 2; fi
 STATE="$(cd "$STATE" && pwd -P)"
-if [ "$STATE" = "$REAL" ]; then echo "refusing to run against the real state dir" >&2; exit 2; fi
 export RENDER_REVIEW_STATE="$STATE"
 export RENDER_REVIEW_PORT_FIRST=18765
 PIDF="$STATE/serve.pid"
@@ -44,8 +52,17 @@ trap cleanup EXIT
 
 [ -x "$SCRIPT" ] || { echo "FAIL: $SCRIPT missing or not executable" >&2; exit 1; }
 
-# 1. start
-OUT1="$("$SCRIPT" start)"; rc=$?
+# 0. product script has no env-driven command hooks; refusal logic bites
+grep -Eq '_KILL_CMD|RENDER_REVIEW_[A-Z_]*CMD' "$SCRIPT" && fail "product script has an env command hook" || ok "no env command hook in script"
+state_ok "$REAL" && fail "state_ok accepted the real dir" || ok "state_ok refuses the real dir"
+state_ok "$REAL/other" && fail "state_ok accepted a non-rr-test child" || ok "state_ok refuses other child"
+state_ok "$REAL/rr-test.x/sub" && fail "state_ok accepted a grandchild" || ok "state_ok refuses grandchild"
+state_ok "/tmp/rr-test.x" && fail "state_ok accepted an outside dir" || ok "state_ok refuses outside dir"
+state_ok "$STATE" && ok "state_ok accepts the test dir" || fail "state_ok refused the test dir"
+
+# 1. start (fresh: nothing on stderr)
+OUT1="$("$SCRIPT" start 2> "$STATE/err1")"; rc=$?
+[ ! -s "$STATE/err1" ] && ok "fresh start prints nothing on stderr" || fail "stderr on fresh start: $(cat "$STATE/err1")"
 [ "$rc" = "0" ] || fail "start exit $rc"
 URL="$(printf '%s\n' "$OUT1" | grep -Eo 'http://127\.0\.0\.1:[0-9]+/' | head -1)"
 [ "$URL" = "http://127.0.0.1:18765/" ] && ok "start printed $URL" || fail "unexpected URL '$URL'"
@@ -72,14 +89,19 @@ printf '%s\n' "$OUT2" | grep -qF "$URL" && ok "second start prints same URL" || 
 "$SCRIPT" status | grep -q 'running' && ok "status running" || fail "status not running"
 "$SCRIPT" status | grep -qF "$URL" || fail "status lacks URL"
 
-# 3b. a permission-denied kill must not abort: message, files left, exit 1
-printf '%s\n' '#!/bin/sh' 'echo "kill: Operation not permitted" >&2' 'exit 1' > "$STATE/denied-kill"
-chmod +x "$STATE/denied-kill"
-DOUT="$(RENDER_REVIEW_KILL_CMD="$STATE/denied-kill" "$SCRIPT" stop 2>&1)"; rc=$?
+# 3b. permission-denied kill (function injection, no env hook in the product script)
+DOUT="$( ( source "$SCRIPT"; kill() { echo "kill: Operation not permitted" >&2; return 1; }; cmd_stop ) 2>&1 )"; rc=$?
 [ "$rc" = "1" ] && ok "denied kill exits 1" || fail "denied kill exit $rc"
 printf '%s\n' "$DOUT" | grep -q 'could not kill pid' && ok "denied kill message" || fail "denied kill message missing: $DOUT"
 { [ -e "$PIDF" ] && [ -e "$URLF" ]; } && ok "denied kill leaves files" || fail "denied kill removed files"
 alive "$PID" && ok "server still alive after denied kill" || fail "server gone after denied kill"
+
+# 3c. kill that returns 0 without killing: files kept, exit 1
+DOUT="$( ( source "$SCRIPT"; kill() { return 0; }; cmd_stop ) 2>&1 )"; rc=$?
+[ "$rc" = "1" ] && ok "no-op kill exits 1" || fail "no-op kill exit $rc"
+printf '%s\n' "$DOUT" | grep -q "server did not exit: pid $PID" && ok "no-op kill message" || fail "no-op kill message missing: $DOUT"
+{ [ -e "$PIDF" ] && [ -e "$URLF" ]; } && ok "no-op kill keeps files" || fail "no-op kill removed files"
+alive "$PID" && ok "server alive after no-op kill" || fail "server gone after no-op kill"
 
 # 4. stop
 "$SCRIPT" stop >/dev/null; rc=$?
