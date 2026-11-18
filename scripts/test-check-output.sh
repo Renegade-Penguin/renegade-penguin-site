@@ -137,7 +137,7 @@ b "external css import" clean bad-external-css production external_host SKIP_EXT
 b "style element url( )" clean bad-style-element production external_host SKIP_EXTERNAL_HOST
 b "style attribute url( )" clean bad-style-attr production external_host SKIP_EXTERNAL_HOST
 b "style element @import" clean bad-style-import production external_host SKIP_EXTERNAL_HOST
-b "iframe src" clean bad-iframe production external_host SKIP_EXTERNAL_HOST
+b "video src" clean bad-iframe production external_host SKIP_EXTERNAL_HOST
 b "form action" clean bad-form-action production external_host SKIP_EXTERNAL_HOST
 b "anchor without noopener" clean bad-external-anchor production external_host SKIP_EXTERNAL_HOST
 b "anchor split across lines" clean bad-anchor-split production external_host SKIP_EXTERNAL_HOST
@@ -208,6 +208,77 @@ b "vbscript: form action" clean bad-scheme-vbscript production unsafe_scheme SKI
 b "meta refresh" clean bad-meta-refresh production meta_refresh SKIP_META_REFRESH
 
 b "missing about link" clean bad-about-link production about_link SKIP_ABOUT_LINK
+
+# Round 1 hardening: document detection, headers, embeds, base, anchors, denylist forms.
+b "uppercase .HTML with a script" clean bad-upper-ext production no_script SKIP_NO_SCRIPT
+b "extensionless html with a handler" clean bad-extless-html production inline_handler SKIP_INLINE_HANDLER
+b ".xhtml with a script" clean bad-xhtml production no_script SKIP_NO_SCRIPT
+b ".svg with a script" clean bad-svg-script production no_script SKIP_NO_SCRIPT
+b "staging .HTML without noindex" clean-staging bad-staging-upper-no-noindex staging noindex SKIP_NOINDEX
+
+b "CSP only under a non-/* route" clean bad-csp-route-only production csp SKIP_CSP
+b "CSP also set in another block" clean bad-csp-other-block production csp SKIP_CSP
+b "required header differs in another block" clean bad-headers-differ production csp SKIP_CSP
+b "required header detached in another block" clean bad-headers-detach production csp SKIP_CSP
+b "two CSP lines in /*" clean bad-csp-two production csp SKIP_CSP
+b "report-uri off-site" clean bad-csp-report-uri production csp SKIP_CSP
+b "report-to off-site" clean bad-csp-report-to production csp SKIP_CSP
+expect_pass "report-uri with a relative path" "$(stage clean "$FIX/ok-csp-report-uri")" production
+
+b "term as a numeric character reference" clean bad-scrub-charref production scrub_terms SKIP_SCRUB_TERMS
+b "term as a character reference inside an attribute" clean bad-scrub-charref-alt production scrub_terms SKIP_SCRUB_TERMS
+b "term split across elements" clean bad-scrub-split production scrub_terms SKIP_SCRUB_TERMS
+b "term double-encoded" clean bad-scrub-double production scrub_terms SKIP_SCRUB_TERMS
+
+# snippet_case <label> <html snippet put before </main>> <env> <check> <SKIP var>
+snippet_tree() { # <snippet> -> echoes a clean tree with the snippet in index.html
+  local t
+  t="$(stage clean)"
+  python3 -I -c '
+import sys
+p = sys.argv[1] + "/index.html"
+s = open(p, encoding="utf-8").read()
+s = s.replace("</main>", sys.argv[2] + "</main>")
+open(p, "w", encoding="utf-8").write(s)
+' "$t" "$1"
+  echo "$t"
+}
+snippet_case() {
+  bite "$1" "$(snippet_tree "$2")" "$3" "$4" "$5"
+}
+snippet_case "iframe element" '<iframe src="/x/"></iframe>' production active_embed SKIP_ACTIVE_EMBED
+snippet_case "object element" '<object data="/x.bin"></object>' production active_embed SKIP_ACTIVE_EMBED
+snippet_case "embed element" '<embed src="/x.bin">' production active_embed SKIP_ACTIVE_EMBED
+snippet_case "frame element" '<frame src="/x/">' production active_embed SKIP_ACTIVE_EMBED
+snippet_case "frameset element" '<frameset></frameset>' production active_embed SKIP_ACTIVE_EMBED
+snippet_case "applet element" '<applet></applet>' production active_embed SKIP_ACTIVE_EMBED
+snippet_case "srcdoc attribute" '<p srcdoc="hello">x</p>' production active_embed SKIP_ACTIVE_EMBED
+snippet_case "base element" '<base href="/">' production base_element SKIP_BASE_ELEMENT
+snippet_case "anchor to chiefgyk3d.com without rel" '<a href="https://chiefgyk3d.com/x">x</a>' production external_host SKIP_EXTERNAL_HOST
+snippet_case "anchor to github.com with target and no rel" '<a href="https://github.com/x" target="_blank">x</a>' production external_host SKIP_EXTERNAL_HOST
+expect_pass "anchor to the site own host without rel" "$(snippet_tree '<a href="https://renegadepenguinllc.com/x">x</a><a href="/y">y</a>')" production
+
+# UTF-16 and non-UTF-8 text files, built at run time (binary content).
+t="$(stage clean)"
+python3 -I -c '
+import sys
+p = sys.argv[1] + "/utf16.html"
+s = "<!doctype html><html><body><p>zzbannedtermzz</p></body></html>"
+open(p, "wb").write(s.encode("utf-16"))
+' "$t"
+bite "term in a UTF-16 html file" "$t" production scrub_terms SKIP_SCRUB_TERMS
+t="$(stage clean)"
+python3 -I -c '
+import sys
+open(sys.argv[1] + "/notes.dat", "wb").write(bytes([0xff, 0xfe, 0xfd, 0x80]))
+' "$t"
+bite "non-UTF-8 text file" "$t" production scrub_terms SKIP_SCRUB_TERMS
+t="$(stage clean)"
+python3 -I -c '
+import sys
+open(sys.argv[1] + "/pic.PNG", "wb").write(bytes([0x89, 0xff, 0xfe, 0x80]))
+' "$t"
+expect_pass "non-UTF-8 bytes in a known binary type" "$t" production
 
 # Dash fixtures are generated so the characters never appear in the repo.
 dash_case() { # <codepoint> <file that receives the dash>

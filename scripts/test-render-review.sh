@@ -71,6 +71,17 @@ state_ok "$REAL/rr-test.x/sub" && fail "state_ok accepted a grandchild" || ok "s
 state_ok "/tmp/rr-test.x" && fail "state_ok accepted an outside dir" || ok "state_ok refuses outside dir"
 state_ok "$STATE" && ok "state_ok accepts the test dir" || fail "state_ok refused the test dir"
 
+# 0b. RENDER_REVIEW_PORT_FIRST is validated before any arithmetic runs
+MARK="$STATE/injected"
+INJ="$(python3 -I -c 'import sys; print("a[$(" + "touch " + sys.argv[1] + ")0]")' "$MARK")"
+for v in abc 12x 0 65501 99999999999999999999 "$INJ"; do
+  PORT_OUT="$(RENDER_REVIEW_PORT_FIRST="$v" "$SCRIPT" status 2>&1)"
+  rc=$?
+  [ "$rc" = "2" ] && ok "bad port value rejected with exit 2" || fail "port value '$v' exit $rc: $PORT_OUT"
+done
+[ ! -e "$MARK" ] && ok "port validation ran no command" || fail "injected command ran"
+[ "$(RENDER_REVIEW_PORT_FIRST=18765 "$SCRIPT" status 2>&1)" = "not running" ] && ok "valid port value accepted" || fail "valid port value rejected"
+
 # 1. start (fresh: nothing on stderr)
 OUT1="$("$SCRIPT" start 2>"$STATE/err1")"
 rc=$?

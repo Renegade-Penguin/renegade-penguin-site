@@ -1,10 +1,16 @@
-"""Structural checks on built html and css, using the stdlib html parser.
+"""Structural checks on built html, svg and css, using the stdlib html parser.
 
 Usage: python3 -I scripts/check-html.py <dir> <production|staging>
 Prints one line per violation: "<check>\t<file>\t<detail>" and always exits 0;
 scripts/check-output.sh decides what to report. Checks emitted:
-  no_script, inline_handler, external_host, noindex, unsafe_scheme, meta_refresh
+  no_script, inline_handler, external_host, noindex, unsafe_scheme, meta_refresh,
+  active_embed, base_element
+
+Which files are parsed: names whose lower-cased form ends in .html, .htm, .xhtml,
+.xht or .shtml (documents), .svg (scanned, no noindex requirement), and any other
+file that is not a known binary type but starts like an html document.
 """
+import codecs
 import os
 import re
 import sys
@@ -12,13 +18,20 @@ from html.parser import HTMLParser
 from urllib.parse import urlsplit
 
 ALLOWED_HOSTS = {"chiefgyk3d.com", "github.com", "renegadepenguinllc.com"}
+OWN_HOST = "renegadepenguinllc.com"
 URL_ATTRS = {"src", "action", "formaction", "poster", "data", "background"}
+DOC_EXT = (".html", ".htm", ".xhtml", ".xht", ".shtml")
+BINARY_EXT = {
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
+    ".woff", ".woff2", ".ttf", ".otf",
+}
+BANNED_TAGS = {"iframe", "object", "embed", "frame", "frameset", "applet"}
 CSS_URL = re.compile(r"url\(\s*[\"']?\s*([^)\"'\s]+)", re.I)
 CSS_IMPORT = re.compile(r"@import\s+(?:url\(\s*)?[\"']?\s*([^\"';)\s]+)", re.I)
 
 
-def foreign_host(value):
-    """Return the host if value points at a host that is not allowed, else None."""
+def url_host(value):
+    """Return the lower-cased host of a url value, or None when it has no host."""
     v = value.strip().replace("\\", "/")
     if not v:
         return None
@@ -26,9 +39,15 @@ def foreign_host(value):
         host = urlsplit(v).hostname
     except ValueError:
         return "(unparseable url)"
-    if host is None:
+    return host.lower() if host else None
+
+
+def foreign_host(value):
+    """Return the host if value points at a host that is not allowed, else None."""
+    h = url_host(value)
+    if h is None or h in ALLOWED_HOSTS:
         return None
-    return None if host.lower() in ALLOWED_HOSTS else host.lower()
+    return h
 
 
 BAD_SCHEMES = {"javascript", "vbscript", "data"}
@@ -54,6 +73,22 @@ def css_urls(text):
     return CSS_URL.findall(text) + CSS_IMPORT.findall(text)
 
 
+def read_text(path):
+    """Read a file as text; honor a UTF-16 or UTF-8 byte order mark."""
+    with open(path, "rb") as fh:
+        raw = fh.read()
+    if raw.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+        return raw.decode("utf-16", errors="replace")
+    if raw.startswith(codecs.BOM_UTF8):
+        return raw[3:].decode("utf-8", errors="replace")
+    return raw.decode("utf-8", errors="replace")
+
+
+def looks_like_html(text):
+    head = text[:1024].lower()
+    return "<!doctype html" in head or "<html" in head
+
+
 class Checker(HTMLParser):
     def __init__(self, path, env):
         super().__init__(convert_charrefs=True)
@@ -73,6 +108,12 @@ class Checker(HTMLParser):
             a[k.lower()] = v if v is not None else ""
         if tag == "script":
             self.add("no_script", "script element")
+        if tag in BANNED_TAGS:
+            self.add("active_embed", "<%s> element" % tag)
+        if "srcdoc" in a:
+            self.add("active_embed", "srcdoc attribute on <%s>" % tag)
+        if tag == "base":
+            self.add("base_element", "<base> element")
         for k in a:
             if k.startswith("on"):
                 self.add("inline_handler", "attribute %s on <%s>" % (k, tag))
@@ -98,8 +139,10 @@ class Checker(HTMLParser):
             if h:
                 self.add("external_host", "link href %s" % h)
         if tag == "a" and "href" in a:
-            h = foreign_host(a["href"])
-            if h and "noopener" not in a.get("rel", "").lower().split():
+            # Any anchor that leaves this site's own origin needs rel=noopener,
+            # including anchors to the allowed hosts. Relative links are exempt.
+            h = url_host(a["href"])
+            if h and h != OWN_HOST and "noopener" not in a.get("rel", "").lower().split():
                 self.add("external_host", "link to %s lacks rel=noopener" % h)
         if "style" in a:
             for u in css_urls(a["style"]):
@@ -129,21 +172,30 @@ def main():
     for dp, _dirs, files in os.walk(root):
         for name in sorted(files):
             path = os.path.join(dp, name)
-            if name.endswith(".css"):
-                with open(path, encoding="utf-8", errors="replace") as fh:
-                    for u in css_urls(fh.read()):
-                        h = foreign_host(u)
-                        if h:
-                            print("external_host\t%s\tcss url %s" % (path, h))
+            lower = name.lower()
+            if lower.endswith(".css"):
+                for u in css_urls(read_text(path)):
+                    h = foreign_host(u)
+                    if h:
+                        print("external_host\t%s\tcss url %s" % (path, h))
                 continue
-            if not name.endswith(".html"):
+            if os.path.splitext(lower)[1] in BINARY_EXT:
                 continue
-            with open(path, encoding="utf-8", errors="replace") as fh:
-                c = Checker(path, env)
-                c.feed(fh.read())
-                c.close()
+            text = read_text(path)
+            is_doc = True
+            if lower.endswith(DOC_EXT):
+                pass
+            elif lower.endswith(".svg"):
+                is_doc = False
+            elif not looks_like_html(text):
+                continue
+            c = Checker(path, env)
+            c.feed(text)
+            c.close()
             for chk, p, detail in c.out:
                 print("%s\t%s\t%s" % (chk, p, detail))
+            if not is_doc:
+                continue
             if env == "production" and c.robots_noindex:
                 print("noindex\t%s\tproduction page has a robots noindex meta" % path)
             if env == "staging" and not c.robots_noindex:

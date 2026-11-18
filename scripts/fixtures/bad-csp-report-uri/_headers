@@ -1,0 +1,2 @@
+/*
+  Content-Security-Policy: default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; report-uri https://collector.example/r

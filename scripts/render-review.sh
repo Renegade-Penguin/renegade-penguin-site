@@ -17,7 +17,17 @@ URLF="$STATE/serve.url"
 LOG="$STATE/serve.log"
 LOCKF="$STATE/serve.lock"
 PORT_FIRST="${RENDER_REVIEW_PORT_FIRST:-8765}"
-PORT_LAST=$((PORT_FIRST + 35))
+case "$PORT_FIRST" in
+  '' | *[!0-9]*)
+    echo "render-review: RENDER_REVIEW_PORT_FIRST must be digits only" >&2
+    exit 2
+    ;;
+esac
+if [ "${#PORT_FIRST}" -gt 5 ] || [ "$((10#$PORT_FIRST))" -lt 1 ] || [ "$((10#$PORT_FIRST))" -gt 65500 ]; then
+  echo "render-review: RENDER_REVIEW_PORT_FIRST must be between 1 and 65500" >&2
+  exit 2
+fi
+PORT_LAST=$((10#$PORT_FIRST + 35))
 
 hugo_bin() {
   if command -v hugo >/dev/null 2>&1; then
