@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # Output checker for a built site.
 #
-# Usage: EXPECT_ENV=production|staging [SCRUB_TERMS_FILE=file] scripts/check-output.sh <dir>
+# Usage: EXPECT_ENV=production|staging SCRUB_TERMS_FILE=<file> scripts/check-output.sh <dir>
 # Exit 0 when clean; otherwise non-zero with one "FAIL <check>: <detail>" line per violation.
-# Each check can be disabled for the revert-proof test with SKIP_<NAME>=1, where <NAME>
-# is the upper-cased check name (SKIP_NO_SCRIPT, SKIP_EXTERNAL_HOST, ...).
+# Checks: no_script, inline_handler, external_host, noindex (html parser, check-html.py),
+# scrub_terms, robots, csp (check-headers.py), about_link, dashes.
+# SCRUB_TERMS_FILE is required (blank lines and lines starting with # are ignored).
+# Each check can be disabled for the revert-proof test with SKIP_<NAME>=1:
+# SKIP_NO_SCRIPT, SKIP_INLINE_HANDLER, SKIP_EXTERNAL_HOST, SKIP_NOINDEX, SKIP_SCRUB_TERMS,
+# SKIP_ROBOTS, SKIP_CSP, SKIP_ABOUT_LINK, SKIP_DASHES.
 set -euo pipefail
 
 DIR="${1:-}"
@@ -14,9 +18,10 @@ case "${EXPECT_ENV:-}" in
   *) echo "EXPECT_ENV must be production or staging" >&2; exit 2 ;;
 esac
 
-ALLOWED_HOSTS="chiefgyk3d.com github.com renegadepenguinllc.com"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 VIOLATIONS=0
+PATTERNS=""
+trap '[ -z "$PATTERNS" ] || rm -f "$PATTERNS"' EXIT
 
 report() { # <check> <detail>
   echo "FAIL $1: $2"
@@ -28,100 +33,83 @@ enabled() { # <check>; honors SKIP_<NAME>=1
   [ "${!var:-}" != "1" ]
 }
 
-html_files() { find "$DIR" -type f -name '*.html'; }
-text_files() { find "$DIR" -type f \( -name '*.html' -o -name '*.css' \); }
+# Structural findings come from the html parser, once for the whole tree.
+HTML_FINDINGS="$(python3 -I "$HERE/check-html.py" "$DIR" "$EXPECT_ENV")"
 
-host_allowed() { # <host>
-  local h
-  h="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
-  for a in $ALLOWED_HOSTS; do [ "$h" = "$a" ] && return 0; done
-  return 1
+from_parser() { # <check>
+  local c f d
+  while IFS=$'\t' read -r c f d; do
+    [ "$c" = "$1" ] && report "$1" "$d ($f)"
+  done <<< "$HTML_FINDINGS"
+  return 0
 }
 
-# Reads URL-ish matches on stdin, prints each host that is not allowed.
-bad_hosts() {
-  local m host
-  while IFS= read -r m; do
-    host="${m#*//}"
-    host="${host%%[/:?#]*}"
-    host_allowed "$host" || printf '%s\n' "$host"
-  done
-}
-
-no_script() {
-  local f
-  f="$(html_files | xargs -r grep -liE '<script' || true)"
-  [ -z "$f" ] || report no_script "<script> found in: $(echo $f)"
-}
-
-inline_handler() {
-  local f
-  f="$(html_files | xargs -r grep -lE '<[^>]*[[:space:]]on[a-zA-Z]+[[:space:]]*=' || true)"
-  [ -z "$f" ] || report inline_handler "inline event handler attribute in: $(echo $f)"
-}
-
-external_host() {
-  local h tag href
-  # Resources: src/srcset/action/poster/data, <link href>, @import, url(...)
-  while IFS= read -r h; do
-    [ -n "$h" ] && report external_host "disallowed host in a resource reference: $h"
-  done < <(
-    text_files | xargs -r grep -ohiE \
-      -e "(src|srcset|action|formaction|poster|data)=[\"']?(https?:)?//[^\"' >/)]+" \
-      -e "<link\b[^>]*[[:space:]]href=[\"']?(https?:)?//[^\"' >/]+" \
-      -e "@import[[:space:]]*(url\()?[\"']?(https?:)?//[^\"' >/)]+" \
-      -e "url\([\"']?(https?:)?//[^\"' >/)]+" | bad_hosts
-  )
-  # Anchors to other hosts must carry rel containing noopener.
-  while IFS= read -r tag; do
-    href="$(printf '%s' "$tag" | grep -oiE "href=[\"']?(https?:)?//[^\"' >/]+" | head -n1 || true)"
-    [ -n "$href" ] || continue
-    h="$(printf '%s\n' "$href" | bad_hosts)"
-    [ -n "$h" ] || continue
-    printf '%s' "$tag" | grep -qiE "rel=[\"']?[^\"'>]*noopener" ||
-      report external_host "link to $h lacks rel=noopener"
-  done < <(html_files | xargs -r grep -ohiE '<a\b[^>]*>' || true)
-}
+no_script() { from_parser no_script; }
+inline_handler() { from_parser inline_handler; }
+external_host() { from_parser external_host; }
+noindex() { from_parser noindex; }
 
 scrub_terms() {
-  [ -n "${SCRUB_TERMS_FILE:-}" ] || return 0
-  [ -f "$SCRUB_TERMS_FILE" ] || { report scrub_terms "SCRUB_TERMS_FILE not found"; return; }
+  if [ -z "${SCRUB_TERMS_FILE:-}" ] || [ ! -r "$SCRUB_TERMS_FILE" ] || [ ! -f "$SCRUB_TERMS_FILE" ]; then
+    report scrub_terms "SCRUB_TERMS_FILE required"
+    return 0
+  fi
+  PATTERNS="$(mktemp)"
+  grep -vE '^[[:space:]]*(#|$)' "$SCRUB_TERMS_FILE" > "$PATTERNS" || true
+  if [ ! -s "$PATTERNS" ]; then
+    report scrub_terms "no patterns in SCRUB_TERMS_FILE (only blanks and comments)"
+    return 0
+  fi
   local f
-  f="$(text_files | xargs -r grep -liF -f "$SCRUB_TERMS_FILE" || true)"
+  # Every regular file, any extension, case-insensitive, fixed strings, binary as text.
+  f="$(find "$DIR" -type f -print0 | xargs -0 -r grep -aliF -f "$PATTERNS" || true)"
   [ -z "$f" ] || report scrub_terms "denylisted term found in: $(echo $f)"
 }
 
-noindex() {
-  local all with
-  if [ "$EXPECT_ENV" = production ]; then
-    with="$(html_files | xargs -r grep -liE 'noindex' || true)"
-    [ -z "$with" ] || report noindex "production html contains noindex: $(echo $with)"
-  else
-    all="$(html_files | xargs -r grep -LiE 'noindex' || true)"
-    [ -z "$all" ] || report noindex "staging html lacks noindex: $(echo $all)"
-  fi
+# True when robots.txt has a "User-agent: *" group containing "Disallow: /".
+robots_blocks_all() {
+  awk '
+    BEGIN { found = 0; star = 0; inua = 0 }
+    tolower($0) ~ /^[ \t]*user-agent:/ {
+      v = $0; sub(/^[^:]*:[ \t]*/, "", v); sub(/[ \t\r]*$/, "", v)
+      if (!inua) star = 0
+      inua = 1
+      if (v == "*") star = 1
+      next
+    }
+    tolower($0) ~ /^[ \t]*disallow:/ {
+      inua = 0
+      v = $0; sub(/^[^:]*:[ \t]*/, "", v); sub(/[ \t\r]*$/, "", v)
+      if (star && v == "/") found = 1
+      next
+    }
+    /^[ \t\r]*$/ { next }
+    { inua = 0 }
+    END { exit found ? 0 : 1 }
+  ' "$1"
 }
 
 robots() {
   local r="$DIR/robots.txt"
-  if [ ! -f "$r" ]; then report robots "robots.txt missing"; return; fi
+  if [ ! -f "$r" ]; then report robots "robots.txt missing"; return 0; fi
   if [ "$EXPECT_ENV" = staging ]; then
-    grep -qE '^Disallow:[[:space:]]*/[[:space:]]*$' "$r" || report robots "staging robots.txt lacks 'Disallow: /'"
+    robots_blocks_all "$r" || report robots "staging robots.txt needs a 'User-agent: *' group with 'Disallow: /'"
   else
-    ! grep -qE '^Disallow:[[:space:]]*/[[:space:]]*$' "$r" || report robots "production robots.txt blocks everything"
+    ! robots_blocks_all "$r" || report robots "production robots.txt blocks everything"
   fi
 }
 
 csp() {
-  local h="$DIR/_headers"
-  if [ ! -f "$h" ]; then report csp "_headers missing"; return; fi
-  grep -qE '^[[:space:]]*Content-Security-Policy:.*default-src' "$h" ||
-    report csp "_headers has no Content-Security-Policy line with default-src"
+  local p
+  while IFS= read -r p; do
+    [ -n "$p" ] && report csp "$p"
+  done < <(python3 -I "$HERE/check-headers.py" "$DIR/_headers")
+  return 0
 }
 
 about_link() {
   local a="$DIR/about/index.html"
-  if [ ! -f "$a" ]; then report about_link "about/index.html missing"; return; fi
+  if [ ! -f "$a" ]; then report about_link "about/index.html missing"; return 0; fi
   grep -qiE "href=[\"']?https://chiefgyk3d\.com" "$a" ||
     report about_link "about/index.html has no link to chiefgyk3d.com"
 }
