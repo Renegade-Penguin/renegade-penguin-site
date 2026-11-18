@@ -26,28 +26,36 @@ BINARY_EXT = {
 }
 
 
-EXTRA_IGNORABLE = {0x034F, 0x115F, 0x1160, 0x3164, 0xFFA0}
-
-
-def ignorable(ch):
-    """True for invisible formatting characters that can split a word unseen.
-
-    Covers every Cf (format) character (soft hyphen, zero-width space and joiners,
-    direction marks and overrides, word joiner, BOM, ...), the variation selectors
-    and a few default-ignorable letters.
-    """
-    cp = ord(ch)
-    return (
-        unicodedata.category(ch) == "Cf"
-        or 0xFE00 <= cp <= 0xFE0F
-        or 0xE0100 <= cp <= 0xE01EF
-        or 0x180B <= cp <= 0x180F
-        or cp in EXTRA_IGNORABLE
-    )
+# Default_Ignorable_Code_Point ranges, pinned from the Unicode 15.1 DerivedCoreProperties
+# table (invisible characters that can split a word without changing how it looks).
+# Not derived from the running Python's unicodedata, so a newer or older Python cannot
+# change what is stripped. Surrogates and noncharacter gaps are not listed.
+DEFAULT_IGNORABLE = (
+    (0x00AD, 0x00AD),
+    (0x034F, 0x034F),
+    (0x061C, 0x061C),
+    (0x115F, 0x1160),
+    (0x17B4, 0x17B5),
+    (0x180B, 0x180F),
+    (0x200B, 0x200F),
+    (0x202A, 0x202E),
+    (0x2060, 0x206F),
+    (0x3164, 0x3164),
+    (0xFE00, 0xFE0F),
+    (0xFEFF, 0xFEFF),
+    (0xFFA0, 0xFFA0),
+    (0xFFF0, 0xFFF8),
+    (0x1BCA0, 0x1BCA3),
+    (0x1D173, 0x1D17A),
+    (0xE0000, 0xE0FFF),
+)
+IGNORABLE_RE = re.compile(
+    "[" + "".join("%s-%s" % (chr(lo), chr(hi)) for lo, hi in DEFAULT_IGNORABLE) + "]"
+)
 
 
 def strip_ignorable(s):
-    return "".join(ch for ch in s if not ignorable(ch))
+    return IGNORABLE_RE.sub("", s)
 
 
 def norm(s):
@@ -111,4 +119,8 @@ def main():
                 print("scrub_terms\t%s\tdenylisted term found after decoding and tag removal" % path)
 
 
-main()
+try:
+    main()
+except Exception as exc:  # fail closed: a crash must never read as a pass
+    print("checker error: %s: %s" % (type(exc).__name__, exc), file=sys.stderr)
+    sys.exit(70)

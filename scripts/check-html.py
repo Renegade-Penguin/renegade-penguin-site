@@ -237,4 +237,8 @@ def main():
                 print("noindex\t%s\tstaging page lacks a robots noindex meta" % path)
 
 
-main()
+try:
+    main()
+except Exception as exc:  # fail closed: a crash must never read as a pass
+    print("checker error: %s: %s" % (type(exc).__name__, exc), file=sys.stderr)
+    sys.exit(70)

@@ -297,4 +297,9 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    try:
+        code = main(sys.argv[1:])
+    except Exception as exc:  # fail closed: a crash must never read as a pass
+        print("checker error: %s: %s" % (type(exc).__name__, exc), file=sys.stderr)
+        code = 70
+    sys.exit(code)

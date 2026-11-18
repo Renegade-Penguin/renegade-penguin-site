@@ -42,8 +42,23 @@ enabled() { # <check>; honors SKIP_<NAME>=1
   [ "${!var:-}" != "1" ]
 }
 
+# run_helper <check> <script> [args...]: run a python helper under python3 -I and keep its
+# output in HELPER_OUT. Any non-zero status (a crash included) is reported as a violation
+# of <check>, so a failing helper can never read as a pass.
+run_helper() {
+  local check="$1" status=0
+  shift
+  HELPER_OUT="$(python3 -I "$@" 2>&1)" || status=$?
+  if [ "$status" -ne 0 ]; then
+    report "$check" "helper failed with status $status: $(printf '%s' "$HELPER_OUT" | tail -n 1)"
+    HELPER_OUT=""
+  fi
+  return 0
+}
+
 # Structural findings come from the html parser, once for the whole tree.
-HTML_FINDINGS="$(python3 -I "$HERE/check-html.py" "$DIR" "$EXPECT_ENV")"
+run_helper html_checker "$HERE/check-html.py" "$DIR" "$EXPECT_ENV"
+HTML_FINDINGS="$HELPER_OUT"
 
 from_parser() { # <check>
   local c f d
@@ -83,15 +98,25 @@ scrub_terms() {
     report scrub_terms "no patterns in SCRUB_TERMS_FILE (only blanks and comments)"
     return 0
   fi
-  local f
+  local f status=0
   # Every regular file, any extension, case-insensitive, fixed strings, binary as text.
-  f="$(find "$DIR" -type f -print0 | xargs -0 -r grep -aliF -f "$PATTERNS" || true)"
-  [ -z "$f" ] || report scrub_terms "denylisted term found in: $(echo $f)"
+  # grep exits 0 on a match, 1 on none and 2 on an error; an error must not read as clean.
+  f="$(grep -railF -f "$PATTERNS" "$DIR" 2>&1)" || status=$?
+  case "$status" in
+    0)
+      report scrub_terms "denylisted term found in: $(echo $f)"
+      ;;
+    1) ;;
+    *)
+      report scrub_terms "raw scan failed with status $status: $(printf '%s' "$f" | tail -n 1)"
+      ;;
+  esac
   # Normalized scan: UTF-8 required, character references decoded, tags removed.
   local c file detail
+  run_helper scrub_terms "$HERE/check-scrub.py" "$DIR" "$PATTERNS"
   while IFS=$'\t' read -r c file detail; do
     [ -n "$c" ] && report scrub_terms "$detail ($file)"
-  done < <(python3 -I "$HERE/check-scrub.py" "$DIR" "$PATTERNS")
+  done <<<"$HELPER_OUT"
   return 0
 }
 
@@ -124,18 +149,24 @@ robots() {
     report robots "robots.txt missing"
     return 0
   fi
-  if [ "$EXPECT_ENV" = staging ]; then
-    robots_blocks_all "$r" || report robots "staging robots.txt needs a 'User-agent: *' group with 'Disallow: /'"
+  # awk exits 0 when the group is found, 1 when not, 2 on an error (never a pass).
+  local status=0
+  robots_blocks_all "$r" || status=$?
+  if [ "$status" -gt 1 ]; then
+    report robots "robots.txt check failed with status $status"
+  elif [ "$EXPECT_ENV" = staging ]; then
+    [ "$status" -eq 0 ] || report robots "staging robots.txt needs a 'User-agent: *' group with 'Disallow: /'"
   else
-    ! robots_blocks_all "$r" || report robots "production robots.txt blocks everything"
+    [ "$status" -ne 0 ] || report robots "production robots.txt blocks everything"
   fi
 }
 
 csp() {
   local p
+  run_helper csp "$HERE/check-headers.py" "$DIR/_headers"
   while IFS= read -r p; do
     [ -n "$p" ] && report csp "$p"
-  done < <(python3 -I "$HERE/check-headers.py" "$DIR/_headers")
+  done <<<"$HELPER_OUT"
   return 0
 }
 
@@ -150,9 +181,8 @@ about_link() {
 }
 
 dashes() {
-  local f
-  f="$(python3 -I "$HERE/find-dashes.py" "$DIR")"
-  [ -z "$f" ] || report dashes "em or en dash in: $(echo $f)"
+  run_helper dashes "$HERE/find-dashes.py" "$DIR"
+  [ -z "$HELPER_OUT" ] || report dashes "em or en dash in: $(echo $HELPER_OUT)"
 }
 
 for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms noindex robots csp about_link dashes; do

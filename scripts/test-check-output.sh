@@ -67,7 +67,7 @@ bite() { # <label> <tree> <env> <check-name> <SKIP var>
     soft "$label: expected failure, got exit 0"
     return 0
   fi
-  if ! printf '%s\n' "$OUT" | grep -q "^FAIL $name:"; then
+  if ! grep -q "^FAIL $name:" <<<"$OUT"; then
     soft "$label: no 'FAIL $name:' line in: $OUT"
     return 0
   fi
@@ -94,7 +94,7 @@ bite_terms() {
     soft "$label: expected failure, got exit 0"
     return 0
   fi
-  if ! printf '%s\n' "$OUT" | grep -q "^FAIL scrub_terms: .*$frag"; then
+  if ! grep -q "^FAIL scrub_terms: .*$frag" <<<"$OUT"; then
     soft "$label: no scrub_terms line with '$frag' in: $OUT"
     return 0
   fi
@@ -313,6 +313,87 @@ file_case "BOM-less UTF-16LE text" scrub_terms SKIP_SCRUB_TERMS notes.dat '"zzba
 file_case "BOM-less UTF-16BE text" scrub_terms SKIP_SCRUB_TERMS notes2.dat '"zzbannedtermzz".encode("utf-16-be")'
 file_case "extensionless html after 1025 spaces" no_script SKIP_NO_SCRIPT page2 '(" " * 1025 + "<html><body><script>var x=1</script></body></html>").encode()'
 file_case "extensionless html after comments" no_script SKIP_NO_SCRIPT page3 '("<!-- a -->" * 300 + "<div><script>var x=1</script></div>").encode()'
+
+# Round 3: every protected header required, strict values, default-ignorable characters.
+b "protected headers missing from /*" clean bad-headers-missing production csp SKIP_CSP
+b "empty Permissions-Policy" clean bad-permissions-empty production csp SKIP_CSP
+b "Permissions-Policy that allows a feature" clean bad-permissions-allow production csp SKIP_CSP
+b "HSTS not-max-age lookalike" clean bad-hsts-lookalike production csp SKIP_CSP
+b "HSTS duplicate max-age" clean bad-hsts-duplicate production csp SKIP_CSP
+b "HSTS max-age too low" clean bad-hsts-low production csp SKIP_CSP
+b "HSTS quoted max-age" clean bad-hsts-quoted production csp SKIP_CSP
+file_case "HSTS overlong digit string" csp SKIP_CSP _headers 'open(sys.argv[1] + "/_headers", "rb").read().replace(b"max-age=31536000", b"max-age=" + b"9" * 5000)'
+# The overlong value must be rejected by the rule itself, not by a crash.
+python3 -I -c '
+import sys
+s = open(sys.argv[1] + "/_headers", encoding="utf-8").read()
+open(sys.argv[2], "w", encoding="utf-8").write(s.replace("max-age=31536000", "max-age=" + "9" * 5000))
+' "$FIX/clean" "$WORK/overlong-headers"
+set +e
+OUT="$(python3 -I scripts/check-headers.py "$WORK/overlong-headers" 2>&1)"
+RC=$?
+set -e
+if [ "$RC" = "0" ] && grep -q 'strict-transport-security has an unacceptable value' <<<"$OUT"; then
+  echo "ok: overlong HSTS digits rejected by the rule, no crash"
+else
+  soft "overlong HSTS digits: expected a finding with exit 0, got exit $RC: $OUT"
+fi
+file_case "term split by U+17B4" scrub_terms SKIP_SCRUB_TERMS khmer.html '("<p>zzbanned" + chr(0x17b4) + "termzz</p>").encode()'
+file_case "term split by U+FFF0" scrub_terms SKIP_SCRUB_TERMS fff0.html '("<p>zzbanned" + chr(0xfff0) + "termzz</p>").encode()'
+file_case "term split by U+1D173" scrub_terms SKIP_SCRUB_TERMS music.html '("<p>zzbanned" + chr(0x1d173) + "termzz</p>").encode()'
+file_case "term split by U+E0001" scrub_terms SKIP_SCRUB_TERMS tag.html '("<p>zzbanned" + chr(0xe0001) + "termzz</p>").encode()'
+
+# A crashing helper must fail the build (fail closed): swap one helper for a stub.
+for helper in check-headers.py check-html.py check-scrub.py find-dashes.py; do
+  stub="$(mktemp -d "$WORK/stub.XXXXXX")"
+  cp -R scripts/. "$stub/"
+  printf '%s\n' 'raise RuntimeError("stub crash")' >"$stub/$helper"
+  set +e
+  OUT="$(env EXPECT_ENV=production SCRUB_TERMS_FILE="$TERMS" "$stub/check-output.sh" "$(stage clean)" 2>&1)"
+  RC=$?
+  set -e
+  if [ "$RC" = "0" ]; then
+    soft "crashing $helper must fail the build, got exit 0"
+  elif ! grep -q '^FAIL ' <<<"$OUT"; then
+    soft "crashing $helper gave no FAIL line: $OUT"
+  else
+    echo "ok: crashing $helper fails the build"
+  fi
+done
+
+# Each helper catches its own unexpected exceptions and exits 70 (here: missing arguments).
+for helper in check-headers.py check-html.py check-scrub.py find-dashes.py; do
+  set +e
+  OUT="$(python3 -I "scripts/$helper" 2>&1)"
+  RC=$?
+  set -e
+  if [ "$RC" != "70" ]; then
+    soft "$helper with no arguments: expected exit 70, got $RC: $OUT"
+  elif grep -q 'Traceback' <<<"$OUT"; then
+    soft "$helper printed a traceback: $OUT"
+  else
+    echo "ok: $helper reports an unexpected error with exit 70"
+  fi
+done
+
+# check-contrast.py: inject an unexpected exception into a copy and expect exit 70.
+cstub="$WORK/check-contrast-stub.py"
+python3 -I -c '
+import sys
+s = open(sys.argv[1], encoding="utf-8").read()
+old = "    paths = list(argv)\n"
+assert old in s
+open(sys.argv[2], "w", encoding="utf-8").write(s.replace(old, "    raise RuntimeError(\"stub\")\n" + old, 1))
+' scripts/check-contrast.py "$cstub"
+set +e
+OUT="$(python3 -I "$cstub" assets/css/tokens.css 2>&1)"
+RC=$?
+set -e
+if [ "$RC" != "70" ]; then
+  soft "check-contrast.py with an injected exception: expected exit 70, got $RC: $OUT"
+else
+  echo "ok: check-contrast.py reports an unexpected error with exit 70"
+fi
 
 # Dash fixtures are generated so the characters never appear in the repo.
 dash_case() { # <codepoint> <file that receives the dash>

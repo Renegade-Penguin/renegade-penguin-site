@@ -7,8 +7,10 @@ The file is parsed into route blocks: a route line has no leading whitespace and
 header lines under it are indented. Rules:
   - nothing detaches ("! Name") Content-Security-Policy or a protected header, and no
     block repeats a protected header name (case-insensitive);
-  - exactly one Content-Security-Policy is set in the "/*" block, and each protected
-    header set there appears once with an acceptable value;
+  - exactly one Content-Security-Policy is set in the "/*" block, and each of the five
+    protected headers appears there once with an acceptable value (nosniff;
+    same-origin; a safe referrer policy; a deny-all feature=() Permissions-Policy; HSTS
+    with one standalone max-age directive of 10 digits or fewer, at least one year);
   - no other block sets Content-Security-Policy or sets a protected header
     (X-Content-Type-Options, Referrer-Policy, Strict-Transport-Security,
     Permissions-Policy, Cross-Origin-Opener-Policy) differently from the "/*" block;
@@ -37,9 +39,28 @@ SITE_ROUTE = "/*"
 REFERRER_OK = {"no-referrer", "same-origin", "strict-origin", "strict-origin-when-cross-origin"}
 
 
+HSTS_MIN = 31536000
+DENY_ALL = re.compile(r"^[a-z][a-z0-9-]*=\(\)$")
+
+
 def hsts_ok(value):
-    m = re.search(r"max-age=(\d+)", value.lower())
-    return bool(m) and int(m.group(1)) >= 31536000
+    """Semicolon-separated directives with exactly one standalone max-age directive:
+    digits only (at most 10, so no huge integer conversion), at least one year."""
+    ages = []
+    for part in value.split(";"):
+        name, sep, val = part.strip().partition("=")
+        if name.strip().lower() == "max-age":
+            ages.append(val.strip() if sep else "")
+    if len(ages) != 1:
+        return False
+    age = ages[0]
+    return age.isascii() and age.isdigit() and len(age) <= 10 and int(age) >= HSTS_MIN
+
+
+def permissions_ok(value):
+    """Non-empty, comma-separated, every directive of the deny-all form feature=()."""
+    items = [i.strip() for i in value.split(",")]
+    return bool(value.strip()) and all(DENY_ALL.match(i) for i in items)
 
 
 # Acceptable values for the protected headers when set in the "/*" block.
@@ -48,7 +69,7 @@ VALUE_RULES = {
     "cross-origin-opener-policy": lambda v: v.lower() == "same-origin",
     "referrer-policy": lambda v: v.lower() in REFERRER_OK,
     "strict-transport-security": hsts_ok,
-    "permissions-policy": lambda v: True,
+    "permissions-policy": permissions_ok,
 }
 
 
@@ -134,6 +155,9 @@ def check_blocks(blocks):
             base[name] = value
             if not VALUE_RULES[name](value):
                 problems.append("%s has an unacceptable value in %s" % (name, SITE_ROUTE))
+    for name in sorted(SECURITY_HEADERS):
+        if name not in base:
+            problems.append("%s missing from the %s block" % (name, SITE_ROUTE))
     for route, hs in blocks:
         if route == SITE_ROUTE:
             continue
@@ -158,4 +182,8 @@ def main():
         print(p)
 
 
-main()
+try:
+    main()
+except Exception as exc:  # fail closed: a crash must never read as a pass
+    print("checker error: %s: %s" % (type(exc).__name__, exc), file=sys.stderr)
+    sys.exit(70)
