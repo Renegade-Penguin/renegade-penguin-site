@@ -132,6 +132,9 @@ b "handler on its own line" clean bad-handler-newline production inline_handler 
 b "external img src" clean bad-external-img production external_host SKIP_EXTERNAL_HOST
 b "src with spaces around =" clean bad-src-spaces production external_host SKIP_EXTERNAL_HOST
 b "second srcset candidate" clean bad-srcset production external_host SKIP_EXTERNAL_HOST
+b "srcset candidate with a data: scheme" clean bad-srcset-data production unsafe_scheme SKIP_UNSAFE_SCHEME
+b "srcset candidate with a javascript: scheme" clean bad-srcset-js production unsafe_scheme SKIP_UNSAFE_SCHEME
+b "srcset candidate with an obfuscated javascript: scheme" clean bad-srcset-js-obfuscated production unsafe_scheme SKIP_UNSAFE_SCHEME
 b "external link tag" clean bad-external-linktag production external_host SKIP_EXTERNAL_HOST
 b "external css import" clean bad-external-css production external_host SKIP_EXTERNAL_HOST
 b "style element url( )" clean bad-style-element production external_host SKIP_EXTERNAL_HOST

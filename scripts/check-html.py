@@ -161,6 +161,11 @@ class Checker(HTMLParser):
                 self.add("external_host", "%s=%s on <%s>" % (k, h, tag))
         if "srcset" in a:
             for cand in a["srcset"].split(","):
+                # Scheme check on the whole candidate (tab, CR and LF are dropped
+                # inside the url as browsers do), then the host check on its url.
+                s = unsafe_scheme(cand)
+                if s:
+                    self.add("unsafe_scheme", "%s: srcset candidate on <%s>" % (s, tag))
                 parts = cand.split()
                 if parts:
                     h = foreign_host(parts[0])

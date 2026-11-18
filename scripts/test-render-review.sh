@@ -5,7 +5,9 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT="${SCRIPT:-$HERE/render-review.sh}"
-REAL="$(cd "$HOME/.local/share/renegade-penguin-site-dev" && pwd -P)"
+DEV_DIR="$HOME/.local/share/renegade-penguin-site-dev"
+mkdir -p "$DEV_DIR"
+REAL="$(cd "$DEV_DIR" && pwd -P)"
 # A candidate state dir is acceptable only as a direct rr-test.* child of the real dir.
 state_ok() { # <candidate>
   local c
