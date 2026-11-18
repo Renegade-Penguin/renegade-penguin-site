@@ -1,4 +1,7 @@
 {{- $dest := .Destination -}}
+{{- if findRE `[[:cntrl:] \\]` $dest -}}
+  {{- errorf "render-link: disallowed control character, space or backslash in link destination in %s: %q" .Page.Path $dest -}}
+{{- end -}}
 {{- $lower := strings.ToLower $dest -}}
 {{- $ext := false -}}
 {{- if strings.HasPrefix $lower "#" -}}

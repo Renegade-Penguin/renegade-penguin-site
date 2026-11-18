@@ -44,4 +44,34 @@ for bad in 'javascript:alert(1)' 'JaVaScRiPt:alert(1)' 'data:text/html,x' 'vbscr
   grep -q 'disallowed' "$TMP/bad.err" || fail "error for $bad must name the problem: $(cat "$TMP/bad.err")"
   rm -rf "$d"
 done
+# --- control characters, spaces and backslashes must fail the build ---
+# Bodies are generated with python so the shell source holds no control characters.
+gen_body() {
+  python3 -I -c '
+import sys
+t, n, c1, bs = chr(9), chr(10), chr(1), chr(92)
+cases = {
+  "tab-in-scheme": "java" + t + "script:alert(1)",
+  "leading-tab": t + "https://example.org/",
+  "leading-newline": n + "javascript:alert(1)",
+  "trailing-space": "https://example.org/ ",
+  "ctrl-01": "https://example.org/" + c1 + "x",
+  "backslash": "https:" + bs + bs + "evil.example/",
+}
+print("[x](<" + cases[sys.argv[1]] + ">)")
+' "$1"
+}
+for name in tab-in-scheme leading-tab trailing-space ctrl-01 backslash; do
+  d=$(scratch_site "ctl" "$(gen_body "$name")")
+  if "$HUGO" --source "$d" --destination "$d/out" >/dev/null 2>"$TMP/bad.err"; then fail "build must fail for control/space/backslash case $name"; fi
+  grep -q 'disallowed' "$TMP/bad.err" || fail "error for $name must name the problem: $(cat "$TMP/bad.err")"
+  rm -rf "$d"
+done
+# A newline inside <...> is not a link in Markdown, so it never reaches the hook.
+# Either the build fails, or the output must hold no javascript: href.
+d=$(scratch_site "nl" "$(gen_body leading-newline)")
+if "$HUGO" --source "$d" --destination "$d/out" >/dev/null 2>"$TMP/nl.err"; then
+  if grep -qi 'href="[^"]*javascript:' "$d/out/index.html"; then fail "leading-newline javascript: reached an href"; fi
+fi
+rm -rf "$d"
 echo "PASS: render-link ok"
