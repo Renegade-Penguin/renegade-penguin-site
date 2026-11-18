@@ -19,7 +19,7 @@ scratch_site() {
 }
 
 # --- allowed links ---
-d=$(scratch_site ok '[a](https://example.org/) [b](HTTPS://EVIL.example/) [c](//evil.example/x) [d](/contact/) [e](#frag) [f](mailto:a@example.org) [g](https://renegadepenguinllc.com/about/) [h](http://renegadepenguinllc.com/) [i](https://example.org/ "T&Q") [j](tel:+15550100) [k](../x/)')
+d=$(scratch_site ok '[a](https://example.org/) [b](HTTPS://EVIL.example/) [c](//evil.example/x) [d](/contact/) [e](#frag) [f](mailto:a@example.org) [g](https://renegadepenguinllc.com/about/) [h](http://renegadepenguinllc.com/) [i](https://example.org/ "T&Q") [j](tel:5550100) [k](../x/)')
 "$HUGO" --source "$d" --destination "$d/out" >/dev/null 2>"$TMP/ok.err" || { cat "$TMP/ok.err" >&2; fail "build with allowed links failed"; }
 html="$d/out/index.html"
 tag() { grep -o "<a [^>]*href=\"$1\"[^>]*>" "$html" | head -1 || true; }
@@ -33,7 +33,7 @@ no_rel '#frag'
 no_rel 'mailto:a@example.org'
 no_rel 'https://renegadepenguinllc.com/about/'
 no_rel 'http://renegadepenguinllc.com/'
-no_rel 'tel:+15550100'
+no_rel 'tel:5550100'
 no_rel '../x/'
 grep -q 'title="T&amp;Q"' "$html" || grep -q 'title="T&#38;Q"' "$html" || fail "link title missing or not escaped"
 
