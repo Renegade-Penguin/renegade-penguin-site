@@ -3,9 +3,10 @@
 Usage: python3 -I scripts/check-scrub.py <dir> <patterns-file>
 Prints "scrub_terms\t<file>\t<detail>" per problem and always exits 0.
 
-Every file except known binary types must be valid UTF-8 (a UTF-16 file would hide
-ASCII terms behind NUL bytes). Each file is then matched, case-insensitively after
-Unicode NFKC normalization and whitespace collapsing, in three forms:
+Every file except known binary types must be valid UTF-8 and contain no NUL
+characters (a UTF-16 file would hide ASCII terms behind NUL bytes). Each file is then
+matched, case-insensitively after removing invisible formatting characters, Unicode
+NFKC normalization and whitespace collapsing, in three forms:
   1. the text as written;
   2. the text with HTML character references decoded (repeated until stable, at most
      5 passes, so double-encoded references are caught);
@@ -25,8 +26,33 @@ BINARY_EXT = {
 }
 
 
+EXTRA_IGNORABLE = {0x034F, 0x115F, 0x1160, 0x3164, 0xFFA0}
+
+
+def ignorable(ch):
+    """True for invisible formatting characters that can split a word unseen.
+
+    Covers every Cf (format) character (soft hyphen, zero-width space and joiners,
+    direction marks and overrides, word joiner, BOM, ...), the variation selectors
+    and a few default-ignorable letters.
+    """
+    cp = ord(ch)
+    return (
+        unicodedata.category(ch) == "Cf"
+        or 0xFE00 <= cp <= 0xFE0F
+        or 0xE0100 <= cp <= 0xE01EF
+        or 0x180B <= cp <= 0x180F
+        or cp in EXTRA_IGNORABLE
+    )
+
+
+def strip_ignorable(s):
+    return "".join(ch for ch in s if not ignorable(ch))
+
+
 def norm(s):
-    s = unicodedata.normalize("NFKC", s).casefold()
+    s = unicodedata.normalize("NFKC", strip_ignorable(s)).casefold()
+    s = strip_ignorable(s)
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -75,6 +101,10 @@ def main():
                 text = raw.decode("utf-8")
             except UnicodeDecodeError:
                 print("scrub_terms\t%s\ttext file is not valid UTF-8" % path)
+                continue
+            if "\x00" in text:
+                # BOM-less UTF-16 decodes as UTF-8 with NULs between the letters.
+                print("scrub_terms\t%s\ttext file contains NUL characters (UTF-16?)" % path)
                 continue
             fs = forms(text)
             if any(p in f for p in patterns for f in fs):

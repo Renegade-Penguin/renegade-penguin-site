@@ -5,15 +5,19 @@ Prints one problem per line and always exits 0; scripts/check-output.sh reports 
 
 The file is parsed into route blocks: a route line has no leading whitespace and the
 header lines under it are indented. Rules:
-  - exactly one Content-Security-Policy is set in the "/*" block;
-  - no other block sets Content-Security-Policy, and no other block sets or detaches
-    X-Content-Type-Options, Referrer-Policy, Strict-Transport-Security,
-    Permissions-Policy or Cross-Origin-Opener-Policy differently from the "/*" block;
+  - nothing detaches ("! Name") Content-Security-Policy or a protected header, and no
+    block repeats a protected header name (case-insensitive);
+  - exactly one Content-Security-Policy is set in the "/*" block, and each protected
+    header set there appears once with an acceptable value;
+  - no other block sets Content-Security-Policy or sets a protected header
+    (X-Content-Type-Options, Referrer-Policy, Strict-Transport-Security,
+    Permissions-Policy, Cross-Origin-Opener-Policy) differently from the "/*" block;
   - in that policy default-src is present, every directive that takes a source list
     holds only 'none' or 'self' (no wildcard, scheme, host, unsafe-* token or nonce),
     report-uri and report-to hold only a relative path, and base-uri, form-action
     and frame-ancestors are present.
 """
+import re
 import sys
 
 SAFE = {"'none'", "'self'"}
@@ -28,7 +32,24 @@ SECURITY_HEADERS = {
     "x-content-type-options", "referrer-policy", "strict-transport-security",
     "permissions-policy", "cross-origin-opener-policy",
 }
+PROTECTED = SECURITY_HEADERS | {CSP}
 SITE_ROUTE = "/*"
+REFERRER_OK = {"no-referrer", "same-origin", "strict-origin", "strict-origin-when-cross-origin"}
+
+
+def hsts_ok(value):
+    m = re.search(r"max-age=(\d+)", value.lower())
+    return bool(m) and int(m.group(1)) >= 31536000
+
+
+# Acceptable values for the protected headers when set in the "/*" block.
+VALUE_RULES = {
+    "x-content-type-options": lambda v: v.lower() == "nosniff",
+    "cross-origin-opener-policy": lambda v: v.lower() == "same-origin",
+    "referrer-policy": lambda v: v.lower() in REFERRER_OK,
+    "strict-transport-security": hsts_ok,
+    "permissions-policy": lambda v: True,
+}
 
 
 def relative_path(tok):
@@ -86,26 +107,43 @@ def parse_blocks(lines):
 
 def check_blocks(blocks):
     problems = []
-    star = [h for route, hs in blocks if route == SITE_ROUTE for h in hs]
-    star_csp = [h for h in star if h[0] == CSP and not h[2]]
+    # Every block: no detach of a protected header, no repeated protected name.
+    seen_by_route = {}
+    for route, hs in blocks:
+        seen = seen_by_route.setdefault(route, set())
+        for name, _value, detached in hs:
+            if name not in PROTECTED:
+                continue
+            if detached:
+                problems.append("route %s detaches %s" % (route, name))
+            if name in seen:
+                problems.append("route %s repeats %s" % (route, name))
+            seen.add(name)
+    # The "/*" block: the set headers, as the server will apply them.
+    star = [h for route, hs in blocks if route == SITE_ROUTE for h in hs if not h[2]]
+    star_csp = [h for h in star if h[0] == CSP]
     if not star_csp:
         problems.append("no Content-Security-Policy in the %s block" % SITE_ROUTE)
     elif len(star_csp) > 1:
         problems.append("more than one Content-Security-Policy in the %s block" % SITE_ROUTE)
     else:
         problems.extend(check_policy(star_csp[0][1]))
-    base = {h[0]: h[1] for h in star if not h[2] and h[0] in SECURITY_HEADERS}
+    base = {}
+    for name, value, _detached in star:
+        if name in SECURITY_HEADERS:
+            base[name] = value
+            if not VALUE_RULES[name](value):
+                problems.append("%s has an unacceptable value in %s" % (name, SITE_ROUTE))
     for route, hs in blocks:
         if route == SITE_ROUTE:
             continue
         for name, value, detached in hs:
+            if detached:
+                continue
             if name == CSP:
                 problems.append("route %s sets Content-Security-Policy" % route)
-            elif name in SECURITY_HEADERS:
-                if detached:
-                    problems.append("route %s detaches %s" % (route, name))
-                elif not detached and base.get(name) != value:
-                    problems.append("route %s changes %s" % (route, name))
+            elif name in SECURITY_HEADERS and base.get(name) != value:
+                problems.append("route %s changes %s" % (route, name))
     return problems
 
 

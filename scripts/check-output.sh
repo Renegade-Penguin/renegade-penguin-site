@@ -4,13 +4,13 @@
 # Usage: EXPECT_ENV=production|staging SCRUB_TERMS_FILE=<file> scripts/check-output.sh <dir>
 # Exit 0 when clean; otherwise non-zero with one "FAIL <check>: <detail>" line per violation.
 # Checks: no_script, inline_handler, external_host, noindex, unsafe_scheme, meta_refresh,
-# active_embed, base_element (html parser, check-html.py), scrub_terms (raw scan plus
+# active_embed, base_element, duplicate_attr (html parser, check-html.py), scrub_terms (raw scan plus
 # check-scrub.py), robots, csp (check-headers.py), about_link, dashes.
 # SCRUB_TERMS_FILE is required (blank lines and lines starting with # are ignored).
 # Each check can be disabled for the revert-proof test with SKIP_<NAME>=1:
 # SKIP_NO_SCRIPT, SKIP_INLINE_HANDLER, SKIP_EXTERNAL_HOST, SKIP_NOINDEX, SKIP_SCRUB_TERMS,
 # SKIP_ROBOTS, SKIP_CSP, SKIP_ABOUT_LINK, SKIP_DASHES, SKIP_UNSAFE_SCHEME, SKIP_META_REFRESH,
-# SKIP_ACTIVE_EMBED, SKIP_BASE_ELEMENT.
+# SKIP_ACTIVE_EMBED, SKIP_BASE_ELEMENT, SKIP_DUPLICATE_ATTR.
 set -euo pipefail
 
 DIR="${1:-}"
@@ -66,6 +66,10 @@ active_embed() {
 
 base_element() {
   from_parser base_element
+}
+
+duplicate_attr() {
+  from_parser duplicate_attr
 }
 
 scrub_terms() {
@@ -151,7 +155,7 @@ dashes() {
   [ -z "$f" ] || report dashes "em or en dash in: $(echo $f)"
 }
 
-for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element scrub_terms noindex robots csp about_link dashes; do
+for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms noindex robots csp about_link dashes; do
   if enabled "$c"; then "$c"; fi
 done
 

@@ -1,0 +1,7 @@
+/*
+  Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Referrer-Policy: no-referrer
+
+/docs/*
+  Referrer-Policy: no-referrer
+  referrer-policy: no-referrer

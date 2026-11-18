@@ -280,6 +280,40 @@ open(sys.argv[1] + "/pic.PNG", "wb").write(bytes([0x89, 0xff, 0xfe, 0x80]))
 ' "$t"
 expect_pass "non-UTF-8 bytes in a known binary type" "$t" production
 
+# Round 2: effective headers, duplicate attributes, invisible characters, NULs, sniffing.
+b "CSP set then detached in /*" clean bad-csp-detach-same production csp SKIP_CSP
+b "protected header detached in /*" clean bad-headers-detach-star production csp SKIP_CSP
+b "duplicate protected header in /*" clean bad-headers-dup-star production csp SKIP_CSP
+b "invalid protected header value in /*" clean bad-headers-bad-value production csp SKIP_CSP
+b "duplicate protected header in another block" clean bad-headers-dup-other production csp SKIP_CSP
+
+snippet_case "duplicate http-equiv" '<meta http-equiv="x" http-equiv="y" content="z">' production duplicate_attr SKIP_DUPLICATE_ATTR
+snippet_case "duplicate src" '<img src="/a.png" src="/b.png" alt="x">' production duplicate_attr SKIP_DUPLICATE_ATTR
+snippet_case "duplicate href" '<a href="/a" href="/b">x</a>' production duplicate_attr SKIP_DUPLICATE_ATTR
+snippet_case "duplicate rel" '<a href="/a" rel="noreferrer" rel="noopener">x</a>' production duplicate_attr SKIP_DUPLICATE_ATTR
+snippet_case "duplicate attribute, different case" '<img SRC="/a.png" src="/b.png" alt="x">' production duplicate_attr SKIP_DUPLICATE_ATTR
+
+# file_case <label> <check> <SKIP var> <relative name> <python expression giving bytes>
+# The expression is a literal from this test file, never external input (eval is safe here).
+file_case() {
+  local label="$1" check="$2" skip="$3" name="$4" expr="$5" t
+  t="$(stage clean)"
+  python3 -I -c '
+import sys
+open(sys.argv[1] + "/" + sys.argv[2], "wb").write(eval(sys.argv[3]))
+' "$t" "$name" "$expr"
+  bite "$label" "$t" production "$check" "$skip"
+}
+file_case "term split by U+200B" scrub_terms SKIP_SCRUB_TERMS zw.html '("<p>zzbanned" + chr(0x200b) + "termzz</p>").encode()'
+file_case "term split by U+00AD" scrub_terms SKIP_SCRUB_TERMS shy.html '("<p>zzbanned" + chr(0xad) + "termzz</p>").encode()'
+file_case "term split by U+FEFF" scrub_terms SKIP_SCRUB_TERMS bom.html '("<p>zzbanned" + chr(0xfeff) + "termzz</p>").encode()'
+file_case "term split by U+202E" scrub_terms SKIP_SCRUB_TERMS rlo.html '("<p>zzbanned" + chr(0x202e) + "termzz</p>").encode()'
+file_case "term split by U+FE0F" scrub_terms SKIP_SCRUB_TERMS vs.html '("<p>zzbanned" + chr(0xfe0f) + "termzz</p>").encode()'
+file_case "BOM-less UTF-16LE text" scrub_terms SKIP_SCRUB_TERMS notes.dat '"zzbannedtermzz".encode("utf-16-le")'
+file_case "BOM-less UTF-16BE text" scrub_terms SKIP_SCRUB_TERMS notes2.dat '"zzbannedtermzz".encode("utf-16-be")'
+file_case "extensionless html after 1025 spaces" no_script SKIP_NO_SCRIPT page2 '(" " * 1025 + "<html><body><script>var x=1</script></body></html>").encode()'
+file_case "extensionless html after comments" no_script SKIP_NO_SCRIPT page3 '("<!-- a -->" * 300 + "<div><script>var x=1</script></div>").encode()'
+
 # Dash fixtures are generated so the characters never appear in the repo.
 dash_case() { # <codepoint> <file that receives the dash>
   local cp="$1" file="$2" t

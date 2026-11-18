@@ -4,11 +4,12 @@ Usage: python3 -I scripts/check-html.py <dir> <production|staging>
 Prints one line per violation: "<check>\t<file>\t<detail>" and always exits 0;
 scripts/check-output.sh decides what to report. Checks emitted:
   no_script, inline_handler, external_host, noindex, unsafe_scheme, meta_refresh,
-  active_embed, base_element
+  active_embed, base_element, duplicate_attr
 
 Which files are parsed: names whose lower-cased form ends in .html, .htm, .xhtml,
 .xht or .shtml (documents), .svg (scanned, no noindex requirement), and any other
-file that is not a known binary type but starts like an html document.
+file that is not a known binary type and whose first non-blank, non-comment content
+is a tag (see sniff).
 """
 import codecs
 import os
@@ -84,9 +85,34 @@ def read_text(path):
     return raw.decode("utf-8", errors="replace")
 
 
-def looks_like_html(text):
-    head = text[:1024].lower()
-    return "<!doctype html" in head or "<html" in head
+LEADING_COMMENT = re.compile(r"\s*<!--.*?-->", re.S)
+DOC_START = re.compile(r"<!doctype\s+html|<(html|head|body)\b")
+TAG_START = re.compile(r"<[a-z]")
+
+
+def sniff(text):
+    """Classify a file with no recognized extension by its first non-blank content.
+
+    Leading whitespace and comments are skipped, however long. Returns "doc" when it
+    opens like an html document, "fragment" when it opens with any other tag (parsed
+    for the structural checks, no noindex requirement), else None. An unterminated
+    leading comment counts as a fragment (fail closed).
+    """
+    t = text
+    while True:
+        m = LEADING_COMMENT.match(t)
+        if not m:
+            break
+        t = t[m.end():]
+    t = t.lstrip()
+    low = t.lower()
+    if low.startswith("<!--"):
+        return "fragment"
+    if DOC_START.match(low):
+        return "doc"
+    if TAG_START.match(low):
+        return "fragment"
+    return None
 
 
 class Checker(HTMLParser):
@@ -103,9 +129,15 @@ class Checker(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
+        # Browsers use the first of two same-named attributes, so keep the first and
+        # report any repeat (case-insensitive) as a violation of its own.
         a = {}
         for k, v in attrs:
-            a[k.lower()] = v if v is not None else ""
+            k = k.lower()
+            if k in a:
+                self.add("duplicate_attr", "duplicate attribute %s on <%s>" % (k, tag))
+                continue
+            a[k] = v if v is not None else ""
         if tag == "script":
             self.add("no_script", "script element")
         if tag in BANNED_TAGS:
@@ -187,8 +219,11 @@ def main():
                 pass
             elif lower.endswith(".svg"):
                 is_doc = False
-            elif not looks_like_html(text):
-                continue
+            else:
+                kind = sniff(text)
+                if kind is None:
+                    continue
+                is_doc = kind == "doc"
             c = Checker(path, env)
             c.feed(text)
             c.close()
