@@ -1,0 +1,4 @@
+{{ define "main" }}
+<h1>{{ .Title }}</h1>
+{{ with .Content }}{{ . }}{{ else }}<p class="lede muted">Site under construction.</p>{{ end }}
+{{ end }}
