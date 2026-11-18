@@ -1,34 +1,57 @@
 #!/usr/bin/env bash
-# Targeted test for scripts/render-review.sh. Starts and stops real local servers.
+# Targeted test for scripts/render-review.sh. Starts and stops real local servers,
+# fully isolated: a mktemp state dir and a high port range (18765+).
 # SCRIPT=<path> runs the test against another copy of the script (mutation check).
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT="${SCRIPT:-$HERE/render-review.sh}"
-STATE="$HOME/.local/share/renegade-penguin-site-dev"
+REAL="$(cd "$HOME/.local/share/renegade-penguin-site-dev" && pwd -P)"
+STATE="$(mktemp -d "$REAL/rr-test.XXXXXX")"
+STATE="$(cd "$STATE" && pwd -P)"
+if [ "$STATE" = "$REAL" ]; then echo "refusing to run against the real state dir" >&2; exit 2; fi
+export RENDER_REVIEW_STATE="$STATE"
+export RENDER_REVIEW_PORT_FIRST=18765
 PIDF="$STATE/serve.pid"
 URLF="$STATE/serve.url"
-BUSY_PID=""
+EXTRA_PIDS=""
 FAILS=0
 
 fail() { echo "FAIL: $*" >&2; FAILS=$((FAILS + 1)); }
 ok() { echo "ok: $*"; }
 
+alive() { [ -n "${1:-}" ] && [ -d "/proc/$1" ]; }
+
+listeners() { # count listeners on 18765-18800
+  ss -ltnH 2>/dev/null | awk '{n=split($4,a,":"); p=a[n]+0; if (p>=18765 && p<=18800) c++} END{print c+0}'
+}
+
+ticks_of() { # <pid>; field 22 of /proc/<pid>/stat
+  local s f
+  s="$(cat "/proc/$1/stat")"; s="${s##*) }"
+  read -ra f <<< "$s"
+  echo "${f[19]}"
+}
+
 cleanup() {
-  "$SCRIPT" stop >/dev/null 2>&1 || true
-  if [ -n "$BUSY_PID" ] && kill -0 "$BUSY_PID" 2>/dev/null; then kill "$BUSY_PID" 2>/dev/null || true; fi
+  if [ -n "$STATE" ] && [ "$STATE" != "$REAL" ] && [ -x "$SCRIPT" ]; then
+    "$SCRIPT" stop >/dev/null 2>&1 || true
+  fi
+  local p
+  for p in $EXTRA_PIDS; do if alive "$p"; then kill "$p" 2>/dev/null; fi; done
+  if [ -n "$STATE" ] && [ "$STATE" != "$REAL" ]; then rm -rf "$STATE"; fi
 }
 trap cleanup EXIT
 
 [ -x "$SCRIPT" ] || { echo "FAIL: $SCRIPT missing or not executable" >&2; exit 1; }
-"$SCRIPT" stop >/dev/null 2>&1 || true
 
 # 1. start
 OUT1="$("$SCRIPT" start)"; rc=$?
 [ "$rc" = "0" ] || fail "start exit $rc"
 URL="$(printf '%s\n' "$OUT1" | grep -Eo 'http://127\.0\.0\.1:[0-9]+/' | head -1)"
-[ -n "$URL" ] && ok "start printed $URL" || fail "no URL printed"
-PID="$(cat "$PIDF" 2>/dev/null || true)"
-[ -n "$PID" ] && [ -d "/proc/$PID" ] && ok "pid $PID alive" || fail "pid file or process missing"
+[ "$URL" = "http://127.0.0.1:18765/" ] && ok "start printed $URL" || fail "unexpected URL '$URL'"
+PID="$(head -1 "$PIDF" 2>/dev/null || true)"
+alive "$PID" && ok "pid $PID alive" || fail "pid file or process missing"
+[ "$(sed -n 2p "$PIDF" 2>/dev/null)" = "$(ticks_of "$PID")" ] && ok "start ticks recorded" || fail "ticks line missing or wrong"
 [ "$(cat "$URLF" 2>/dev/null)" = "$URL" ] && ok "url file matches" || fail "url file mismatch"
 printf '%s\n' "$OUT1" | grep -qi 'visual review only' && ok "note printed" || fail "visual-review note missing"
 
@@ -42,47 +65,89 @@ curl -fsS "$URL" | grep -qi 'noindex' && ok "home has noindex" || fail "home lac
 OUT2="$("$SCRIPT" start)"; rc=$?
 [ "$rc" = "0" ] || fail "second start exit $rc"
 printf '%s\n' "$OUT2" | grep -qF "$URL" && ok "second start prints same URL" || fail "second start URL differs"
-[ "$(cat "$PIDF")" = "$PID" ] && ok "same pid" || fail "pid changed"
-n=0
-for d in /proc/[0-9]*; do
-  [ -r "$d/cmdline" ] || continue
-  c="$(tr '\0' ' ' < "$d/cmdline" 2>/dev/null || true)"
-  case "$c" in *http.server*127.0.0.1*" --directory "*review*) n=$((n + 1)) ;; esac
-done
-[ "$n" = "1" ] && ok "one server only" || fail "found $n review servers"
+[ "$(head -1 "$PIDF")" = "$PID" ] && ok "same pid" || fail "pid changed"
+[ "$(listeners)" = "1" ] && ok "one listener" || fail "listeners: $(listeners)"
 
 # 3. status
 "$SCRIPT" status | grep -q 'running' && ok "status running" || fail "status not running"
 "$SCRIPT" status | grep -qF "$URL" || fail "status lacks URL"
 
+# 3b. a permission-denied kill must not abort: message, files left, exit 1
+printf '%s\n' '#!/bin/sh' 'echo "kill: Operation not permitted" >&2' 'exit 1' > "$STATE/denied-kill"
+chmod +x "$STATE/denied-kill"
+DOUT="$(RENDER_REVIEW_KILL_CMD="$STATE/denied-kill" "$SCRIPT" stop 2>&1)"; rc=$?
+[ "$rc" = "1" ] && ok "denied kill exits 1" || fail "denied kill exit $rc"
+printf '%s\n' "$DOUT" | grep -q 'could not kill pid' && ok "denied kill message" || fail "denied kill message missing: $DOUT"
+{ [ -e "$PIDF" ] && [ -e "$URLF" ]; } && ok "denied kill leaves files" || fail "denied kill removed files"
+alive "$PID" && ok "server still alive after denied kill" || fail "server gone after denied kill"
+
 # 4. stop
 "$SCRIPT" stop >/dev/null; rc=$?
 [ "$rc" = "0" ] || fail "stop exit $rc"
-[ ! -d "/proc/$PID" ] && ok "pid gone" || fail "pid $PID still alive"
+alive "$PID" && fail "pid $PID still alive" || ok "pid gone"
 { [ ! -e "$PIDF" ] && [ ! -e "$URLF" ]; } && ok "files removed" || fail "files remain"
 "$SCRIPT" status | grep -q 'not running' && ok "status not running" || fail "status after stop"
 
 # 5. stop again
 "$SCRIPT" stop | grep -q 'not running' && ok "second stop says not running" || fail "second stop message"
 
-# 6. stale pid file: the test shell's own PID is not an http.server
-echo "$$" > "$PIDF"; echo "http://127.0.0.1:1/" > "$URLF"
+# 6. stale pid file naming a throwaway sleep (not an http.server)
+sleep 300 &
+SP=$!; EXTRA_PIDS="$EXTRA_PIDS $SP"
+printf '%s\n%s\n' "$SP" "$(ticks_of "$SP")" > "$PIDF"; echo "http://127.0.0.1:18765/" > "$URLF"
 "$SCRIPT" stop >/dev/null 2>&1; rc=$?
-kill -0 "$$" 2>/dev/null && ok "stale pid not killed" || fail "stale pid was killed"
+alive "$SP" && ok "stale pid (sleep) not killed" || fail "stale pid was killed"
 [ "$rc" = "0" ] || fail "stale stop exit $rc"
 { [ ! -e "$PIDF" ] && [ ! -e "$URLF" ]; } && ok "stale files removed" || fail "stale files remain"
+kill "$SP" 2>/dev/null
 
-# 7. busy port 8765 makes the script choose 8766
+# 7. decoy: python3 -I with http.server and 127.0.0.1 in argv, but not our argv
+python3 -I -c 'import time; time.sleep(300)' http.server 127.0.0.1 &
+DP=$!; EXTRA_PIDS="$EXTRA_PIDS $DP"
+sleep 0.3
+printf '%s\n%s\n' "$DP" "$(ticks_of "$DP")" > "$PIDF"; echo "http://127.0.0.1:18765/" > "$URLF"
+"$SCRIPT" stop >/dev/null 2>&1
+alive "$DP" && ok "decoy not killed" || fail "decoy was killed"
+{ [ ! -e "$PIDF" ] && [ ! -e "$URLF" ]; } && ok "decoy files removed" || fail "decoy files remain"
+kill "$DP" 2>/dev/null
+
+# 8. wrong start ticks must not kill the real server
+"$SCRIPT" start > /dev/null; rc=$?
+[ "$rc" = "0" ] || fail "restart exit $rc"
+RP="$(head -1 "$PIDF")"; EXTRA_PIDS="$EXTRA_PIDS $RP"
+printf '%s\n%s\n' "$RP" "1" > "$PIDF"
+"$SCRIPT" stop >/dev/null 2>&1
+alive "$RP" && ok "wrong ticks: not killed" || fail "wrong ticks: server was killed"
+{ [ ! -e "$PIDF" ] && [ ! -e "$URLF" ]; } && ok "wrong-ticks files removed" || fail "wrong-ticks files remain"
+if alive "$RP"; then kill "$RP" 2>/dev/null; fi
+sleep 0.5
+
+# 9. two parallel starts: same URL, both exit 0, one listener
+A="$STATE/a.out"; B="$STATE/b.out"
+"$SCRIPT" start > "$A" 2>&1 & PA=$!
+"$SCRIPT" start > "$B" 2>&1 & PB=$!
+wait "$PA"; ra=$?; wait "$PB"; rb=$?
+{ [ "$ra" = "0" ] && [ "$rb" = "0" ]; } && ok "parallel starts exit 0" || fail "parallel exits $ra $rb"
+UA="$(grep -Eo 'http://127\.0\.0\.1:[0-9]+/' "$A" | head -1)"
+UB="$(grep -Eo 'http://127\.0\.0\.1:[0-9]+/' "$B" | head -1)"
+{ [ -n "$UA" ] && [ "$UA" = "$UB" ]; } && ok "parallel starts same URL" || fail "parallel URLs '$UA' '$UB'"
+[ "$(listeners)" = "1" ] && ok "parallel: one listener" || fail "parallel listeners: $(listeners)"
+"$SCRIPT" status | grep -q 'running' && ok "parallel: tracked" || fail "parallel: untracked"
+"$SCRIPT" stop >/dev/null
+sleep 0.3
+[ "$(listeners)" = "0" ] && ok "no listener after stop" || fail "listeners after stop: $(listeners)"
+
+# 10. busy first port makes the script choose the next one
 python3 -I -c 'import socket,time
 s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(("127.0.0.1",8765)); s.listen(1); time.sleep(120)' &
-BUSY_PID=$!
+s.bind(("127.0.0.1",18765)); s.listen(1); time.sleep(120)' &
+BP=$!; EXTRA_PIDS="$EXTRA_PIDS $BP"
 sleep 0.5
 OUT3="$("$SCRIPT" start)"; rc=$?
 [ "$rc" = "0" ] || fail "busy-port start exit $rc"
-printf '%s\n' "$OUT3" | grep -qF 'http://127.0.0.1:8766/' && ok "chose 8766" || fail "did not choose 8766: $OUT3"
+printf '%s\n' "$OUT3" | grep -qF 'http://127.0.0.1:18766/' && ok "chose 18766" || fail "did not choose 18766: $OUT3"
 "$SCRIPT" stop >/dev/null
-kill "$BUSY_PID" 2>/dev/null || true; BUSY_PID=""
+kill "$BP" 2>/dev/null
 
 if [ "$FAILS" -gt 0 ]; then echo "FAILED: $FAILS check(s)" >&2; exit 1; fi
 echo "PASS: render-review"
