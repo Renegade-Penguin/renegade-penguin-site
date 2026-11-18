@@ -6,7 +6,10 @@ ROOT="$PWD"
 HUGO="${HUGO:-hugo}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-fail() { echo "FAIL: $*" >&2; exit 1; }
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
 
 # scratch_site <name> <markdown body>: copies config and layouts, writes one page, echoes the dir.
 scratch_site() {
@@ -14,17 +17,30 @@ scratch_site() {
   mkdir -p "$d/content"
   cp "$ROOT/hugo.toml" "$d/"
   cp -r "$ROOT/layouts" "$ROOT/assets" "$ROOT/static" "$d/"
-  printf -- '---\ntitle: "Home"\n---\n\n%s\n' "$2" > "$d/content/_index.md"
+  printf -- '---\ntitle: "Home"\n---\n\n%s\n' "$2" >"$d/content/_index.md"
   echo "$d"
 }
 
 # --- allowed links ---
 d=$(scratch_site ok '[a](https://example.org/) [b](HTTPS://EVIL.example/) [c](//evil.example/x) [d](/contact/) [e](#frag) [f](mailto:a@example.org) [g](https://renegadepenguinllc.com/about/) [h](http://renegadepenguinllc.com/) [i](https://example.org/ "T&Q") [j](tel:5550100) [k](../x/)')
-"$HUGO" --source "$d" --destination "$d/out" >/dev/null 2>"$TMP/ok.err" || { cat "$TMP/ok.err" >&2; fail "build with allowed links failed"; }
+"$HUGO" --source "$d" --destination "$d/out" >/dev/null 2>"$TMP/ok.err" || {
+  cat "$TMP/ok.err" >&2
+  fail "build with allowed links failed"
+}
 html="$d/out/index.html"
 tag() { grep -o "<a [^>]*href=\"$1\"[^>]*>" "$html" | head -1 || true; }
-need_rel() { local t; t=$(tag "$1"); [ -n "$t" ] || fail "no anchor for $1"; echo "$t" | grep -q 'rel="noopener"' || fail "$1 must carry rel=noopener: $t"; }
-no_rel() { local t; t=$(tag "$1"); [ -n "$t" ] || fail "no anchor for $1"; if echo "$t" | grep -q 'rel='; then fail "$1 must not carry rel: $t"; fi; }
+need_rel() {
+  local t
+  t=$(tag "$1")
+  [ -n "$t" ] || fail "no anchor for $1"
+  echo "$t" | grep -q 'rel="noopener"' || fail "$1 must carry rel=noopener: $t"
+}
+no_rel() {
+  local t
+  t=$(tag "$1")
+  [ -n "$t" ] || fail "no anchor for $1"
+  if echo "$t" | grep -q 'rel='; then fail "$1 must not carry rel: $t"; fi
+}
 need_rel 'https://example.org/'
 need_rel 'HTTPS://EVIL.example/'
 need_rel '//evil.example/x'

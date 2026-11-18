@@ -5,7 +5,10 @@ cd "$(dirname "$0")/.."
 HUGO="${HUGO:-hugo}"
 OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
-fail() { echo "FAIL: $*" >&2; exit 1; }
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
 
 "$HUGO" --minify --destination "$OUT" >/dev/null || fail "hugo build exited non-zero"
 [ -f "$OUT/index.html" ] || fail "index.html missing"

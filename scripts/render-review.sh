@@ -12,7 +12,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEV="$HOME/.local/share/renegade-penguin-site-dev"
 STATE="${RENDER_REVIEW_STATE:-$DEV}"
 OUT="$STATE/out/review"
-PIDF="$STATE/serve.pid"   # line 1: pid, line 2: process start ticks
+PIDF="$STATE/serve.pid" # line 1: pid, line 2: process start ticks
 URLF="$STATE/serve.url"
 LOG="$STATE/serve.log"
 LOCKF="$STATE/serve.lock"
@@ -20,9 +20,13 @@ PORT_FIRST="${RENDER_REVIEW_PORT_FIRST:-8765}"
 PORT_LAST=$((PORT_FIRST + 35))
 
 hugo_bin() {
-  if command -v hugo >/dev/null 2>&1; then command -v hugo
-  elif [ -x "$DEV/bin/hugo" ]; then echo "$DEV/bin/hugo"
-  else echo "render-review: hugo not found on PATH or in $DEV/bin" >&2; return 1
+  if command -v hugo >/dev/null 2>&1; then
+    command -v hugo
+  elif [ -x "$DEV/bin/hugo" ]; then
+    echo "$DEV/bin/hugo"
+  else
+    echo "render-review: hugo not found on PATH or in $DEV/bin" >&2
+    return 1
   fi
 }
 
@@ -31,7 +35,7 @@ get_ticks() { # <pid>
   local s f
   s="$(cat "/proc/$1/stat" 2>/dev/null)" || return 1
   s="${s##*) }"
-  read -ra f <<< "$s"
+  read -ra f <<<"$s"
   echo "${f[19]}"
 }
 
@@ -42,12 +46,13 @@ is_our_server() { # <pid> <recorded-ticks>
   case "$pid" in '' | *[!0-9]*) return 1 ;; esac
   [ -r "/proc/$pid/cmdline" ] || return 1
   url="$(cat "$URLF" 2>/dev/null)" || return 1
-  port="${url#http://127.0.0.1:}"; port="${port%/}"
+  port="${url#http://127.0.0.1:}"
+  port="${port%/}"
   case "$port" in '' | *[!0-9]*) return 1 ;; esac
   uid="$(awk '/^Uid:/ {print $2}' "/proc/$pid/status" 2>/dev/null)" || return 1
   [ "$uid" = "$(id -u)" ] || return 1
   local -a got want
-  readarray -d '' -t got < "/proc/$pid/cmdline" 2>/dev/null || return 1
+  readarray -d '' -t got <"/proc/$pid/cmdline" 2>/dev/null || return 1
   want=(python3 -I -m http.server "$port" --bind 127.0.0.1 --directory "$OUT")
   [ "${#got[@]}" = "${#want[@]}" ] || return 1
   local i
@@ -59,9 +64,13 @@ is_our_server() { # <pid> <recorded-ticks>
 }
 
 read_pidfile() { # sets REC_PID, REC_TICKS
-  REC_PID=""; REC_TICKS=""
+  REC_PID=""
+  REC_TICKS=""
   [ -r "$PIDF" ] || return 0
-  { read -r REC_PID || true; read -r REC_TICKS || true; } < "$PIDF"
+  {
+    read -r REC_PID || true
+    read -r REC_TICKS || true
+  } <"$PIDF"
 }
 
 port_free() { # <port>
@@ -119,7 +128,7 @@ cmd_stop() {
 
 cmd_start() {
   mkdir -p "$STATE"
-  exec 9> "$LOCKF"
+  exec 9>"$LOCKF"
   flock 9
 
   read_pidfile
@@ -131,9 +140,15 @@ cmd_start() {
 
   local port="" p
   for p in $(seq "$PORT_FIRST" "$PORT_LAST"); do
-    if port_free "$p"; then port="$p"; break; fi
+    if port_free "$p"; then
+      port="$p"
+      break
+    fi
   done
-  [ -n "$port" ] || { echo "render-review: no free port in $PORT_FIRST-$PORT_LAST" >&2; return 1; }
+  [ -n "$port" ] || {
+    echo "render-review: no free port in $PORT_FIRST-$PORT_LAST" >&2
+    return 1
+  }
   local url="http://127.0.0.1:$port/"
 
   local hugo
@@ -142,18 +157,18 @@ cmd_start() {
   (cd "$ROOT" && HUGO_PARAMS_ENVIRONMENT=staging "$hugo" --minify --baseURL "$url" --destination "$OUT" >/dev/null 9>&-)
 
   python3 -I -m http.server "$port" --bind 127.0.0.1 --directory "$OUT" \
-    >"$LOG" 2>&1 < /dev/null 9>&- &
+    >"$LOG" 2>&1 </dev/null 9>&- &
   local pid=$!
   disown "$pid" 2>/dev/null || true
   local ticks
   ticks="$(get_ticks "$pid" || true)"
-  printf '%s\n%s\n' "$pid" "$ticks" > "$PIDF"
-  echo "$url" > "$URLF"
+  printf '%s\n%s\n' "$pid" "$ticks" >"$PIDF"
+  echo "$url" >"$URLF"
 
   local i
   for i in $(seq 1 20); do
-    if curl -fsS -o /dev/null "$url" 2>/dev/null \
-      && kill -0 "$pid" 2>/dev/null && is_our_server "$pid" "$ticks"; then
+    if curl -fsS -o /dev/null "$url" 2>/dev/null &&
+      kill -0 "$pid" 2>/dev/null && is_our_server "$pid" "$ticks"; then
       echo "$url"
       echo "note: visual review only; Pages applies _headers and this local server does not."
       return 0
@@ -173,6 +188,9 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     start) cmd_start ;;
     stop) cmd_stop ;;
     status) cmd_status ;;
-    *) echo "usage: $0 [start|stop|status]" >&2; exit 2 ;;
+    *)
+      echo "usage: $0 [start|stop|status]" >&2
+      exit 2
+      ;;
   esac
 fi

@@ -5,14 +5,17 @@
 # proofs against a scratch copy). Variants are built with python3 -I, not shell
 # escapes, so backslashes and bytes reach the files exactly.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 CHECK="${CHECK_SCRIPT:-scripts/check-contrast.py}"
 BASE="$HOME/.local/share/renegade-penguin-site-dev"
 mkdir -p "$BASE"
 WORK="$(mktemp -d "$BASE/contrast-test.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 FAILS=0
-fail() { echo "FAIL: $*" >&2; FAILS=$((FAILS + 1)); }
+fail() {
+  echo "FAIL: $*" >&2
+  FAILS=$((FAILS + 1))
+}
 
 # fresh <name>: new dir holding pristine copies of tokens.css and main.css
 fresh() {
@@ -37,12 +40,18 @@ badbytes() {
   python3 -I -c 'import sys; open(sys.argv[1], "wb").write(bytes([0xff, 0xfe, 0x80, 0x41]))' "$WORK/$1/$2"
 }
 # run <name>: sets OUT and RC from the check on the variant
-run() { OUT="$(python3 -I "$CHECK" "$WORK/$1/tokens.css" 2>&1)"; RC=$?; }
+run() {
+  OUT="$(python3 -I "$CHECK" "$WORK/$1/tokens.css" 2>&1)"
+  RC=$?
+}
 
 # expect_fail <name> <text>: non-zero exit and the text in the output.
 expect_fail() {
   run "$1"
-  if [ "$RC" = 0 ]; then fail "$1: expected non-zero exit, got 0"; return; fi
+  if [ "$RC" = 0 ]; then
+    fail "$1: expected non-zero exit, got 0"
+    return
+  fi
   case "$OUT" in
     *"$2"*) echo "ok: $1 -> $2" ;;
     *) fail "$1: message missing $2; got: $OUT" ;;
@@ -56,15 +65,26 @@ expect_pass() {
 # expect_rc2 <name> <text>: exit 2, text present, no traceback
 expect_rc2() {
   run "$1"
-  case "$OUT" in *Traceback*) fail "$1: traceback in output: $OUT"; return ;; esac
-  if [ "$RC" != 2 ]; then fail "$1: expected exit 2, got $RC: $OUT"; return; fi
+  case "$OUT" in *Traceback*)
+    fail "$1: traceback in output: $OUT"
+    return
+    ;;
+  esac
+  if [ "$RC" != 2 ]; then
+    fail "$1: expected exit 2, got $RC: $OUT"
+    return
+  fi
   case "$OUT" in
     *"$2"*) echo "ok: $1 -> $2" ;;
     *) fail "$1: message missing $2; got: $OUT" ;;
   esac
 }
 # bgcase <name> <tag> <css>: main.css gets a rule; expect the tag
-bgcase() { fresh "$1"; append "$1" main.css "$3"; expect_fail "$1" "$2"; }
+bgcase() {
+  fresh "$1"
+  append "$1" main.css "$3"
+  expect_fail "$1" "$2"
+}
 
 # Passing copy, plus allowed things that must not be flagged.
 fresh pass

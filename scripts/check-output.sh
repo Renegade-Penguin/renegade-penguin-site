@@ -12,10 +12,16 @@
 set -euo pipefail
 
 DIR="${1:-}"
-[ -n "$DIR" ] && [ -d "$DIR" ] || { echo "usage: EXPECT_ENV=production|staging $0 <dir>" >&2; exit 2; }
+[ -n "$DIR" ] && [ -d "$DIR" ] || {
+  echo "usage: EXPECT_ENV=production|staging $0 <dir>" >&2
+  exit 2
+}
 case "${EXPECT_ENV:-}" in
   production | staging) ;;
-  *) echo "EXPECT_ENV must be production or staging" >&2; exit 2 ;;
+  *)
+    echo "EXPECT_ENV must be production or staging" >&2
+    exit 2
+    ;;
 esac
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -29,7 +35,8 @@ report() { # <check> <detail>
 }
 
 enabled() { # <check>; honors SKIP_<NAME>=1
-  local var="SKIP_$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
+  local var
+  var="SKIP_$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
   [ "${!var:-}" != "1" ]
 }
 
@@ -40,7 +47,7 @@ from_parser() { # <check>
   local c f d
   while IFS=$'\t' read -r c f d; do
     [ "$c" = "$1" ] && report "$1" "$d ($f)"
-  done <<< "$HTML_FINDINGS"
+  done <<<"$HTML_FINDINGS"
   return 0
 }
 
@@ -57,7 +64,7 @@ scrub_terms() {
     return 0
   fi
   PATTERNS="$(mktemp)"
-  grep -vE '^[[:space:]]*(#|$)' "$SCRUB_TERMS_FILE" > "$PATTERNS" || true
+  grep -vE '^[[:space:]]*(#|$)' "$SCRUB_TERMS_FILE" >"$PATTERNS" || true
   if [ ! -s "$PATTERNS" ]; then
     report scrub_terms "no patterns in SCRUB_TERMS_FILE (only blanks and comments)"
     return 0
@@ -93,7 +100,10 @@ robots_blocks_all() {
 
 robots() {
   local r="$DIR/robots.txt"
-  if [ ! -f "$r" ]; then report robots "robots.txt missing"; return 0; fi
+  if [ ! -f "$r" ]; then
+    report robots "robots.txt missing"
+    return 0
+  fi
   if [ "$EXPECT_ENV" = staging ]; then
     robots_blocks_all "$r" || report robots "staging robots.txt needs a 'User-agent: *' group with 'Disallow: /'"
   else
@@ -111,7 +121,10 @@ csp() {
 
 about_link() {
   local a="$DIR/about/index.html"
-  if [ ! -f "$a" ]; then report about_link "about/index.html missing"; return 0; fi
+  if [ ! -f "$a" ]; then
+    report about_link "about/index.html missing"
+    return 0
+  fi
   grep -qiE "href=[\"']?https://chiefgyk3d\.com" "$a" ||
     report about_link "about/index.html has no link to chiefgyk3d.com"
 }
