@@ -59,8 +59,9 @@ def strip_ignorable(s):
 
 
 def norm(s):
+    # One strip, before NFKC: no code point outside the table normalizes into it (checked
+    # over all of Unicode for this table), so a second strip after NFKC would be dead code.
     s = unicodedata.normalize("NFKC", strip_ignorable(s)).casefold()
-    s = strip_ignorable(s)
     return re.sub(r"\s+", " ", s).strip()
 
 

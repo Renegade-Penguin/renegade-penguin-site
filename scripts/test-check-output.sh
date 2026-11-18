@@ -300,7 +300,8 @@ file_case() {
   t="$(stage clean)"
   python3 -I -c '
 import sys
-open(sys.argv[1] + "/" + sys.argv[2], "wb").write(eval(sys.argv[3]))
+data = eval(sys.argv[3])  # evaluated first: the expression may read the file it replaces
+open(sys.argv[1] + "/" + sys.argv[2], "wb").write(data)
 ' "$t" "$name" "$expr"
   bite "$label" "$t" production "$check" "$skip"
 }
@@ -342,6 +343,19 @@ file_case "term split by U+17B4" scrub_terms SKIP_SCRUB_TERMS khmer.html '("<p>z
 file_case "term split by U+FFF0" scrub_terms SKIP_SCRUB_TERMS fff0.html '("<p>zzbanned" + chr(0xfff0) + "termzz</p>").encode()'
 file_case "term split by U+1D173" scrub_terms SKIP_SCRUB_TERMS music.html '("<p>zzbanned" + chr(0x1d173) + "termzz</p>").encode()'
 file_case "term split by U+E0001" scrub_terms SKIP_SCRUB_TERMS tag.html '("<p>zzbanned" + chr(0xe0001) + "termzz</p>").encode()'
+
+# Every row of the default-ignorable table: first and last code point of each range.
+# (U+00AD, U+17B4, U+200B, U+202E, U+FE0F, U+FEFF, U+FFF0 and U+1D173 are tested above.)
+for cp in 034F 061C 115F 1160 17B5 180B 180F 200F 202A 2060 206F 3164 FE00 FFA0 FFF8 1BCA0 1BCA3 1D17A E0000 E0FFF; do
+  file_case "term split by U+$cp" scrub_terms SKIP_SCRUB_TERMS "ign-$cp.html" "(\"<p>zzbanned\" + chr(0x$cp) + \"termzz</p>\").encode()"
+done
+
+# _headers grammar: plain LF, space indentation, bare route lines, each route once.
+file_case "_headers with CRLF line endings" csp SKIP_CSP _headers 'open(sys.argv[1] + "/_headers", "rb").read().replace(b"\n", b"\r\n")'
+file_case "_headers with tab indentation" csp SKIP_CSP _headers 'open(sys.argv[1] + "/_headers", "rb").read().replace(b"\n  ", b"\n\t")'
+file_case "_headers route line with a trailing space" csp SKIP_CSP _headers 'open(sys.argv[1] + "/_headers", "rb").read().replace(b"/*\n", b"/* \n", 1)'
+file_case "_headers route line with text after the path" csp SKIP_CSP _headers 'open(sys.argv[1] + "/_headers", "rb").read() + b"\n/docs/* extra\n  X-Robots-Tag: all\n"'
+file_case "_headers with /* repeated" csp SKIP_CSP _headers 'open(sys.argv[1] + "/_headers", "rb").read() + b"\n/*\n  X-Frame-Options: DENY\n"'
 
 # A crashing helper must fail the build (fail closed): swap one helper for a stub.
 for helper in check-headers.py check-html.py check-scrub.py find-dashes.py; do

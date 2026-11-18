@@ -126,8 +126,32 @@ def parse_blocks(lines):
     return blocks
 
 
+def grammar_problems(raw):
+    """Strictness on top of the Cloudflare grammar: plain LF, space indentation, route
+    lines that hold only the path. The site's own file never needs anything else."""
+    problems = []
+    if "\r" in raw:
+        problems.append("_headers must use plain LF line endings (found a carriage return)")
+    for n, line in enumerate(raw.split("\n"), 1):
+        line = line.rstrip("\r")  # a carriage return is reported once, above
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if line[0] == "\t" or line.startswith(" \t"):
+            problems.append("line %d: tab indentation is not allowed" % n)
+        elif not line[0].isspace():
+            if line != line.strip():
+                problems.append("line %d: route line has trailing whitespace" % n)
+            elif len(line.split()) != 1:
+                problems.append("line %d: route line must hold only the path" % n)
+    return problems
+
+
 def check_blocks(blocks):
     problems = []
+    routes = [route for route, _hs in blocks]
+    for route in sorted(set(routes)):
+        if routes.count(route) > 1:
+            problems.append("route %s appears more than once" % route)
     # Every block: no detach of a protected header, no repeated protected name.
     seen_by_route = {}
     for route, hs in blocks:
@@ -173,12 +197,14 @@ def check_blocks(blocks):
 
 def main():
     try:
-        with open(sys.argv[1], encoding="utf-8", errors="replace") as fh:
-            lines = fh.read().splitlines()
+        # newline="" keeps carriage returns so they can be reported.
+        with open(sys.argv[1], encoding="utf-8", errors="replace", newline="") as fh:
+            raw = fh.read()
     except OSError:
         print("_headers missing or unreadable")
         return
-    for p in check_blocks(parse_blocks(lines)):
+    lines = [line.rstrip("\r") for line in raw.split("\n")]
+    for p in grammar_problems(raw) + check_blocks(parse_blocks(lines)):
         print(p)
 
 
