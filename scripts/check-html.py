@@ -3,7 +3,7 @@
 Usage: python3 -I scripts/check-html.py <dir> <production|staging>
 Prints one line per violation: "<check>\t<file>\t<detail>" and always exits 0;
 scripts/check-output.sh decides what to report. Checks emitted:
-  no_script, inline_handler, external_host, noindex
+  no_script, inline_handler, external_host, noindex, unsafe_scheme, meta_refresh
 """
 import os
 import re
@@ -29,6 +29,25 @@ def foreign_host(value):
     if host is None:
         return None
     return None if host.lower() in ALLOWED_HOSTS else host.lower()
+
+
+BAD_SCHEMES = {"javascript", "vbscript", "data"}
+SCHEME_ATTRS = URL_ATTRS | {"href", "xlink:href"}
+SCHEME_RE = re.compile(r"^([a-z][a-z0-9+.-]*):")
+
+
+def unsafe_scheme(value):
+    """Return the scheme if value uses javascript:, vbscript: or data:, else None.
+
+    Browsers drop tab, CR and LF anywhere in a url and trim leading and trailing
+    C0 controls and spaces, so do the same before looking at the scheme.
+    """
+    v = re.sub(r"[\t\r\n]", "", value)
+    v = v.strip("".join(chr(c) for c in range(0x21)))
+    m = SCHEME_RE.match(v.lower())
+    if m and m.group(1) in BAD_SCHEMES:
+        return m.group(1)
+    return None
 
 
 def css_urls(text):
@@ -57,6 +76,12 @@ class Checker(HTMLParser):
         for k in a:
             if k.startswith("on"):
                 self.add("inline_handler", "attribute %s on <%s>" % (k, tag))
+        for k in SCHEME_ATTRS & set(a):
+            s = unsafe_scheme(a[k])
+            if s:
+                self.add("unsafe_scheme", "%s: url on <%s> %s" % (s, tag, k))
+        if tag == "meta" and a.get("http-equiv", "").strip().lower() == "refresh":
+            self.add("meta_refresh", "meta http-equiv=refresh")
         for k in URL_ATTRS & set(a):
             h = foreign_host(a[k])
             if h:

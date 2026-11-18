@@ -143,6 +143,14 @@ b "staging missing noindex" clean-staging bad-staging-no-noindex staging noindex
 b "noindex only in prose (staging)" clean-staging bad-staging-noindex-prose staging noindex SKIP_NOINDEX
 b "staging robots allows"   clean-staging bad-staging-no-disallow staging robots   SKIP_ROBOTS
 b "staging robots no User-agent" clean-staging bad-robots-no-useragent staging robots SKIP_ROBOTS
+b "staging robots Googlebot only" clean-staging bad-robots-googlebot staging robots SKIP_ROBOTS
+b "staging robots Disallow /private" clean-staging bad-robots-private staging robots SKIP_ROBOTS
+b "production robots blocks everything" clean bad-robots-prod-blocks production robots SKIP_ROBOTS
+for envn in staging production; do
+  base=clean; [ "$envn" = staging ] && base=clean-staging
+  t="$(stage "$base")"; rm "$t/robots.txt"
+  bite "robots.txt missing ($envn)" "$t" "$envn" robots SKIP_ROBOTS
+done
 
 # Headers
 b "missing CSP"             clean bad-csp               production csp             SKIP_CSP
@@ -156,6 +164,17 @@ b "script-src unsafe-eval"  clean bad-csp-unsafe-eval   production csp          
 b "connect-src https:"      clean bad-csp-https         production csp             SKIP_CSP
 b "default-src data:"       clean bad-csp-data          production csp             SKIP_CSP
 b "style-src host source"   clean bad-csp-host          production csp             SKIP_CSP
+b "no default-src at all"   clean bad-csp-no-default    production csp             SKIP_CSP
+b "script-src-elem *"       clean bad-csp-script-elem   production csp             SKIP_CSP
+b "frame-src host"          clean bad-csp-frame-src     production csp             SKIP_CSP
+b "object-src data:"        clean bad-csp-object-data   production csp             SKIP_CSP
+
+# Unsafe schemes and meta refresh
+b "javascript: href"        clean bad-scheme-js         production unsafe_scheme   SKIP_UNSAFE_SCHEME
+b "obfuscated javascript: href" clean bad-scheme-js-obfuscated production unsafe_scheme SKIP_UNSAFE_SCHEME
+b "data: src"               clean bad-scheme-data       production unsafe_scheme   SKIP_UNSAFE_SCHEME
+b "vbscript: form action"   clean bad-scheme-vbscript   production unsafe_scheme   SKIP_UNSAFE_SCHEME
+b "meta refresh"            clean bad-meta-refresh      production meta_refresh    SKIP_META_REFRESH
 
 b "missing about link"      clean bad-about-link        production about_link      SKIP_ABOUT_LINK
 

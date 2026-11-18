@@ -8,7 +8,7 @@
 # SCRUB_TERMS_FILE is required (blank lines and lines starting with # are ignored).
 # Each check can be disabled for the revert-proof test with SKIP_<NAME>=1:
 # SKIP_NO_SCRIPT, SKIP_INLINE_HANDLER, SKIP_EXTERNAL_HOST, SKIP_NOINDEX, SKIP_SCRUB_TERMS,
-# SKIP_ROBOTS, SKIP_CSP, SKIP_ABOUT_LINK, SKIP_DASHES.
+# SKIP_ROBOTS, SKIP_CSP, SKIP_ABOUT_LINK, SKIP_DASHES, SKIP_UNSAFE_SCHEME, SKIP_META_REFRESH.
 set -euo pipefail
 
 DIR="${1:-}"
@@ -48,6 +48,8 @@ no_script() { from_parser no_script; }
 inline_handler() { from_parser inline_handler; }
 external_host() { from_parser external_host; }
 noindex() { from_parser noindex; }
+unsafe_scheme() { from_parser unsafe_scheme; }
+meta_refresh() { from_parser meta_refresh; }
 
 scrub_terms() {
   if [ -z "${SCRUB_TERMS_FILE:-}" ] || [ ! -r "$SCRUB_TERMS_FILE" ] || [ ! -f "$SCRUB_TERMS_FILE" ]; then
@@ -120,7 +122,7 @@ dashes() {
   [ -z "$f" ] || report dashes "em or en dash in: $(echo $f)"
 }
 
-for c in no_script inline_handler external_host scrub_terms noindex robots csp about_link dashes; do
+for c in no_script inline_handler external_host unsafe_scheme meta_refresh scrub_terms noindex robots csp about_link dashes; do
   if enabled "$c"; then "$c"; fi
 done
 

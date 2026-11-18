@@ -2,15 +2,18 @@
 
 Usage: python3 -I scripts/check-headers.py <path to _headers>
 Prints one problem per line and always exits 0; scripts/check-output.sh reports them.
-Rules: a CSP exists; default-src is 'none' or 'self' only; script-src, style-src and
-connect-src (when present) are 'none' or 'self' only; base-uri, form-action and
-frame-ancestors are present.
+Rules: a CSP exists; default-src is present; every directive that takes a source list
+holds only 'none' or 'self' (so no wildcard, scheme, host, unsafe-* token or nonce);
+base-uri, form-action and frame-ancestors are present.
 """
 import sys
 
 SAFE = {"'none'", "'self'"}
 REQUIRED = ("base-uri", "form-action", "frame-ancestors")
 LOCKED = ("default-src", "script-src", "style-src", "connect-src")
+# Directives that take no source list; every other directive may hold only SAFE tokens.
+EXEMPT = {"sandbox", "upgrade-insecure-requests", "block-all-mixed-content",
+          "report-uri", "report-to", "require-trusted-types-for", "trusted-types"}
 
 
 def check_policy(policy):
@@ -22,14 +25,14 @@ def check_policy(policy):
             dirs.setdefault(toks[0].lower(), [t.lower() for t in toks[1:]])
     if "default-src" not in dirs:
         problems.append("default-src missing")
-    for d in LOCKED:
-        if d in dirs:
-            toks = dirs[d]
-            if not toks:
-                problems.append("%s is empty" % d)
-            for t in toks:
-                if t not in SAFE:
-                    problems.append("%s has disallowed token %s" % (d, t))
+    for d, toks in dirs.items():
+        if d in EXEMPT:
+            continue
+        if d in LOCKED and not toks:
+            problems.append("%s is empty" % d)
+        for t in toks:
+            if t not in SAFE:
+                problems.append("%s has disallowed token %s" % (d, t))
     for d in REQUIRED:
         if d not in dirs:
             problems.append("%s missing" % d)

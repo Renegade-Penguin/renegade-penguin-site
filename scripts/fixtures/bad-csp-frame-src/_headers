@@ -1,0 +1,2 @@
+/*
+  Content-Security-Policy: default-src 'none'; frame-src https://x.example; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
