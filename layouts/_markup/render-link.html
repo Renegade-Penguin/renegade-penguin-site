@@ -1,3 +1,16 @@
-{{- $ext := or (strings.HasPrefix .Destination "http://") (strings.HasPrefix .Destination "https://") (strings.HasPrefix .Destination "//") -}}
-{{- if and $ext (strings.HasPrefix .Destination site.BaseURL) }}{{ $ext = false }}{{ end -}}
-<a href="{{ .Destination | safeURL }}"{{ with .Title }} title="{{ . }}"{{ end }}{{ if $ext }} rel="noopener"{{ end }}>{{ .Text | safeHTML }}</a>
+{{- $dest := .Destination -}}
+{{- $lower := strings.ToLower $dest -}}
+{{- $ext := false -}}
+{{- if strings.HasPrefix $lower "#" -}}
+{{- else if strings.HasPrefix $lower "//" -}}
+  {{- $ext = true -}}
+{{- else if findRE `^[a-z][a-z0-9+.-]*:` $lower -}}
+  {{- if or (strings.HasPrefix $lower "http:") (strings.HasPrefix $lower "https:") -}}
+    {{- $host := (urls.Parse $lower).Host -}}
+    {{- $own := (urls.Parse (strings.ToLower site.BaseURL)).Host -}}
+    {{- if ne $host $own }}{{ $ext = true }}{{ end -}}
+  {{- else if not (or (strings.HasPrefix $lower "mailto:") (strings.HasPrefix $lower "tel:")) -}}
+    {{- errorf "render-link: disallowed link scheme in %s: %q" .Page.Path $dest -}}
+  {{- end -}}
+{{- end -}}
+<a href="{{ $dest | safeURL }}"{{ with .Title }} title="{{ . }}"{{ end }}{{ if $ext }} rel="noopener"{{ end }}>{{ .Text | safeHTML }}</a>
