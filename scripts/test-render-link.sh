@@ -17,7 +17,7 @@ scratch_site() {
   local d="$TMP/$1"
   mkdir -p "$d/content/about"
   cp "$ROOT/hugo.toml" "$d/"
-  cp -r "$ROOT/layouts" "$ROOT/assets" "$ROOT/static" "$d/"
+  cp -r "$ROOT/layouts" "$ROOT/assets" "$ROOT/static" "$ROOT/data" "$d/"
   printf -- '---\ntitle: "Home"\n---\n' >"$d/content/_index.md"
   printf -- '---\ntitle: "About"\n---\n\n%s\n' "$2" >"$d/content/about/_index.md"
   echo "$d"

@@ -1,7 +1,7 @@
 <section class="home-sec" id="no-vendor-pitches" aria-labelledby="no-vendor-pitches-h">
   {{ partial "section-head.html" (dict "n" "04" "title" .title "tag" .eyebrow "id" "no-vendor-pitches-h") }}
   <p class="lede">{{ .intro }}</p>
-  <ul class="grid pills">
+  <ul class="grid pills grid-n{{ len .items }}">
     {{- range .items }}
     <li class="card"><h3>{{ .title }}</h3></li>
     {{- end }}

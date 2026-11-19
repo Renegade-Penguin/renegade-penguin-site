@@ -1,6 +1,6 @@
 <section class="home-sec" id="how-it-works" aria-labelledby="how-it-works-h">
   {{ partial "section-head.html" (dict "n" "03" "title" .title "tag" .eyebrow "id" "how-it-works-h") }}
-  <ol class="steps">
+  <ol class="grid steps grid-n{{ len .items }}">
     {{- range .items }}
     <li class="card step">
       <h3>{{ .title }}</h3>

@@ -19,6 +19,14 @@ title = "Both Sides Understood"
 body = "Experience with defensive security and the underground provides context for threats, while deep Tor and I2P knowledge replaces fear stories with technical reality."
 
 [[items]]
+title = "Travel Data Exposure"
+body = "I use OSINT, aircraft tracking, and plane spotting to assess what travel reveals, and I have advised aircraft owners how ownership structure affects their data exposure."
+
+[[items]]
+title = "Darknet Perspective"
+body = "I use practical darknet knowledge to see what attackers can see about a person or organization."
+
+[[items]]
 title = "Emerging Technology Tracked"
 body = "Active research covers developing systems and threats, including Veilid and post-quantum cryptography, with substantial work performed in the open source community."
 
