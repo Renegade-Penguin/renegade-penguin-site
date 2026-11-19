@@ -28,3 +28,5 @@ I have worked with or for these companies in the past:
 - NetJets
 - Cointelegraph
 - Henry Schein
+- GC Dental
+- SML Labs
