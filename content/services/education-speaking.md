@@ -23,4 +23,6 @@ Sessions can range from an introductory talk to a working session built around a
 
 The goal is understanding, not performance. Technical concepts are explained in plain language without assuming the audience already knows the vocabulary, and technical audiences still get the detail needed to challenge the material.
 
+Corporate and vendor events are booked as paid engagements. Community and conference organizers are welcome to inquire when admission is covered, with lodging and travel also covered depending on the event.
+
 Education and speaking do not replace a security assessment, legal advice, or hands-on engineering. If a session uncovers a larger issue, any follow-up work is scoped separately.
