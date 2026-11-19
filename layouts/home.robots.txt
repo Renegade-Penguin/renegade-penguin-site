@@ -1,0 +1,6 @@
+User-agent: *
+{{ if eq site.Params.environment "staging" }}Disallow: /
+{{ else }}Allow: /
+
+Sitemap: {{ "sitemap.xml" | absURL }}
+{{ end }}

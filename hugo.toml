@@ -1,0 +1,37 @@
+baseURL = "https://renegadepenguinllc.com/"
+title = "Renegade Penguin LLC"
+locale = "en-US"
+disableKinds = ["taxonomy", "term", "RSS"]
+enableGitInfo = false
+
+[outputs]
+  home = ["html", "robots"]
+
+[params]
+  # production by default; set HUGO_PARAMS_ENVIRONMENT=staging for the staging build.
+  environment = "production"
+
+[[menus.main]]
+  name = "Home"
+  pageRef = "/"
+  weight = 10
+[[menus.main]]
+  name = "Services"
+  url = "/services/"
+  weight = 20
+[[menus.main]]
+  name = "Experience"
+  url = "/experience/"
+  weight = 30
+[[menus.main]]
+  name = "Community"
+  url = "/community/"
+  weight = 40
+[[menus.main]]
+  name = "About"
+  url = "/about/"
+  weight = 50
+[[menus.main]]
+  name = "Contact"
+  url = "/contact/"
+  weight = 60

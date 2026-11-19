@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # GitHub Actions only. The site has no package manager and no Python dependencies; Hugo is pinned in
+  # .hugo-version and bumped by hand. Every action is pinned to a commit with a version comment; Dependabot
+  # moves both together.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # A release that turns out to be malicious is usually pulled within days; waiting a week before
+    # proposing it costs nothing.
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+    labels: [dependencies, github-actions]

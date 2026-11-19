@@ -4,7 +4,7 @@
 
 **Goal:** A Hugo static site for Renegade Penguin LLC that builds and renders locally for owner review, with CI green, before any hosting.
 
-**Architecture:** A lean clone of the no-php-no-cry stack (Hugo, dark-only tokens, strict CSP, zero scripts). Not the 19k-line script tree: only the pieces this site needs, each with a test. Hosting, the contact Worker and the apex cutover are later plans (issues #3, #4, #6).
+**Architecture:** A lean clone of the no-php-no-cry stack (Hugo, dark-only tokens, strict CSP, zero scripts). Not the 19k-line script tree: only the pieces this site needs, each with a test. Hosting, the contact Worker and the apex cutover are later plans (issues #4, #5, #7).
 
 **Tech Stack:** Hugo 0.168.0 (same pin as no-php-no-cry `.hugo-version`), POSIX shell checks, Python 3 stdlib (run with `-I`), Playwright for screenshots (outside the repo), GYST reusable workflows.
 
@@ -57,9 +57,9 @@
 
 **Interfaces:**
 - Consumes: Task 1 layouts and menus.
-- Copy source: the lead places owner-approved copy in `content/` using the files from the copy task (issue #3 is the form; copy is issue #2, authored through Codex by the lead). Until it lands, pages carry the placeholder line `Draft copy pending.` and the page titles only; the implementer writes no marketing copy.
+- Copy source: the lead places owner-approved copy in `content/` using the files from the copy task (copy is issue #3, authored through Codex by the lead; the contact form is issue #4). Until it lands, pages carry the placeholder line `Draft copy pending.` and the page titles only; the implementer writes no marketing copy. The About placeholder also carries one link line, `Personal site: chiefgyk3d.com`, linking `https://chiefgyk3d.com/` with `rel="noopener"`.
 
-- [ ] **Step 1: Write `scripts/test-pages.sh`.** Builds, then asserts each of `/`, `/services/`, `/experience/`, `/community/`, `/about/`, `/contact/` exists with exactly one `<h1>` and a nav link to each other page; asserts `/contact/` contains no `<form` (the Worker form is issue #3); asserts `/about/` links `https://chiefgyk3d.com/` with `rel="noopener"`.
+- [ ] **Step 1: Write `scripts/test-pages.sh`.** Builds, then asserts each of `/`, `/services/`, `/experience/`, `/community/`, `/about/`, `/contact/` exists with exactly one `<h1>` and a nav link to each other page; asserts `/contact/` contains no `<form` (the Worker form is issue #4); asserts `/about/` links `https://chiefgyk3d.com/` with `rel="noopener"`.
 - [ ] **Step 2: Run, expect FAIL.** **Step 3:** create the six content files with front matter `title` and `description`, and `layouts/single.html` and `list.html` rendering `.Content`. **Step 4:** run, expect PASS. **Step 5:** commit.
 
 ### Task 3: Output checker
@@ -91,7 +91,7 @@
 - Create: `scripts/render-review.sh`
 - Output (not committed): `~/.local/share/renegade-penguin-site-dev/shots/`
 
-- [ ] **Step 1:** `scripts/render-review.sh` builds the staging variant to `~/.local/share/renegade-penguin-site-dev/out`, serves it on `127.0.0.1` on a free port with `python3 -m http.server`, drives Playwright (already installed as a plugin MCP; if the script cannot import it, report and stop) to screenshot each of the six pages at 1920x930 and 320x700, writes PNGs plus `index.txt` listing them, stops the server by saved PID. **Step 2:** run it; expect twelve PNGs. **Step 3:** the lead views the PNGs against the brand reference images side by side and reports to the owner. **Step 4:** commit the script only.
+- [ ] **Step 1:** `scripts/render-review.sh` builds the staging variant to `~/.local/share/renegade-penguin-site-dev/out`, serves it on `127.0.0.1` on a free port with `python3 -m http.server`, prints the local URL, and stops the server by saved PID on `scripts/render-review.sh stop` (it writes the PID to `~/.local/share/renegade-penguin-site-dev/serve.pid`). It takes screenshots itself only if Python `playwright` imports; otherwise it does not, and the lead takes them with the Playwright MCP tools. **Step 2:** run `scripts/render-review.sh` and fetch `/` with curl; expect HTTP 200. **Step 3:** the lead screenshots the six pages at 1920x930 and 320x700 and views them against the brand reference images side by side and reports to the owner. **Step 4:** commit the script only.
 
 ### Task 6: CI
 
@@ -103,5 +103,5 @@
 
 ## Self-review
 
-- Spec coverage: pages, cross-links, dark-only, strict CSP, staging noindex, GYST CI covered by Tasks 1 to 6. Contact Worker, hosting, DNS, mail records, cutover and shared theme are issues #3 to #8, later plans. Copy is issue #2, lead-run through Codex.
+- Spec coverage: pages, cross-links, dark-only, strict CSP, staging noindex, GYST CI covered by Tasks 1 to 6. Contact Worker, hosting, DNS, mail records, cutover and shared theme are issues #4 to #8, later plans. Copy is issue #3, lead-run through Codex.
 - Names consistent: `EXPECT_ENV`, `SCRUB_TERMS_FILE`, `SKIP_<NAME>` appear only in Task 3 and its callers.

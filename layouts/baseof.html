@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }} | {{ site.Title }}{{ end }}</title>
+{{ with .Description }}<meta name="description" content="{{ . }}">{{ end }}
+{{ if eq site.Params.environment "staging" }}<meta name="robots" content="noindex, nofollow">{{ end }}
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0F0F0F">
+{{- $main := resources.Get "css/main.css" -}}
+{{- $css := slice (resources.Get "css/tokens.css") $main | resources.Concat "css/site.css" | minify | fingerprint -}}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+<link rel="icon" type="image/png" href="/brand/penguin-color.png">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+{{ partial "header.html" . }}
+<main id="main">
+{{ block "main" . }}{{ end }}
+</main>
+{{ partial "footer.html" . }}
+</body>
+</html>
