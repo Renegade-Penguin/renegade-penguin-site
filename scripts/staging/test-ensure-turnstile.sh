@@ -25,7 +25,7 @@ t_run "$S"
 t_rc 0 "dry run"
 t_expect_writes 0 "dry run makes no write call"
 no_doppler "dry run"
-t_expect_out "WOULD POST $W" "dry run prints the POST"
+t_expect_out "WOULD POST ${W/acct123/<account>}" "dry run prints the POST"
 t_expect_out '"mode":"managed"' "managed mode"
 t_expect_out 'staging.renegadepenguinllc.com' "staging domain bound"
 t_token_never_leaks
@@ -67,7 +67,7 @@ t_run "$S" --apply
 t_rc 1 "storage failure exits non-zero"
 t_expect_out "widget renegade-penguin-contact WAS CREATED but its secret was NOT saved to Doppler" "fixed partial-apply message"
 t_expect_out "sitekey: 0xSITEKEY" "message carries the sitekey"
-t_expect_out "Recovery: delete the widget (DELETE /accounts/acct123/challenges/widgets/0xSITEKEY) or rotate its secret" "message carries the recovery step"
+t_expect_out "Recovery: delete the widget (DELETE /accounts/<account>/challenges/widgets/0xSITEKEY) or rotate its secret" "message carries the recovery step"
 t_token_never_leaks
 
 echo "-- apply, create response has no secret"
@@ -168,7 +168,7 @@ t_bad_widget() { # label JSON-WIDGET-LIST
   t_run "$S" --apply
   t_rc 1 "$1 fails closed"
   t_expect_out "The secret of an existing widget cannot be recovered" "$1 says the secret cannot be recovered"
-  t_expect_out "Delete the widget (DELETE /accounts/acct123/challenges/widgets/0xEXIST), then re-run" "$1 gives the recovery step"
+  t_expect_out "Delete the widget (DELETE /accounts/<account>/challenges/widgets/0xEXIST), then re-run" "$1 gives the recovery step"
   t_expect_out "sitekey: 0xEXIST" "$1 may print the sitekey"
   t_expect_writes 0 "$1 makes no write"
   no_doppler "$1"
@@ -197,4 +197,15 @@ t_expect_writes 0 "already-exists makes no duplicate"
 t_expect_out "sitekey: 0xEXIST" "existing sitekey printed"
 no_doppler "existing widget"
 t_token_never_leaks
+
+echo "-- identifiers are masked in all output"
+t_reset
+t_set_account 0123456789abcdef0123456789abcdef
+t_resp GET "/accounts/0123456789abcdef0123456789abcdef/challenges/widgets?per_page=100" 200 '{"success":true,"result":[]}'
+t_run "$S"
+t_rc 0 "masked dry run"
+t_expect_out "WOULD POST /accounts/<account>/challenges/widgets" "path masked"
+if printf '%s' "$OUT" | grep -qE '[0-9a-f]{32}'; then
+  t_fail "a 32-hex identifier is in the output: $OUT"
+else t_ok "no 32-hex identifier in the output"; fi
 t_finish

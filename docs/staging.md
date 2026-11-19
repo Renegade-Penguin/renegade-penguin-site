@@ -90,7 +90,10 @@ Run each in dry run first, read the output, then re-run with `--apply`.
    path above.
 4. `scripts/staging/ensure-rate-limit.sh` adds one rate-limit rule to the zone
    (phase `http_ratelimit`): POST `/api/contact`, 5 per 10 minutes per IP,
-   block for 10 minutes. It never replaces the ruleset. It reads the phase
+   block for 10 minutes. The plan requires `cf.colo.id` among the
+   characteristics (API code 20155), so counting is per data center per IP
+   (`cf.colo.id` plus `ip.src`): the effective global limit is looser than 5
+   per 10 minutes. It never replaces the ruleset. It reads the phase
    entrypoint first: if the ruleset exists it POSTs only this one rule to that
    ruleset's rules endpoint (an identical rule already present is skipped; a
    rule with the same ref but different content stops the script); the ruleset

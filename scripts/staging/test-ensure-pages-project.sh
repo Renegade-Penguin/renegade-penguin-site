@@ -16,7 +16,7 @@ t_resp GET "$P" 404 "$MISSING"
 t_run "$S"
 t_rc 0 "dry run"
 t_expect_writes 0 "dry run makes no write call"
-t_expect_out "WOULD POST /accounts/acct123/pages/projects" "dry run prints the POST"
+t_expect_out "WOULD POST /accounts/<account>/pages/projects" "dry run prints the POST"
 t_expect_out '"production_branch":"main"' "dry run prints the body"
 t_token_never_leaks
 
