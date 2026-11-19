@@ -1,7 +1,7 @@
 /*
  * Design tokens. Dark only: :root is the one palette, there is no light mode.
- * Jost is self-hosted from /fonts (SIL OFL 1.1, license text beside it); no
- * font host is contacted.
+ * Jost and Orbitron are self-hosted from /fonts (SIL OFL 1.1, license text
+ * beside each); no font host is contacted.
  */
 
 @font-face {
@@ -10,6 +10,14 @@
   font-weight: 100 900;
   font-display: swap;
   src: url("../fonts/jost-latin-wght-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: Orbitron;
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("../fonts/orbitron-latin-wght-normal.woff2") format("woff2");
 }
 
 :root {
@@ -24,6 +32,14 @@
   --link: #FBB03B;
   --focus: #FBB03B;
   --rule: #3A3530;
+
+  --font-display: Orbitron, Jost, system-ui, sans-serif;
+  --font-mono: ui-monospace, "DejaVu Sans Mono", "Liberation Mono", Menlo, Consolas, monospace;
+  --grid-line: rgba(58, 53, 48, 0.38);
+  --grid-major: rgba(58, 53, 48, 0.7);
+  --stamp: #FBB03B;
+  --redact-a: #2C2925;
+  --redact-b: #38332D;
 
   --font-body: Jost, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --text-sm: 0.875rem;
