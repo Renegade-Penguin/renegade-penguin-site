@@ -10,6 +10,10 @@ enableGitInfo = false
 [params]
   # production by default; set HUGO_PARAMS_ENVIRONMENT=staging for the staging build.
   environment = "production"
+  # Public Cloudflare Turnstile sitekey for the contact form. Empty by default: the contact page
+  # then builds without the widget and without the Turnstile script (no third-party request).
+  # Set it per environment with HUGO_PARAMS_TURNSTILESITEKEY; the secret key never lives here.
+  turnstileSitekey = ""
 
 [[menus.main]]
   name = "Home"
