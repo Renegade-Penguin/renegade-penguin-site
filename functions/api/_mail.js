@@ -3,8 +3,9 @@
 // Design (issue #31): Pages Functions do not list send_email as a supported binding (Cloudflare
 // docs read 2026-11-19), so this adapter calls a small separate Worker (worker/mail) through a
 // service binding named MAIL_WORKER. That Worker owns the send_email binding, pins the recipient
-// and takes the sender from its own MAIL_FROM. UNVERIFIED until staging (issue #5): nothing is
-// deployed yet, so the service binding and the Worker send have not run against Cloudflare.
+// and takes the sender from its own MAIL_FROM. The Worker is deployed (renegade-penguin-mail,
+// no public address), but UNVERIFIED until staging (issues #5, #35): Email Sending domain
+// onboarding and a live send test are still pending.
 // contact.js and its tests do not change.
 //
 // Environment (Pages project):
