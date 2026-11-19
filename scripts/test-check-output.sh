@@ -242,6 +242,10 @@ b "value on a no-value CSP directive" clean bad-csp-novalue-token production csp
 b "Turnstile script with an inline body" clean bad-turnstile-src-body production no_script SKIP_NO_SCRIPT
 b "self-closing Turnstile script" clean bad-turnstile-selfclosing production no_script SKIP_NO_SCRIPT
 b "self-closing script on the home page" clean bad-script-selfclosing production no_script SKIP_NO_SCRIPT
+b "Turnstile script inside a template element" clean bad-turnstile-template production no_script SKIP_NO_SCRIPT
+b "Turnstile script inside svg foreignObject" clean bad-turnstile-svg production no_script SKIP_NO_SCRIPT
+b "Turnstile script inside math" clean bad-turnstile-math production no_script SKIP_NO_SCRIPT
+expect_pass "report-to with a group name" "$(stage clean "$FIX/ok-csp-report-to-group")" production
 
 # Unsafe schemes and meta refresh
 b "javascript: href" clean bad-scheme-js production unsafe_scheme SKIP_UNSAFE_SCHEME

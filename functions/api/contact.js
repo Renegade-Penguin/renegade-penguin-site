@@ -3,7 +3,7 @@
 // Order of work: method, body size, honeypot, field validation, Turnstile siteverify, mail.
 // Mail goes through ./_mail.js only. Required environment is listed in functions/README.md.
 // Nothing here logs form content, the token or the secret.
-import { sendContactMail } from "./_mail.js";
+import { sendContactMail, hasControlChars } from "./_mail.js";
 
 const MAX_BODY_BYTES = 20000;
 const THANKS = "/contact/thanks/";
@@ -56,12 +56,18 @@ async function readLimited(request) {
   return new TextDecoder().decode(all);
 }
 
-// Single-line fields never carry CR or LF (they end up in the subject and Reply-To).
+// Single-line fields feed the subject and Reply-To. They are checked raw (before trimming) and a
+// control character is an error, never repaired. Only the free-text need may hold line breaks.
+const SINGLE_LINE_FIELDS = ["name", "email", "organization", "size", "budget", "timeline", "heard", "consent"];
+
 function line(value) {
-  return String(value ?? "").replace(/[\r\n]+/g, " ").trim();
+  return String(value ?? "").trim();
 }
 
 function validate(form) {
+  for (const f of SINGLE_LINE_FIELDS) {
+    if (hasControlChars(form.get(f) ?? "")) return "Please remove control characters from the form fields.";
+  }
   const v = {
     name: line(form.get("name")),
     email: line(form.get("email")),
@@ -73,8 +79,7 @@ function validate(form) {
     heard: line(form.get("heard")),
     consent: line(form.get("consent")),
   };
-  // The email is checked on the raw value too, so a CR or LF inside it is an error, not a repair.
-  const rawEmail = String(form.get("email") ?? "").trim();
+  const rawEmail = v.email;
   if (!v.name || v.name.length > 100) return "Please enter your name (100 characters or fewer).";
   if (!rawEmail || rawEmail.length > 200 || !EMAIL_SHAPE.test(rawEmail)) return "Please enter a valid work email (200 characters or fewer).";
   if (!v.organization || v.organization.length > 200) return "Please enter your organization (200 characters or fewer).";

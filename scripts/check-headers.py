@@ -53,6 +53,7 @@ SANDBOX_FLAGS = {
 }
 TRUSTED_TYPES_OK = {"'none'", "'allow-duplicates'"}
 REPORTING = ("report-uri", "report-to")
+GROUP_NAME = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")  # tokens are lower-cased before the check
 KNOWN = SOURCE_LIST | NO_VALUE | set(REPORTING) | {"sandbox", "require-trusted-types-for", "trusted-types"}
 CSP = "content-security-policy"
 SECURITY_HEADERS = {
@@ -140,7 +141,11 @@ def check_policy(policy, extra=None):
             for t in toks:
                 if t not in TRUSTED_TYPES_OK:
                     problems.append("trusted-types has disallowed token %s" % t)
-        elif d in REPORTING:
+        elif d == "report-to":
+            # One group name (a token, defined by a Reporting-Endpoints or Report-To header), not a url.
+            if len(toks) != 1 or not GROUP_NAME.match(toks[0]):
+                problems.append("report-to must be one group name (letters, digits, - _ .)")
+        elif d == "report-uri":
             for t in toks:
                 if t != "'none'" and not relative_path(t):
                     problems.append("%s must be a relative path, found %s" % (d, t))

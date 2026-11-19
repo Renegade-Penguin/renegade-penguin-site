@@ -296,29 +296,78 @@ test("fields are trimmed", async () => {
   assert.doesNotMatch(m.text, / {2}hello/);
 });
 
-test("header injection: CR and LF are stripped from every header-bound value", async () => {
+// Every control character a header must never carry: C0, DEL, C1, U+2028 and U+2029.
+const PROHIBITED = [
+  ["NUL", "\u0000"],
+  ["tab", "\t"],
+  ["LF", "\n"],
+  ["vertical tab", "\u000b"],
+  ["form feed", "\u000c"],
+  ["CR", "\r"],
+  ["ESC", "\u001b"],
+  ["US", "\u001f"],
+  ["DEL", "\u007f"],
+  ["C1 start", "\u0080"],
+  ["NEL", "\u0085"],
+  ["C1 end", "\u009f"],
+  ["LINE SEPARATOR", " "],
+  ["PARAGRAPH SEPARATOR", " "],
+];
+
+test("the prohibited set holds the intended code points (guards against an editor rewriting escapes)", () => {
+  assert.deepEqual(
+    PROHIBITED.map(([, ch]) => ch.codePointAt(0)),
+    [0x0, 0x9, 0xa, 0xb, 0xc, 0xd, 0x1b, 0x1f, 0x7f, 0x80, 0x85, 0x9f, 0x2028, 0x2029],
+  );
+  for (const [, ch] of PROHIBITED) assert.equal(ch.length, 1);
+});
+
+// name and organization go into the subject, email into Reply-To; heard is a single-line field too.
+const SINGLE_LINE = {
+  name: (c) => "Eve" + c + "Bcc: victim@example.com",
+  organization: (c) => "Org" + c + "X",
+  heard: (c) => "a" + c + "b",
+  email: (c) => "ada" + c + "@example.com",
+};
+
+for (const [field, make] of Object.entries(SINGLE_LINE)) {
+  for (const [label, ch] of PROHIBITED) {
+    test("header safety: " + label + " in " + field + " is rejected with 400", async () => {
+      const d = deps();
+      const res = await run({ ...GOOD, [field]: make(ch) }, d);
+      assert.equal(res.status, 400);
+      assert.equal(d.sendMail.sent.length, 0);
+      assert.equal(d.fetch.calls.length, 0);
+    });
+  }
+  test("header safety: a control character at the end of " + field + " is rejected, not trimmed", async () => {
+    const d = deps();
+    const res = await run({ ...GOOD, [field]: make("") + " " }, d);
+    assert.equal(res.status, 400);
+  });
+}
+
+test("header safety: ordinary punctuation and a non-ASCII name still pass", async () => {
   const d = deps();
   const res = await run(
     {
       ...GOOD,
-      name: "Eve\r\nBcc: victim@example.com",
-      organization: "Org\nSubject: other",
-      heard: "x\r\ny",
+      name: "Zoë O'Brien-Smith, Jr.",
+      organization: "R&D (Müller) Ltd. #1",
+      email: "z.o+brien_x@example.co.uk",
+      heard: "A talk: 50% good, \"great\"",
     },
     d,
   );
   assert.equal(res.status, 303);
-  const m = d.sendMail.sent[0].message;
-  assert.doesNotMatch(m.subject, /[\r\n]/);
-  assert.doesNotMatch(m.replyTo, /[\r\n]/);
-  assert.match(m.subject, /Eve Bcc: victim@example.com/);
+  assert.match(d.sendMail.sent[0].message.subject, /Zoë O'Brien-Smith, Jr\./);
+  assert.equal(d.sendMail.sent[0].message.replyTo, "z.o+brien_x@example.co.uk");
 });
 
-test("header injection through the email field is rejected", async () => {
+test("a line break inside the need text is kept (it is body text, not a header)", async () => {
   const d = deps();
-  const res = await run({ ...GOOD, email: "ada@example.com\r\nBcc: victim@example.com" }, d);
-  assert.equal(res.status, 400);
-  assert.equal(d.sendMail.sent.length, 0);
+  await run({ ...GOOD, need: "line one\nline two\ttabbed" }, d);
+  assert.match(d.sendMail.sent[0].message.text, /line one\nline two\ttabbed/);
 });
 
 test("a valid submission sends one plain text mail and returns 303", async () => {
@@ -395,14 +444,51 @@ test("adapter: MAIL_TO defaults to contact@renegadepenguinllc.com", async () => 
   assert.equal(EMAIL.calls[0].to, "contact@renegadepenguinllc.com");
 });
 
-test("adapter: strips CR and LF from subject and reply-to", async () => {
+test("adapter: throws on a prohibited character in any header property and sends nothing", async () => {
+  const base = { subject: "S", text: "T", replyTo: "a@example.com" };
+  for (const [label, ch] of PROHIBITED) {
+    const cases = {
+      subject: [{ EMAIL: null, MAIL_FROM: "s@sender.example" }, { ...base, subject: "a" + ch + "b" }],
+      replyTo: [{ EMAIL: null, MAIL_FROM: "s@sender.example" }, { ...base, replyTo: "a" + ch + "@example.com" }],
+      MAIL_FROM: [{ EMAIL: null, MAIL_FROM: "s" + ch + "@sender.example" }, base],
+      MAIL_TO: [{ EMAIL: null, MAIL_FROM: "s@sender.example", MAIL_TO: "i" + ch + "@example.com" }, base],
+    };
+    for (const [prop, [env, msg]] of Object.entries(cases)) {
+      const EMAIL = fakeBinding();
+      env.EMAIL = EMAIL;
+      await assert.rejects(sendContactMail(env, msg), /invalid header value/, prop + " with " + label);
+      assert.equal(EMAIL.calls.length, 0, prop + " with " + label);
+    }
+  }
+});
+
+test("adapter: ordinary punctuation and a non-ASCII subject pass", async () => {
   const EMAIL = fakeBinding();
   await sendContactMail(
     { EMAIL, MAIL_FROM: "site@sender.example" },
-    { subject: "a\r\nBcc: x@example.com", text: "T", replyTo: "a@example.com\r\nBcc: x@example.com" },
+    { subject: "Contact form: Zoë O'Brien-Smith (R&D, Ltd.)", text: "T", replyTo: "z.o+brien@example.com" },
   );
-  assert.doesNotMatch(EMAIL.calls[0].subject, /[\r\n]/);
-  assert.doesNotMatch(EMAIL.calls[0].replyTo, /[\r\n]/);
+  assert.equal(EMAIL.calls.length, 1);
+});
+
+test("a bad MAIL_FROM makes the real adapter throw, giving 502 and no mail", async () => {
+  const EMAIL = fakeBinding();
+  const logged = [];
+  const orig = console.error;
+  console.error = (...a) => logged.push(a);
+  let res;
+  try {
+    res = await handleContact(
+      formRequest(GOOD),
+      { ...ENV, EMAIL, MAIL_FROM: "site\u0000@sender.example" },
+      { fetch: fakeFetch(turnstileOk()) },
+    );
+  } finally {
+    console.error = orig;
+  }
+  assert.equal(res.status, 502);
+  assert.equal(EMAIL.calls.length, 0);
+  assert.ok(!JSON.stringify(logged).includes("ada@example.com"));
 });
 
 test("adapter: a missing binding or sender throws", async () => {

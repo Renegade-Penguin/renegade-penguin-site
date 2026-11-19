@@ -26,6 +26,8 @@ OWN_HOST = "renegadepenguinllc.com"
 # The one script exception: Cloudflare Turnstile, on the built contact page only.
 TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js"
 TURNSTILE_PAGE = "contact/index.html"
+# The exception does not hold inside these (template content and foreign content never run it).
+INERT_CONTEXTS = {"template", "svg", "math"}
 URL_ATTRS = {"src", "action", "formaction", "poster", "data", "background"}
 DOC_EXT = (".html", ".htm", ".xhtml", ".xht", ".shtml")
 BINARY_EXT = {
@@ -130,6 +132,7 @@ class Checker(HTMLParser):
         self.turnstile_seen = False
         self.in_turnstile = False
         self.reject_script = False
+        self.inert_depth = 0  # open template, svg or math elements: a script there never loads
         self.out = []
         self.in_style = False
         self.robots_noindex = False
@@ -143,6 +146,7 @@ class Checker(HTMLParser):
         defer (an inline body is judged in handle_data)."""
         return (
             not self.reject_script
+            and self.inert_depth == 0
             and self.rel == TURNSTILE_PAGE
             and not self.turnstile_seen
             and a.get("src") == TURNSTILE_SRC
@@ -166,6 +170,8 @@ class Checker(HTMLParser):
                 self.in_turnstile = True
             elif not self.reject_script:  # a self-closing script is reported by handle_startendtag
                 self.add("no_script", "script element")
+        if tag in INERT_CONTEXTS:
+            self.inert_depth += 1  # after the script judgment above: these tags are not scripts
         if tag in BANNED_TAGS:
             self.add("active_embed", "<%s> element" % tag)
         if "srcdoc" in a:
@@ -230,6 +236,8 @@ class Checker(HTMLParser):
         self.reject_script = False
 
     def handle_endtag(self, tag):
+        if tag.lower() in INERT_CONTEXTS and self.inert_depth > 0:
+            self.inert_depth -= 1
         if tag.lower() == "style":
             self.in_style = False
         if tag.lower() == "script":

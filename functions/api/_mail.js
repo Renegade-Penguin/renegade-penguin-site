@@ -15,9 +15,20 @@
 
 export const DEFAULT_TO = "contact@renegadepenguinllc.com";
 
-// Header-bound values never carry CR or LF.
-function oneLine(value) {
-  return String(value).replace(/[\r\n]+/g, " ").trim();
+// A header-bound value never carries a C0 or C1 control, DEL, U+2028 or U+2029. Values are
+// rejected, never repaired. contact.js uses the same test on visitor input.
+export function hasControlChars(value) {
+  for (const ch of String(value)) {
+    const c = ch.codePointAt(0);
+    if (c <= 0x1f || (c >= 0x7f && c <= 0x9f) || c === 0x2028 || c === 0x2029) return true;
+  }
+  return false;
+}
+
+// Throws without echoing the value (it may be personal data).
+function headerValue(name, value) {
+  if (hasControlChars(value)) throw new Error("invalid header value " + name);
+  return String(value).trim();
 }
 
 export async function sendContactMail(env, message) {
@@ -28,10 +39,10 @@ export async function sendContactMail(env, message) {
     throw new Error("MAIL_FROM is not configured");
   }
   await env.EMAIL.send({
-    from: oneLine(env.MAIL_FROM),
-    to: oneLine(env.MAIL_TO || DEFAULT_TO),
-    subject: oneLine(message.subject),
+    from: headerValue("from", env.MAIL_FROM),
+    to: headerValue("to", env.MAIL_TO || DEFAULT_TO),
+    subject: headerValue("subject", message.subject),
     text: String(message.text),
-    replyTo: oneLine(message.replyTo),
+    replyTo: headerValue("replyTo", message.replyTo),
   });
 }
