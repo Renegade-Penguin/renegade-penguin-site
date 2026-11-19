@@ -232,6 +232,16 @@ b "Turnstile origin in connect-src of the contact CSP" clean bad-turnstile-csp-c
 b "contact CSP without detaching the all-routes CSP" clean bad-turnstile-csp-no-detach production csp SKIP_CSP
 b "Turnstile CSP on a route other than contact" clean bad-turnstile-csp-other-route production csp SKIP_CSP
 b "contact CSP detached after it is set" clean bad-turnstile-csp-detach-last production csp SKIP_CSP
+b "contact CSP detached and never set" clean bad-turnstile-csp-detach-only production csp SKIP_CSP
+b "contact CSP set twice" clean bad-turnstile-csp-two-sets production csp SKIP_CSP
+b "Turnstile origin in a sandbox directive" clean bad-turnstile-csp-sandbox production csp SKIP_CSP
+b "Turnstile origin in a trusted-types directive" clean bad-turnstile-csp-trusted-types production csp SKIP_CSP
+b "Turnstile origin where a directive name belongs" clean bad-turnstile-csp-standalone production csp SKIP_CSP
+b "unknown CSP directive" clean bad-csp-unknown-directive production csp SKIP_CSP
+b "value on a no-value CSP directive" clean bad-csp-novalue-token production csp SKIP_CSP
+b "Turnstile script with an inline body" clean bad-turnstile-src-body production no_script SKIP_NO_SCRIPT
+b "self-closing Turnstile script" clean bad-turnstile-selfclosing production no_script SKIP_NO_SCRIPT
+b "self-closing script on the home page" clean bad-script-selfclosing production no_script SKIP_NO_SCRIPT
 
 # Unsafe schemes and meta refresh
 b "javascript: href" clean bad-scheme-js production unsafe_scheme SKIP_UNSAFE_SCHEME

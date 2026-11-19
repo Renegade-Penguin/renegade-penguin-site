@@ -129,6 +129,7 @@ class Checker(HTMLParser):
         self.rel = rel
         self.turnstile_seen = False
         self.in_turnstile = False
+        self.reject_script = False
         self.out = []
         self.in_style = False
         self.robots_noindex = False
@@ -141,7 +142,8 @@ class Checker(HTMLParser):
         contact page only. src is the exact url, the only other attributes are async and
         defer (an inline body is judged in handle_data)."""
         return (
-            self.rel == TURNSTILE_PAGE
+            not self.reject_script
+            and self.rel == TURNSTILE_PAGE
             and not self.turnstile_seen
             and a.get("src") == TURNSTILE_SRC
             and set(a) <= {"src", "async", "defer"}
@@ -162,7 +164,7 @@ class Checker(HTMLParser):
             if self.turnstile_script_ok(a):
                 self.turnstile_seen = True
                 self.in_turnstile = True
-            else:
+            elif not self.reject_script:  # a self-closing script is reported by handle_startendtag
                 self.add("no_script", "script element")
         if tag in BANNED_TAGS:
             self.add("active_embed", "<%s> element" % tag)
@@ -217,6 +219,15 @@ class Checker(HTMLParser):
         if tag == "meta" and a.get("name", "").strip().lower() == "robots":
             if "noindex" in a.get("content", "").lower():
                 self.robots_noindex = True
+
+    def handle_startendtag(self, tag, attrs):
+        # Browsers ignore the slash on a script tag and read raw text up to </script>, but this
+        # parser does not enter raw-text mode, so a self-closing script is rejected outright.
+        if tag.lower() == "script":
+            self.add("no_script", "self-closing script element")
+            self.reject_script = True
+        super().handle_startendtag(tag, attrs)
+        self.reject_script = False
 
     def handle_endtag(self, tag):
         if tag.lower() == "style":

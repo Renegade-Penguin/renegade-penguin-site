@@ -38,7 +38,7 @@ Retainer work does not begin on the strength of a sales call. Renegade Penguin c
 
 ## Privacy
 
-The site uses no cookies or analytics. The contact page loads one Cloudflare Turnstile script to block spam. Form submissions pass through a Cloudflare Worker to contact@renegadepenguinllc.com. Renegade Penguin receives what you enter, and Cloudflare keeps ordinary server logs. See the [privacy policy](/privacy/) for details.
+The site uses no cookies or analytics. When the spam check is enabled, the contact page loads one Cloudflare Turnstile script to block spam; otherwise, it loads nothing from Cloudflare. Form submissions are handled by a Cloudflare Pages Function and emailed to contact@renegadepenguinllc.com. Renegade Penguin receives what you enter, and Cloudflare keeps ordinary server logs. See the [privacy policy](/privacy/) for details.
 
 ## No JavaScript?
 

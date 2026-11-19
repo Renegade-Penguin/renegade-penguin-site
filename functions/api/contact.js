@@ -92,7 +92,7 @@ async function verifyTurnstile(token, env, request, doFetch) {
   const ip = request.headers.get("cf-connecting-ip");
   if (ip) body.set("remoteip", ip);
   const res = await doFetch(SITEVERIFY, { method: "POST", body });
-  if (!res.ok) return false;
+  if (!res.ok) throw new Error("siteverify status " + res.status); // service trouble, not a failed token
   const out = await res.json();
   return out.success === true && out.hostname === env.EXPECTED_HOSTNAME && out.action === TURNSTILE_ACTION;
 }

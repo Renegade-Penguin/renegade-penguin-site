@@ -38,11 +38,17 @@ function turnstileOk(over = {}) {
 }
 
 // Hand-rolled fake fetch: records calls, answers with the given json (or throws).
+// result: an object (200 json), an Error (thrown), { httpStatus: n } (non-ok status) or
+// { malformedJson: true } (200 whose body is not json).
 function fakeFetch(result) {
   const calls = [];
   const fn = async (url, init) => {
     calls.push({ url, init });
     if (result instanceof Error) throw result;
+    if (result && result.httpStatus) return { ok: false, status: result.httpStatus, json: async () => ({}) };
+    if (result && result.malformedJson) {
+      return { ok: true, status: 200, json: async () => JSON.parse("{not json") };
+    }
     return { ok: true, status: 200, json: async () => result };
   };
   fn.calls = calls;
@@ -149,6 +155,27 @@ test("a failed Turnstile verification gets 400", async () => {
   const d = deps({ success: false, "error-codes": ["invalid-input-response"] });
   const res = await run(GOOD, d);
   assert.equal(res.status, 400);
+  assert.equal(d.sendMail.sent.length, 0);
+});
+
+test("success:false with the correct hostname and action still gets 400", async () => {
+  const d = deps(turnstileOk({ success: false }));
+  const res = await run(GOOD, d);
+  assert.equal(res.status, 400);
+  assert.equal(d.sendMail.sent.length, 0);
+});
+
+test("a non-ok Turnstile HTTP status gets 502 and sends nothing", async () => {
+  const d = deps({ httpStatus: 500 });
+  const res = await run(GOOD, d);
+  assert.equal(res.status, 502);
+  assert.equal(d.sendMail.sent.length, 0);
+});
+
+test("a malformed Turnstile json body gets 502 and sends nothing", async () => {
+  const d = deps({ malformedJson: true });
+  const res = await run(GOOD, d);
+  assert.equal(res.status, 502);
   assert.equal(d.sendMail.sent.length, 0);
 });
 
