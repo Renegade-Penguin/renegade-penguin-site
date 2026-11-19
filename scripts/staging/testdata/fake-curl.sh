@@ -56,5 +56,6 @@ else
 fi
 case "$wfmt" in
   *'%{stderr}'*) printf '%s' "$status" >&2 ;;
+  '\n'*) printf '\n%s' "$status" ;; # real curl expands \n in -w
   *) printf '%s' "$status" ;;
 esac

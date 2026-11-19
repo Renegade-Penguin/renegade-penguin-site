@@ -51,6 +51,26 @@ t_run "$S" --apply
 t_rc 1 "read with success false fails"
 t_expect_writes 0 "no write after bad read"
 
+echo "-- concatenated JSON documents on the read are failures"
+for combo in "false-true" "true-false" "true-true"; do
+  t_reset
+  case "$combo" in
+    false-true) body='{"success":false}{"success":true,"result":{}}' ;;
+    true-false) body='{"success":true,"result":{}}{"success":false}' ;;
+    *) body='{"success":true,"result":{}}{"success":true,"result":{}}' ;;
+  esac
+  t_resp GET "$P" 200 "$body"
+  t_run "$S" --apply
+  t_rc 1 "concatenated documents ($combo) fail"
+  t_expect_writes 0 "no write after concatenated documents ($combo)"
+done
+
+echo "-- a non-object top-level value is a failure"
+t_reset
+t_resp GET "$P" 200 '[{"success":true}]'
+t_run "$S" --apply
+t_rc 1 "array envelope fails"
+
 echo "-- malformed JSON on the read is a failure"
 t_reset
 t_resp GET "$P" 200 'not json'

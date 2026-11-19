@@ -4,10 +4,13 @@
 # Safety properties:
 #   - The scripts refuse to run with xtrace on (see the guard at the top of
 #     each script), so no credential is ever expanded while tracing.
-#   - The token is read only from CLOUDFLARE_API_TOKEN, moved into a private,
-#     non-exported shell variable, and the exported one is unset at once, so no
-#     child process inherits it. Only the shell expands it, into curl's stdin
-#     config (curl -K -), never argv and never a file.
+#   - The token is read only from CLOUDFLARE_API_TOKEN. The first lines of each
+#     entrypoint (before ANY external command or command substitution) move it
+#     into the private, non-exported CF_TOKEN_PRIVATE and unset the exported
+#     one, so no child process inherits it. Only the shell expands it, into
+#     curl's stdin config (curl -K -), never argv and never a file.
+#   - An API response is accepted only if it is exactly one JSON object with
+#     .success == true (CF_ENVELOPE_FILTER, used with jq -es).
 #   - Nothing here prints the token. Response bodies are printed only for
 #     errors, and only the error list.
 #   - Dry run is the default. Writes happen only with --apply.
@@ -17,11 +20,13 @@ CF_PROJECT="renegade-penguin-site"
 CF_STAGING_HOST="staging.renegadepenguinllc.com"
 CF_APEX_HOST="renegadepenguinllc.com"
 
+# Exactly one top-level value, an object, with success true. Use with jq -es.
+CF_ENVELOPE_FILTER='length == 1 and (.[0] | type == "object") and .[0].success == true'
+
 APPLY=0
 CF_STATUS=""
 CF_BODY=""
 CF_TMP=""
-CF_TOKEN_PRIVATE=""
 
 cf_die() {
   printf 'error: %s\n' "$*" >&2
@@ -62,10 +67,8 @@ cf_init() {
       *) cf_die "unknown argument: $a" ;;
     esac
   done
-  # Move the token into a private variable and drop the exported one first.
-  unset CF_TOKEN_PRIVATE
-  CF_TOKEN_PRIVATE="${CLOUDFLARE_API_TOKEN:-}"
-  unset CLOUDFLARE_API_TOKEN
+  # The entrypoint already moved the token into CF_TOKEN_PRIVATE and unset the
+  # exported one, before running any external command.
   local v
   if [ -z "$CF_TOKEN_PRIVATE" ]; then
     cf_die "required environment variable CLOUDFLARE_API_TOKEN is not set"
@@ -111,7 +114,7 @@ cf_call() {
   CF_BODY=$(cat "$out")
   case "$CF_STATUS" in
     2??)
-      if ! printf '%s' "$CF_BODY" | jq -e '.success == true' >/dev/null 2>&1; then
+      if ! printf '%s' "$CF_BODY" | jq -es "$CF_ENVELOPE_FILTER" >/dev/null 2>&1; then
         CF_STATUS="$CF_STATUS-bad-body"
       fi
       ;;

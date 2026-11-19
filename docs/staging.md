@@ -17,8 +17,11 @@ rule is created or changed for it). Nothing here uses the dashboard.
   is never printed.
 - Every script refuses to run (exit 1) if shell tracing (`bash -x`,
   `SHELLOPTS=xtrace`) is on, so credentials cannot be traced.
-- A call succeeds only on a 2xx status and a JSON body with `success: true`;
-  anything else, including malformed JSON, is a failure.
+- The token is captured into the private variable in the first lines of each
+  script, before any external command or command substitution.
+- A call succeeds only on a 2xx status and a body that is exactly one JSON
+  object with `success: true`; anything else (malformed JSON, several
+  concatenated documents, an array) is a failure.
 
 ## Required environment
 
@@ -44,10 +47,15 @@ Run each in dry run first, read the output, then re-run with `--apply`.
    only when the domain reads `active`. Exit 2 means still pending; re-run it.
 3. `scripts/staging/ensure-turnstile.sh` creates the managed Turnstile widget
    `renegade-penguin-contact` for the staging and apex hostnames. It prints
-   only the sitekey. The secret streams from the create response straight to
-   Doppler on stdin (`doppler secrets set TURNSTILE_SECRET_KEY --project no-php-no-cry --config dev_renegadepenguin`);
-   it never touches a file or a shell variable, and Doppler's output is
-   discarded. Before creating, it reads the Doppler config metadata and stops
+   only the sitekey. The secret goes to Doppler on stdin only
+   (`doppler secrets set TURNSTILE_SECRET_KEY --project no-php-no-cry --config dev_renegadepenguin`);
+   it is never written to a file, exported, put in argv or printed, and
+   Doppler's output is discarded. Nothing is sent to Doppler unless the HTTP
+   status is 2xx and the body is exactly one JSON object with `success: true`.
+   Because curl reports the status only after the body, the response is held in
+   one private, non-exported shell variable from curl's exit until the Doppler
+   call returns, and unset immediately; a pure stream could not gate delivery on
+   the status. Before creating, it reads the Doppler config metadata and stops
    if that fails. If the widget is created but storing the secret fails, it
    prints the sitekey and the recovery step (delete or rotate that widget) and
    exits non-zero. Cloudflare returns the secret only at creation, so an
@@ -64,6 +72,14 @@ Run each in dry run first, read the output, then re-run with `--apply`.
    is created, with just this rule, only if none exists. Which periods and timeouts are allowed
    depends on the Cloudflare plan; if the API rejects the values the script
    stops with the error and changes nothing.
+
+## Residual risk
+
+A caller who controls the shell environment before launch (for example `PS4`,
+`SHELLOPTS` or `BASH_XTRACEFD`) can expose an environment-delivered token.
+Launch these scripts only from your own trusted shell. The xtrace refusal
+protects against accidental tracing only; it is not a defense against a hostile
+launch environment.
 
 ## Tests
 

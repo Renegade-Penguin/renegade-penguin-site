@@ -98,6 +98,32 @@ t_run "$S" --apply
 t_rc 1 "success false is a failure"
 if grep -q 'secrets set' "$T/doppler-argv.log"; then t_fail "doppler set called after failed create"; else t_ok "doppler set not called after failed create"; fi
 
+echo "-- HTTP 500 with success true: nothing may reach doppler"
+t_reset
+t_resp GET "$LIST" 200 '{"success":true,"result":[]}'
+t_resp POST "$W" 500 "$CREATED"
+t_run "$S" --apply
+t_rc 1 "HTTP 500 is a failure even with success true"
+if grep -q 'secrets set' "$T/doppler-argv.log"; then t_fail "doppler set invoked after HTTP 500"; else t_ok "doppler set never invoked after HTTP 500"; fi
+if [ -e "$T/doppler-stdin.log" ]; then t_fail "doppler received bytes after HTTP 500"; else t_ok "doppler received no bytes after HTTP 500"; fi
+t_token_never_leaks
+
+echo "-- concatenated JSON documents on create: nothing may reach doppler"
+for combo in "false-true" "true-false" "true-true"; do
+  t_reset
+  t_resp GET "$LIST" 200 '{"success":true,"result":[]}'
+  case "$combo" in
+    false-true) body='{"success":false,"errors":[]}'"$CREATED" ;;
+    true-false) body="$CREATED"'{"success":false,"errors":[]}' ;;
+    *) body="$CREATED$CREATED" ;;
+  esac
+  t_resp POST "$W" 200 "$body"
+  t_run "$S" --apply
+  t_rc 1 "concatenated documents ($combo) are rejected"
+  if grep -q 'secrets set' "$T/doppler-argv.log"; then t_fail "doppler set invoked ($combo)"; else t_ok "doppler set never invoked ($combo)"; fi
+  t_token_never_leaks
+done
+
 echo "-- malformed list response"
 t_reset
 t_resp GET "$LIST" 200 'not json'

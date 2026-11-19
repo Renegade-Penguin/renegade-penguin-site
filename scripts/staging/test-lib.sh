@@ -17,9 +17,11 @@ t_setup() {
   cp "$STAGING_DIR/testdata/fake-doppler.sh" "$T/bin/doppler"
   cp "$STAGING_DIR/testdata/fake-jq.sh" "$T/bin/jq"
   cp "$STAGING_DIR/testdata/fake-leakcheck.sh" "$T/fake-leakcheck.sh"
-  chmod +x "$T/bin/curl" "$T/bin/doppler" "$T/bin/jq"
+  cp "$STAGING_DIR/testdata/fake-dirname.sh" "$T/bin/dirname"
+  chmod +x "$T/bin/curl" "$T/bin/doppler" "$T/bin/jq" "$T/bin/dirname"
   FAKE_REAL_JQ=$(command -v jq)
-  export FAKE_REAL_JQ
+  FAKE_REAL_DIRNAME=$(command -v dirname)
+  export FAKE_REAL_JQ FAKE_REAL_DIRNAME
   # Markers the fakes look for in their environment and under the script's TMPDIR.
   printf '%s\n%s\n' "$TEST_TOKEN" "$TEST_SECRET" >"$T/markers"
   : >"$T/calls.log"
@@ -125,6 +127,9 @@ t_token_never_leaks() {
   fi
   if [ -s "$T/leak.log" ]; then
     t_fail "fake executable saw a secret: $(cat "$T/leak.log")"
+  fi
+  if [ -e "$T/dirname.log" ]; then
+    t_fail "the script ran dirname (an external command) before privatizing the token"
   fi
   if grep -rqFf "$T/markers" "$T/tmp" 2>/dev/null; then
     t_fail "secret found in a file under the script temp dir"

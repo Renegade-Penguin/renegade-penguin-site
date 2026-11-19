@@ -5,17 +5,27 @@ if [ "$xtrace_was_on" = 1 ]; then
   echo "error: xtrace is enabled; refusing to run so credentials cannot be traced" >&2
   exit 1
 fi
+# Privatize the token before ANY external command or command substitution:
+# a non-exported variable, and the exported one is unset.
+unset CF_TOKEN_PRIVATE
+CF_TOKEN_PRIVATE=${CLOUDFLARE_API_TOKEN:-}
+unset CLOUDFLARE_API_TOKEN
 # Ensure the Turnstile widget renegade-penguin-contact exists.
-# Prints only the sitekey. The widget secret is never printed and never touches
-# a file or a general shell variable: the create response streams from curl
-# into jq, and jq feeds the secret straight into the stdin of
-# `doppler secrets set` (stdin form, so it is not in argv). Doppler's stdout and
-# stderr are both discarded; only its exit status is used.
+# Prints only the sitekey. The widget secret is never printed, never written to
+# a file, never exported and never in argv. It reaches `doppler secrets set` on
+# stdin (stdin form). Doppler's stdout and stderr are both discarded; only its
+# exit status is used.
+# Why one private variable: the HTTP status is known only when curl finishes,
+# after the body, so a pure stream cannot gate delivery on a 2xx status. The
+# response is therefore held in the single non-exported variable RESP_PRIVATE
+# from curl's exit until the doppler call returns, checked (2xx status and a
+# single-object success:true envelope) first, and unset immediately after. No
+# byte reaches doppler unless both checks pass.
 # Required env: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
 # Dry run by default; --apply performs the create and the Doppler write.
 set -euo pipefail
 
-here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+case ${BASH_SOURCE[0]} in */*) here=${BASH_SOURCE[0]%/*} ;; *) here=. ;; esac
 # shellcheck source=lib.sh
 . "$here/lib.sh"
 
@@ -23,44 +33,46 @@ WIDGET_NAME="renegade-penguin-contact"
 DOPPLER_PROJECT="no-php-no-cry"
 DOPPLER_CONFIG="dev_renegadepenguin"
 
-# create_widget_streaming BODY: POST the widget and store its secret without
-# the secret ever being held outside a pipe. Sets WIDGET_SITEKEY and
-# WIDGET_STATE (stored, failed or skipped), and CF_STATUS (HTTP code).
-create_widget_streaming() {
-  local body=$1 meta ok
+# create_widget BODY: POST the widget and, only if the HTTP status is 2xx AND
+# the body is exactly one object with success true, hand the secret to doppler.
+# Sets WIDGET_SITEKEY, WIDGET_STATE (stored, failed or skipped) and CF_STATUS.
+create_widget() {
+  local body=$1 status
+  WIDGET_SITEKEY=""
+  WIDGET_STATE=skipped
   printf '%s' "$body" >"$CF_TMP/body"
-  # curl stdout (the response) is piped straight to jq. The HTTP status goes to
-  # stderr via %{stderr} into a file; it carries no secret. jq prints three
-  # non-secret lines (success flag, sitekey, has-secret flag) and then the raw
-  # secret with no newline. The reading group consumes the three lines and
-  # hands the rest (the secret) to doppler as its stdin.
-  meta=$(cf_auth_config |
-    curl -sS --max-time 30 -K - -X POST -w '%{stderr}%{http_code}' \
-      --data-binary "@$CF_TMP/body" "$CF_API_BASE$base" 2>"$CF_TMP/status" |
-    jq -j '(.success == true | tostring), "\n", (.result.sitekey // ""), "\n",
-           ((.result.secret // "") | length > 0 | tostring), "\n", (.result.secret // "")' 2>/dev/null |
-    {
-      IFS= read -r ok || ok=""
-      IFS= read -r sk || sk=""
-      IFS= read -r has || has=""
-      state=skipped
-      if [ "$ok" = true ] && [ "$has" = true ]; then
-        if doppler secrets set TURNSTILE_SECRET_KEY --project "$DOPPLER_PROJECT" --config "$DOPPLER_CONFIG" >/dev/null 2>&1; then
-          state=stored
+  # The status follows the body after a newline (curl expands \n in -w).
+  RESP_PRIVATE=$(cf_auth_config |
+    curl -sS --max-time 30 -K - -X POST -w '\n%{http_code}' \
+      --data-binary "@$CF_TMP/body" "$CF_API_BASE$base") || RESP_PRIVATE=""
+  status=${RESP_PRIVATE##*$'\n'}
+  if [[ "$status" =~ ^[0-9]{3}$ ]]; then
+    RESP_PRIVATE=${RESP_PRIVATE%$'\n'*}
+  else
+    # Unexpected shape: never let body text (which may hold the secret) be
+    # mistaken for a status or printed.
+    status=000
+    RESP_PRIVATE=""
+  fi
+  CF_STATUS=$status
+  if [[ "$status" =~ ^2[0-9][0-9]$ ]]; then
+    if printf '%s' "$RESP_PRIVATE" | jq -es "$CF_ENVELOPE_FILTER" >/dev/null 2>&1; then
+      WIDGET_SITEKEY=$(printf '%s' "$RESP_PRIVATE" | jq -r '.result.sitekey // empty' 2>/dev/null || true)
+      if printf '%s' "$RESP_PRIVATE" | jq -e '(.result.secret // "") | type == "string" and length > 0' >/dev/null 2>&1; then
+        # Both checks passed. The secret goes only to doppler's stdin; its
+        # stdout and stderr are discarded and only the exit status is kept.
+        if printf '%s' "$RESP_PRIVATE" | jq -j '.result.secret' 2>/dev/null |
+          doppler secrets set TURNSTILE_SECRET_KEY --project "$DOPPLER_PROJECT" --config "$DOPPLER_CONFIG" >/dev/null 2>&1; then
+          WIDGET_STATE=stored
         else
-          state=failed
+          WIDGET_STATE=failed
         fi
       fi
-      printf '%s|%s|%s\n' "$ok" "$sk" "$state"
-    }) || meta=""
-  CF_STATUS=$(grep -oE '[0-9]{3}$' "$CF_TMP/status" || true)
-  ok=${meta%%|*}
-  WIDGET_SITEKEY=${meta#*|}
-  WIDGET_SITEKEY=${WIDGET_SITEKEY%%|*}
-  WIDGET_STATE=${meta##*|}
-  if [ "$ok" != true ]; then
-    CF_STATUS="${CF_STATUS:-000}-not-success"
+    else
+      CF_STATUS="$status-bad-body"
+    fi
   fi
+  unset RESP_PRIVATE
 }
 
 cf_init "ensure-turnstile" "$@"
@@ -100,7 +112,7 @@ if ! doppler configs get --project "$DOPPLER_PROJECT" --config "$DOPPLER_CONFIG"
 fi
 
 printf 'WRITE POST %s\n' "$base"
-create_widget_streaming "$body"
+create_widget "$body"
 case "$CF_STATUS" in
   2??) ;;
   *) cf_die "POST $base returned HTTP $CF_STATUS; nothing was stored" ;;

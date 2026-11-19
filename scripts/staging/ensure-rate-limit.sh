@@ -5,6 +5,11 @@ if [ "$xtrace_was_on" = 1 ]; then
   echo "error: xtrace is enabled; refusing to run so credentials cannot be traced" >&2
   exit 1
 fi
+# Privatize the token before ANY external command or command substitution:
+# a non-exported variable, and the exported one is unset.
+unset CF_TOKEN_PRIVATE
+CF_TOKEN_PRIVATE=${CLOUDFLARE_API_TOKEN:-}
+unset CLOUDFLARE_API_TOKEN
 # Ensure one zone rate-limit rule for POST /api/contact (phase http_ratelimit):
 # 5 requests per 10 minutes per IP, block for 10 minutes.
 # The ruleset is never replaced. The phase entrypoint is read first; when it
@@ -15,7 +20,7 @@ fi
 # Dry run by default; --apply performs the write.
 set -euo pipefail
 
-here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+case ${BASH_SOURCE[0]} in */*) here=${BASH_SOURCE[0]%/*} ;; *) here=. ;; esac
 # shellcheck source=lib.sh
 . "$here/lib.sh"
 
