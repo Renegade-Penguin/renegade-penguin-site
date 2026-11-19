@@ -14,7 +14,7 @@ Renegade Penguin can assess current safeguards, identify gaps, and help build a 
 
 Practices depend on EHR providers, imaging vendors, billing services, cloud platforms, managed service providers, and other outside organizations. The useful questions are specific: What information can the vendor access? How is that access limited? What happens when staff leave? How are incidents reported? Can data be recovered?
 
-A business associate agreement may be requested where appropriate. {{OWNER:state the BAA stance for healthcare clients}}
+A business associate agreement may be requested where appropriate. Renegade Penguin will sign a business associate agreement when the work involves protected health information, subject to case-by-case review before work begins.
 
 ## Are we ready for ransomware or another disruptive incident?
 

@@ -30,6 +30,6 @@ Site content made available under a stated content license may be used according
 
 ## Governing law
 
-These terms are governed by {{OWNER:governing law and venue}}.
+These terms are governed by the laws of the State of Ohio, with disputes heard in the state or federal courts located in Ohio.
 
 {{OWNER:counsel review of terms}}

@@ -18,7 +18,7 @@ Contract language provided by a client may require review before work begins.
 
 ## Healthcare and BAAs
 
-Renegade Penguin’s position on business associate agreements and work involving protected health information is: {{OWNER:state the BAA stance for healthcare clients}}.
+Renegade Penguin’s position on business associate agreements and work involving protected health information is: to sign a business associate agreement when the work involves protected health information, subject to case-by-case review before work begins.
 
 No protected health information should be provided until the applicable agreement and handling requirements are confirmed in writing.
 
