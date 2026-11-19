@@ -1,0 +1,23 @@
+{{- /* JSON-LD data blocks. Not executable, so the CSP (no script source) is untouched; scripts/check-html.py allows only this type. */ -}}
+{{- $org := dict
+  "@context" "https://schema.org"
+  "@type" "Organization"
+  "@id" (printf "%s#organization" site.Home.Permalink)
+  "name" "Renegade Penguin LLC"
+  "url" site.Home.Permalink
+  "logo" (absURL "brand/penguin-color.png")
+  "sameAs" (slice "https://chiefgyk3d.com/")
+-}}
+<script type="application/ld+json">{{ $org | jsonify | safeJS }}</script>
+{{- if eq .RelPermalink "/about/" }}
+{{- $person := dict
+  "@context" "https://schema.org"
+  "@type" "Person"
+  "name" "ChiefGyk3D"
+  "jobTitle" "Founder"
+  "url" .Permalink
+  "worksFor" (dict "@id" (printf "%s#organization" site.Home.Permalink))
+  "sameAs" (slice "https://chiefgyk3d.com/")
+-}}
+<script type="application/ld+json">{{ $person | jsonify | safeJS }}</script>
+{{- end }}
