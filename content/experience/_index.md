@@ -11,9 +11,9 @@ I have worked across medical, dental, private aviation, critical infrastructure,
 
 ## A Warning That Went Unheard
 
-Years ago, I warned a large healthcare distributor in person that it was extremely vulnerable. The warnings were clear, but they went unheeded. The organization was later hit by ransomware.
+Years ago, I gave an organization a clear warning about serious security weaknesses. It was ignored until the cost became unavoidable.
 
-This is not a story about being proven right. It is a reminder that clear warnings are often ignored until the cost becomes unavoidable. The first step in improving security is listening.
+I did not take that as proof that I was right. I took it as a reminder that improving security starts with listening.
 
 ## Tested Assumptions
 
