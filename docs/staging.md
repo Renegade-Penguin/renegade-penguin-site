@@ -89,18 +89,26 @@ Run each in dry run first, read the output, then re-run with `--apply`.
    checked without writing, so a write failure is caught only by the recovery
    path above.
 4. `scripts/staging/ensure-rate-limit.sh` adds one rate-limit rule to the zone
-   (phase `http_ratelimit`) for `/api/contact`: 5 POST requests per 10 minutes
+   (phase `http_ratelimit`) for `/api/contact`: 5 POST requests per 10 seconds
    per data center per IP,
-   block for 10 minutes. The plan requires `cf.colo.id` among the
+   block for 10 seconds. The plan requires `cf.colo.id` among the
    characteristics (API code 20155), so counting is per data center per IP
    (`cf.colo.id` plus `ip.src`): the effective global limit is looser than 5
-   per 10 minutes. It never replaces the ruleset. It reads the phase
+   per 10 seconds. It never replaces the ruleset. It reads the phase
    entrypoint first: if the ruleset exists it POSTs only this one rule to that
    ruleset's rules endpoint (an identical rule already present is skipped; a
    rule with the same ref but different content stops the script); the ruleset
    is created, with just this rule, only if none exists. Which periods and timeouts are allowed
    depends on the Cloudflare plan; if the API rejects the values the script
    stops with the error and changes nothing.
+
+## Limits
+
+On the Cloudflare Free plan the rate-limit rule is a coarse backstop only:
+the counting period is 10 s, the block lasts 10 s, one rule is allowed, and
+counting is per data center. The real abuse controls are the Turnstile
+single-use token verified server-side and the Function's input validation. A
+paid plan would allow longer periods and a challenge action.
 
 ## Residual risk
 

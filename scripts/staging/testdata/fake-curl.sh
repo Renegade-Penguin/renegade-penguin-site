@@ -76,6 +76,17 @@ if [ ! -f "$FAKE_DIR/resp/$key.status" ] && [ "$method" = POST ] &&
   bodyfile="$FAKE_DIR/default.body"
   printf '%s' '{"success":false,"errors":[{"code":20155,"message":"'"'"'[ip.src]'"'"' is not a valid value for characteristics because characteristics field is missing '"'"'cf.colo.id'"'"', this is required"}],"result":null}' >"$bodyfile"
 fi
+# Like the Free plan: only a 10 s counting period and a 10 s mitigation timeout
+# are entitled; anything else is rejected with HTTP 400 (unless canned).
+if [ ! -f "$FAKE_DIR/resp/$key.status" ] && [ "$method" = POST ]; then
+  for field in period mitigation_timeout; do
+    if [[ "$body" =~ \"$field\":([0-9]+) ]] && [ "${BASH_REMATCH[1]}" != 10 ]; then
+      status=400
+      bodyfile="$FAKE_DIR/default.body"
+      printf '%s' '{"success":false,"errors":[{"code":20120,"message":"not entitled to use the '"${field//_/ }"' '"${BASH_REMATCH[1]}"', can only use a '"${field//_/ }"' among [10]"}],"result":null}' >"$bodyfile"
+    fi
+  done
+fi
 size=$(wc -c <"$bodyfile")
 size=${size//[[:space:]]/}
 
