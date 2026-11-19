@@ -203,6 +203,36 @@ b "script-src-elem *" clean bad-csp-script-elem production csp SKIP_CSP
 b "frame-src host" clean bad-csp-frame-src production csp SKIP_CSP
 b "object-src data:" clean bad-csp-object-data production csp SKIP_CSP
 
+# Contact page Turnstile exception (issue #4): one script tag, on contact/index.html only,
+# and the Turnstile origins only in a contact route CSP that detaches the all-routes one.
+expect_pass "contact page with the one Turnstile script" "$(stage clean "$FIX/ok-turnstile")" production
+expect_pass "contact page with the Turnstile script without async" "$(stage clean "$FIX/ok-turnstile-noasync")" production
+expect_pass "contact CSP block with the Turnstile origins" "$(stage clean "$FIX/ok-turnstile-csp-contact")" production
+b "Turnstile script on the home page" clean bad-turnstile-home production no_script SKIP_NO_SCRIPT
+b "Turnstile script on another page" clean bad-turnstile-other-page production no_script SKIP_NO_SCRIPT
+b "second script on the contact page" clean bad-turnstile-second production no_script SKIP_NO_SCRIPT
+b "script from another allowed origin on the contact page" clean bad-turnstile-origin production no_script SKIP_NO_SCRIPT
+b "inline script on the contact page" clean bad-turnstile-inline production no_script SKIP_NO_SCRIPT
+b "extra attribute on the Turnstile script" clean bad-turnstile-attr production no_script SKIP_NO_SCRIPT
+# A different path on the Turnstile host trips both the script allowlist and the host check.
+run_check "$(stage clean "$FIX/bad-turnstile-path")" production
+if [ "$RC" = "0" ] || ! grep -q "^FAIL no_script:" <<<"$OUT" || ! grep -q "^FAIL external_host:" <<<"$OUT"; then
+  soft "other path on the Turnstile host: expected no_script and external_host failures, got exit $RC: $OUT"
+else
+  run_check "$(stage clean "$FIX/bad-turnstile-path")" production SKIP_NO_SCRIPT=1 SKIP_EXTERNAL_HOST=1
+  if [ "$RC" != "0" ]; then
+    soft "other path on the Turnstile host: expected pass with both skips, got exit $RC: $OUT"
+  else
+    echo "ok: other path on the Turnstile host fails no_script and external_host"
+  fi
+fi
+b "Turnstile origins in the all-routes CSP" clean bad-turnstile-csp-star production csp SKIP_CSP
+b "extra host in the contact CSP" clean bad-turnstile-csp-contact-host production csp SKIP_CSP
+b "Turnstile origin in connect-src of the contact CSP" clean bad-turnstile-csp-contact-connect production csp SKIP_CSP
+b "contact CSP without detaching the all-routes CSP" clean bad-turnstile-csp-no-detach production csp SKIP_CSP
+b "Turnstile CSP on a route other than contact" clean bad-turnstile-csp-other-route production csp SKIP_CSP
+b "contact CSP detached after it is set" clean bad-turnstile-csp-detach-last production csp SKIP_CSP
+
 # Unsafe schemes and meta refresh
 b "javascript: href" clean bad-scheme-js production unsafe_scheme SKIP_UNSAFE_SCHEME
 b "obfuscated javascript: href" clean bad-scheme-js-obfuscated production unsafe_scheme SKIP_UNSAFE_SCHEME

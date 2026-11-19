@@ -18,11 +18,21 @@ header lines under it are indented. Rules:
     holds only 'none' or 'self' (no wildcard, scheme, host, unsafe-* token or nonce),
     report-uri and report-to hold only a relative path, and base-uri, form-action
     and frame-ancestors are present.
+
+One exception, the contact page (issue #4): the "/contact/*" block must replace the
+all-routes policy, because Cloudflare would otherwise apply both and the browser enforces
+their intersection. It lists "! Content-Security-Policy" and then sets exactly one policy,
+which follows every rule above except that script-src and frame-src may also hold
+https://challenges.cloudflare.com (Turnstile). That origin is allowed nowhere else, and no
+other route may set or detach a policy. The other security headers are inherited from "/*".
 """
 import re
 import sys
 
 SAFE = {"'none'", "'self'"}
+TURNSTILE = "https://challenges.cloudflare.com"
+CONTACT_ROUTE = "/contact/*"
+CONTACT_ALLOW = {"script-src": {TURNSTILE}, "frame-src": {TURNSTILE}}
 REQUIRED = ("base-uri", "form-action", "frame-ancestors")
 LOCKED = ("default-src", "script-src", "style-src", "connect-src")
 # Directives that take no source list; every other directive may hold only SAFE tokens.
@@ -77,7 +87,9 @@ def relative_path(tok):
     return tok.startswith("/") and not tok.startswith("//") and ":" not in tok
 
 
-def check_policy(policy):
+def check_policy(policy, extra=None):
+    """extra maps a directive name to additional source tokens allowed in it."""
+    extra = extra or {}
     problems = []
     dirs = {}
     for part in policy.split(";"):
@@ -97,7 +109,7 @@ def check_policy(policy):
         if d in LOCKED and not toks:
             problems.append("%s is empty" % d)
         for t in toks:
-            if t not in SAFE:
+            if t not in SAFE and t not in extra.get(d, ()):
                 problems.append("%s has disallowed token %s" % (d, t))
     for d in REQUIRED:
         if d not in dirs:
@@ -159,6 +171,8 @@ def check_blocks(blocks):
         for name, _value, detached in hs:
             if name not in PROTECTED:
                 continue
+            if route == CONTACT_ROUTE and name == CSP:
+                continue  # judged below: detach, then set one policy
             if detached:
                 problems.append("route %s detaches %s" % (route, name))
             if name in seen:
@@ -185,10 +199,16 @@ def check_blocks(blocks):
     for route, hs in blocks:
         if route == SITE_ROUTE:
             continue
+        if route == CONTACT_ROUTE:
+            ops = [(h[2], h[1]) for h in hs if h[0] == CSP]
+            if len(ops) == 2 and ops[0][0] and not ops[1][0]:
+                problems.extend(check_policy(ops[1][1], CONTACT_ALLOW))
+            elif ops:
+                problems.append("route %s must detach Content-Security-Policy, then set exactly one" % route)
         for name, value, detached in hs:
             if detached:
                 continue
-            if name == CSP:
+            if name == CSP and route != CONTACT_ROUTE:
                 problems.append("route %s sets Content-Security-Policy" % route)
             elif name in SECURITY_HEADERS and base.get(name) != value:
                 problems.append("route %s changes %s" % (route, name))
