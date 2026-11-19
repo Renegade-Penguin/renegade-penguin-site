@@ -1,4 +1,21 @@
 {{ define "main" }}
-<h1>{{ .Title }}</h1>
-{{ with .Content }}{{ . }}{{ else }}<p class="lede muted">Site under construction.</p>{{ end }}
+<section class="panel hero">
+  <img src="/brand/penguin-color.png" alt="Renegade Penguin mascot: a penguin holding a rifle" width="512" height="512">
+  <h1>{{ .Title }}</h1>
+  <p class="sub">{{ .Description }}</p>
+  <a class="cta" href="#services">See services</a>
+</section>
+{{ $cards := slice }}
+{{ with site.GetPage "/services" }}{{ $cards = .Pages.ByWeight }}{{ end }}
+<section class="services" id="services"{{ if $cards }} aria-labelledby="services-label"{{ end }}>
+  {{ if $cards }}
+  <h2 class="label" id="services-label">Services</h2>
+  {{ range $cards }}
+  <article class="card">
+    <h3>{{ .Title }}</h3>
+    {{ with .Params.summary }}<p>{{ . }}</p>{{ end }}
+  </article>
+  {{ end }}
+  {{ end }}
+</section>
 {{ end }}

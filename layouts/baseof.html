@@ -11,12 +11,13 @@
 {{- $main := resources.Get "css/main.css" -}}
 {{- $css := slice (resources.Get "css/tokens.css") $main | resources.Concat "css/site.css" | minify | fingerprint -}}
 <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
+<link rel="preload" href="/fonts/jost-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" type="image/png" href="/brand/penguin-color.png">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 {{ partial "header.html" . }}
-<main id="main">
+<main id="main"{{ if .IsHome }} class="home"{{ end }}>
 {{ block "main" . }}{{ end }}
 </main>
 {{ partial "footer.html" . }}

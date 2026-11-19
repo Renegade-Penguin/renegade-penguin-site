@@ -11,13 +11,15 @@ fail() {
   exit 1
 }
 
-# scratch_site <name> <markdown body>: copies config and layouts, writes one page, echoes the dir.
+# scratch_site <name> <markdown body>: copies config and layouts, writes the body into the
+# /about/ page (the home page lays out a hero and cards, it does not render a body), echoes the dir.
 scratch_site() {
   local d="$TMP/$1"
-  mkdir -p "$d/content"
+  mkdir -p "$d/content/about"
   cp "$ROOT/hugo.toml" "$d/"
   cp -r "$ROOT/layouts" "$ROOT/assets" "$ROOT/static" "$d/"
-  printf -- '---\ntitle: "Home"\n---\n\n%s\n' "$2" >"$d/content/_index.md"
+  printf -- '---\ntitle: "Home"\n---\n' >"$d/content/_index.md"
+  printf -- '---\ntitle: "About"\n---\n\n%s\n' "$2" >"$d/content/about/_index.md"
   echo "$d"
 }
 
@@ -27,7 +29,7 @@ d=$(scratch_site ok '[a](https://example.org/) [b](HTTPS://EVIL.example/) [c](//
   cat "$TMP/ok.err" >&2
   fail "build with allowed links failed"
 }
-html="$d/out/index.html"
+html="$d/out/about/index.html"
 tag() { grep -o "<a [^>]*href=\"$1\"[^>]*>" "$html" | head -1 || true; }
 need_rel() {
   local t
@@ -87,7 +89,7 @@ done
 # Either the build fails, or the output must hold no javascript: href.
 d=$(scratch_site "nl" "$(gen_body leading-newline)")
 if "$HUGO" --source "$d" --destination "$d/out" >/dev/null 2>"$TMP/nl.err"; then
-  if grep -qi 'href="[^"]*javascript:' "$d/out/index.html"; then fail "leading-newline javascript: reached an href"; fi
+  if grep -qi 'href="[^"]*javascript:' "$d/out/about/index.html"; then fail "leading-newline javascript: reached an href"; fi
 fi
 rm -rf "$d"
 echo "PASS: render-link ok"
