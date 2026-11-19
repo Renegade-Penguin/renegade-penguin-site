@@ -3,4 +3,13 @@
     <span>&copy; {{ now.Year }} Renegade Penguin LLC</span>
     <a href="https://chiefgyk3d.com/" rel="noopener">chiefgyk3d.com</a>
   </div>
+  {{- with site.Menus.footer }}
+  <nav class="footer-nav" aria-label="Footer">
+    <ul>
+      {{- range . }}
+      <li><a href="{{ .URL }}">{{ .Name }}</a></li>
+      {{- end }}
+    </ul>
+  </nav>
+  {{- end }}
 </footer>

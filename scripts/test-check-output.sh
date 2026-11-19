@@ -362,6 +362,32 @@ file_case "_headers route line with a trailing space" csp SKIP_CSP _headers 'ope
 file_case "_headers route line with text after the path" csp SKIP_CSP _headers 'open(sys.argv[1] + "/_headers", "rb").read() + b"\n/docs/* extra\n  X-Robots-Tag: all\n"'
 file_case "_headers with /* repeated" csp SKIP_CSP _headers 'open(sys.argv[1] + "/_headers", "rb").read() + b"\n/*\n  X-Frame-Options: DENY\n"'
 
+# Opt-in owner-token check: a page holding an unresolved owner placeholder fails only when
+# REQUIRE_NO_OWNER_TOKENS=1 (the deploy workflow sets it); CI keeps placeholders green.
+tok_tree="$(stage clean)"
+python3 -I -c '
+import sys
+open(sys.argv[1] + "/owner.html", "w").write("<p>stance: " + chr(123) * 2 + "OWNER:state it" + chr(125) * 2 + "</p>")
+' "$tok_tree"
+run_check "$tok_tree" production
+if [ "$RC" = "0" ]; then echo "ok: owner token passes when the check is not enabled"; else soft "owner token must pass when not enabled: $OUT"; fi
+run_check "$tok_tree" production REQUIRE_NO_OWNER_TOKENS=1
+if [ "$RC" != "0" ] && grep -q '^FAIL owner_tokens:' <<<"$OUT"; then echo "ok: owner token fails when REQUIRE_NO_OWNER_TOKENS=1"; else soft "owner token must fail when enabled: rc=$RC $OUT"; fi
+run_check "$tok_tree" production REQUIRE_NO_OWNER_TOKENS=1 SKIP_OWNER_TOKENS=1
+if [ "$RC" = "0" ]; then echo "ok: SKIP_OWNER_TOKENS=1 disables the owner token check"; else soft "SKIP_OWNER_TOKENS=1 must pass: $OUT"; fi
+run_check "$(stage clean)" production REQUIRE_NO_OWNER_TOKENS=1
+if [ "$RC" = "0" ]; then echo "ok: clean tree passes with REQUIRE_NO_OWNER_TOKENS=1"; else soft "clean tree must pass with the check enabled: $OUT"; fi
+
+# The owner token helper crashing must fail the build when the check is enabled.
+stub="$(mktemp -d "$WORK/stub.XXXXXX")"
+cp -R scripts/. "$stub/"
+printf '%s\n' 'raise RuntimeError("stub crash")' >"$stub/check-owner-tokens.py"
+set +e
+OUT="$(env EXPECT_ENV=production SCRUB_TERMS_FILE="$TERMS" REQUIRE_NO_OWNER_TOKENS=1 "$stub/check-output.sh" "$(stage clean)" 2>&1)"
+RC=$?
+set -e
+if [ "$RC" != "0" ] && grep -q '^FAIL owner_tokens:' <<<"$OUT"; then echo "ok: crashing check-owner-tokens.py fails the build"; else soft "crashing check-owner-tokens.py must fail the build: rc=$RC $OUT"; fi
+
 # A crashing helper must fail the build (fail closed): swap one helper for a stub.
 for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check-claims.py; do
   stub="$(mktemp -d "$WORK/stub.XXXXXX")"
@@ -381,7 +407,7 @@ for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check
 done
 
 # Each helper catches its own unexpected exceptions and exits 70 (here: missing arguments).
-for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check-claims.py; do
+for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check-claims.py check-owner-tokens.py; do
   set +e
   OUT="$(python3 -I "scripts/$helper" 2>&1)"
   RC=$?
