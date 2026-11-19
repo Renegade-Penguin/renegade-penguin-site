@@ -34,16 +34,19 @@ class Collector(HTMLParser):
 
 
 def has_marker(text):
-    # Whitespace inside the marker is tolerated so a split token still counts.
+    # Whitespace inside the marker is tolerated so a split token still counts; case is ignored.
     compact = re.sub(r"\s+", "", text)
-    return MARKER in compact
+    return MARKER in compact.upper()
 
 
 def main():
+    if not os.path.isdir(sys.argv[1]):
+        print("not a directory: %s" % sys.argv[1], file=sys.stderr)
+        sys.exit(2)
     found = 0
     for root, _dirs, files in os.walk(sys.argv[1]):
         for name in sorted(files):
-            if not name.endswith(HTML_SUFFIXES):
+            if not name.lower().endswith(HTML_SUFFIXES):
                 continue
             path = os.path.join(root, name)
             with open(path, encoding="utf-8", errors="replace") as fh:

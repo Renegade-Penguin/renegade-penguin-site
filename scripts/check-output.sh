@@ -206,7 +206,15 @@ owner_tokens() {
   # Opt-in: only when REQUIRE_NO_OWNER_TOKENS=1 (the deploy workflow sets it; CI keeps the
   # placeholders green). check-owner-tokens.py exits 1 with "<file><TAB><detail>" lines when a
   # page holds an unresolved owner placeholder; any other non-zero status is a helper failure.
-  [ "${REQUIRE_NO_OWNER_TOKENS:-}" = "1" ] || return 0
+  # Unset, empty and 0 skip; 1 runs; any other value fails closed so "true" or "yes" cannot skip.
+  case "${REQUIRE_NO_OWNER_TOKENS:-}" in
+    "" | 0) return 0 ;;
+    1) ;;
+    *)
+      report owner_tokens "REQUIRE_NO_OWNER_TOKENS must be 0, 1 or empty, got an unexpected value"
+      return 0
+      ;;
+  esac
   local f d status=0 out
   out="$(python3 -I "$HERE/check-owner-tokens.py" "$DIR" 2>&1)" || status=$?
   if [ "$status" -gt 1 ]; then
