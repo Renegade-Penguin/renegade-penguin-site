@@ -2,7 +2,7 @@
 # Targeted test for the data-driven home page (issue #43, Task 2).
 # (a) every data/home section file exists and parses as TOML with the documented schema;
 # (b) the home templates hold no literal sentence of 40 or more characters;
-# (c) the built home page has one h1, one hero primary button, the sector chips, eight numbered
+# (c) the built home page has one h1, one hero primary button, the sector chips, nine numbered
 #     sections and the owner placeholder inside "Built in the open";
 # (d) a banned claim word placed in a home data file reaches the page and check-claims fails it.
 set -uo pipefail
@@ -21,14 +21,14 @@ soft() {
 python3 -I - <<'PY' || soft "(a) data/home files missing or malformed"
 import tomllib
 
-names = ["hero", "what-we-do", "engagement", "no-vendor-pitches", "built-in-the-open",
+names = ["hero", "what-we-do", "not-typical", "engagement", "no-vendor-pitches", "built-in-the-open",
          "speaking", "pricing-teaser", "behind", "faq"]
 for n in names:
     with open("data/home/%s.toml" % n, "rb") as f:
         d = tomllib.load(f)
     for k in ("eyebrow", "title"):
         assert isinstance(d.get(k), str) and d[k].strip(), (n, k)
-    if n in ("what-we-do", "engagement", "no-vendor-pitches", "built-in-the-open", "pricing-teaser", "faq"):
+    if n in ("what-we-do", "not-typical", "engagement", "no-vendor-pitches", "built-in-the-open", "pricing-teaser", "faq"):
         assert isinstance(d.get("items"), list) and d["items"], (n, "items")
         for it in d["items"]:
             assert isinstance(it.get("title"), str) and it["title"].strip(), (n, "item title")
@@ -37,6 +37,8 @@ for n in names:
         if n == "built-in-the-open":
             assert len(d["items"]) >= 3
             assert all("{{OWNER:" in it["title"] and "{{OWNER:" in it["body"] for it in d["items"])
+        if n == "not-typical":
+            assert len(d["items"]) == 6, (n, len(d["items"]))
         if n == "engagement":
             assert [i.get("stamp") for i in d["items"]] == ["FREE", "CREDITED", "DELIVERED"]
 b = tomllib.load(open("data/home/behind.toml", "rb"))
@@ -130,8 +132,8 @@ hero = tomllib.load(open("data/home/hero.toml", "rb"))
 assert p.h1 == 1, "h1 count %d" % p.h1
 assert p.primary_main == 1, "hero primary buttons %d" % p.primary_main
 assert p.chips == hero["chips"], p.chips
-assert len(p.secs) == 8, p.secs
-assert [s.lstrip("§") for s in p.secs] == ["01", "02", "03", "04", "05", "06", "07", "08"], p.secs
+assert len(p.secs) == 9, p.secs
+assert [s.lstrip("§") for s in p.secs] == ["01", "02", "03", "04", "05", "06", "07", "08", "09"], p.secs
 assert "{{OWNER:" in p.sec_text.get("built-in-the-open", ""), "owner placeholder missing"
 assert p.details == 5, "faq details %d" % p.details
 PY

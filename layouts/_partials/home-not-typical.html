@@ -1,0 +1,12 @@
+<section class="home-sec" id="not-typical" aria-labelledby="not-typical-h">
+  {{ partial "section-head.html" (dict "n" "02" "title" .title "tag" .eyebrow "id" "not-typical-h") }}
+  <p class="lede">{{ .intro }}</p>
+  <div class="grid">
+    {{- range .items }}
+    <article class="card">
+      <h3>{{ .title }}</h3>
+      <p>{{ .body }}</p>
+    </article>
+    {{- end }}
+  </div>
+</section>
