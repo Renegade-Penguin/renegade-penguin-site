@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+xtrace_was_on=0; case $- in *x*) xtrace_was_on=1 ;; esac
+set +x
+if [ "$xtrace_was_on" = 1 ]; then
+  echo "error: xtrace is enabled; refusing to run so credentials cannot be traced" >&2
+  exit 1
+fi
 # Attach staging.renegadepenguinllc.com to the Pages project.
 # Steps: attach the domain, create the proxied CNAME (the API does NOT create
 # it and the domain stays pending without it), PATCH to retry validation, then

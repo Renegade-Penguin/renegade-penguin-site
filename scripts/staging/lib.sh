@@ -2,8 +2,12 @@
 # Shared helpers for the staging scripts. Source this file; do not run it.
 #
 # Safety properties:
-#   - The token is read only from CLOUDFLARE_API_TOKEN and reaches curl only
-#     through a stdin config (curl -K -), never through argv or a file.
+#   - The scripts refuse to run with xtrace on (see the guard at the top of
+#     each script), so no credential is ever expanded while tracing.
+#   - The token is read only from CLOUDFLARE_API_TOKEN, moved into a private,
+#     non-exported shell variable, and the exported one is unset at once, so no
+#     child process inherits it. Only the shell expands it, into curl's stdin
+#     config (curl -K -), never argv and never a file.
 #   - Nothing here prints the token. Response bodies are printed only for
 #     errors, and only the error list.
 #   - Dry run is the default. Writes happen only with --apply.
@@ -17,6 +21,7 @@ APPLY=0
 CF_STATUS=""
 CF_BODY=""
 CF_TMP=""
+CF_TOKEN_PRIVATE=""
 
 cf_die() {
   printf 'error: %s\n' "$*" >&2
@@ -34,6 +39,9 @@ cf_cleanup() {
 cf_init() {
   local name=$1
   shift
+  case $- in
+    *x*) cf_die "xtrace is enabled; refusing to run so credentials cannot be traced" ;;
+  esac
   local args=() required=() seen_sep=0 a
   for a in "$@"; do
     if [ "$seen_sep" = 1 ]; then
@@ -54,15 +62,22 @@ cf_init() {
       *) cf_die "unknown argument: $a" ;;
     esac
   done
+  # Move the token into a private variable and drop the exported one first.
+  unset CF_TOKEN_PRIVATE
+  CF_TOKEN_PRIVATE="${CLOUDFLARE_API_TOKEN:-}"
+  unset CLOUDFLARE_API_TOKEN
   local v
-  for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID ${required[@]+"${required[@]}"}; do
+  if [ -z "$CF_TOKEN_PRIVATE" ]; then
+    cf_die "required environment variable CLOUDFLARE_API_TOKEN is not set"
+  fi
+  for v in CLOUDFLARE_ACCOUNT_ID ${required[@]+"${required[@]}"}; do
     if [ -z "${!v:-}" ]; then
       cf_die "required environment variable $v is not set"
     fi
   done
   # The token goes into a curl config line; reject anything that could break
   # the quoting. Real Cloudflare tokens are [A-Za-z0-9_-].
-  if ! [[ "$CLOUDFLARE_API_TOKEN" =~ ^[A-Za-z0-9_-]+$ ]]; then
+  if ! [[ "$CF_TOKEN_PRIVATE" =~ ^[A-Za-z0-9_-]+$ ]]; then
     cf_die "CLOUDFLARE_API_TOKEN has unexpected characters"
   fi
   CF_TMP=$(mktemp -d)
@@ -74,7 +89,15 @@ cf_init() {
   fi
 }
 
+# cf_auth_config: the curl config (stdin form) carrying the token header.
+# printf is a builtin, so the token is not in any process argv.
+cf_auth_config() {
+  printf 'header = "Authorization: Bearer %s"\nheader = "Content-Type: application/json"\n' \
+    "$CF_TOKEN_PRIVATE"
+}
+
 # cf_call METHOD PATH [BODY]: perform one real call. Sets CF_STATUS, CF_BODY.
+# A 2xx whose body is not JSON with .success == true gets CF_STATUS "<code>-bad-body".
 cf_call() {
   local method=$1 path=$2 body=${3:-}
   local out="$CF_TMP/out"
@@ -84,10 +107,15 @@ cf_call() {
     args+=(--data-binary "@$CF_TMP/body")
   fi
   : >"$out"
-  # The token is written to curl's stdin config, so it is not in argv.
-  CF_STATUS=$(printf 'header = "Authorization: Bearer %s"\nheader = "Content-Type: application/json"\n' \
-    "$CLOUDFLARE_API_TOKEN" | curl "${args[@]}" "$CF_API_BASE$path") || CF_STATUS=000
+  CF_STATUS=$(cf_auth_config | curl "${args[@]}" "$CF_API_BASE$path") || CF_STATUS=000
   CF_BODY=$(cat "$out")
+  case "$CF_STATUS" in
+    2??)
+      if ! printf '%s' "$CF_BODY" | jq -e '.success == true' >/dev/null 2>&1; then
+        CF_STATUS="$CF_STATUS-bad-body"
+      fi
+      ;;
+  esac
 }
 
 # cf_errors: print only the error list from CF_BODY.

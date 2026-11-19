@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
+xtrace_was_on=0; case $- in *x*) xtrace_was_on=1 ;; esac
+set +x
+if [ "$xtrace_was_on" = 1 ]; then
+  echo "error: xtrace is enabled; refusing to run so credentials cannot be traced" >&2
+  exit 1
+fi
 # Ensure one zone rate-limit rule for POST /api/contact (phase http_ratelimit):
 # 5 requests per 10 minutes per IP, block for 10 minutes.
-# The phase entrypoint is read first; PUT replaces the whole ruleset, so the
-# PUT body is the existing rules plus ours, never ours alone.
+# The ruleset is never replaced. The phase entrypoint is read first; when it
+# exists, only this one rule is ADDED (POST to the ruleset's rules endpoint),
+# so rules other people add are never overwritten. The ruleset is created, with
+# just this one rule, only when no entrypoint exists yet.
 # Required env: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_ZONE_ID.
-# Dry run by default; --apply performs the PUT.
+# Dry run by default; --apply performs the write.
 set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -15,40 +23,56 @@ RULE_REF="renegade-penguin-contact-ratelimit"
 
 cf_init "ensure-rate-limit" "$@" -- CLOUDFLARE_ZONE_ID
 
+rule=$(jq -cn --arg ref "$RULE_REF" '{
+  ref: $ref,
+  description: "Contact form: 5 POST per 10 min per IP",
+  expression: "(http.request.uri.path eq \"/api/contact\" and http.request.method eq \"POST\")",
+  action: "block",
+  ratelimit: {
+    characteristics: ["ip.src"],
+    period: 600,
+    requests_per_period: 5,
+    mitigation_timeout: 600
+  }
+}')
+
 path="/zones/$CLOUDFLARE_ZONE_ID/rulesets/phases/http_ratelimit/entrypoint"
 cf_read "$path"
 
-existing='[]'
 case "$CF_STATUS" in
   200)
-    if [ "$(printf '%s' "$CF_BODY" | jq --arg r "$RULE_REF" '[.result.rules[]? | select(.ref == $r)] | length')" -gt 0 ]; then
-      printf 'ok: rule %s already present; nothing to do\n' "$RULE_REF"
-      exit 0
+    ruleset_id=$(printf '%s' "$CF_BODY" | jq -r '.result.id // empty')
+    if [ -z "$ruleset_id" ]; then
+      cf_die "entrypoint response had no ruleset id"
     fi
-    existing=$(printf '%s' "$CF_BODY" | jq -c '.result.rules // []')
+    # Compare only the fields we set; the server adds others.
+    state=$(printf '%s' "$CF_BODY" | jq -r --argjson want "$rule" '
+      def pick: {expression, action, ratelimit: (.ratelimit | {characteristics, period, requests_per_period, mitigation_timeout})};
+      [.result.rules[]? | select(.ref == $want.ref)] as $have
+      | if ($have | length) == 0 then "absent"
+        elif ($have[0] | pick) == ($want | pick) then "identical"
+        else "different" end')
+    case "$state" in
+      identical)
+        printf 'ok: rule %s already present; nothing to do\n' "$RULE_REF"
+        exit 0
+        ;;
+      different)
+        cf_die "a rule with ref $RULE_REF exists but differs; not overwriting it, fix it by hand"
+        ;;
+    esac
+    cf_write POST "/zones/$CLOUDFLARE_ZONE_ID/rulesets/$ruleset_id/rules" "$rule"
     ;;
   404)
-    printf 'no entrypoint ruleset yet; it will be created with only our rule\n'
+    printf 'no entrypoint ruleset yet; creating it with only our rule\n'
+    body=$(jq -cn --argjson r "$rule" \
+      '{name: "zone ratelimit entrypoint", kind: "zone", phase: "http_ratelimit", rules: [$r]}')
+    cf_write POST "/zones/$CLOUDFLARE_ZONE_ID/rulesets" "$body"
     ;;
   *)
     cf_die "GET entrypoint returned HTTP $CF_STATUS $(cf_errors)"
     ;;
 esac
-
-body=$(jq -cn --argjson ex "$existing" --arg ref "$RULE_REF" '
-  {rules: ($ex + [{
-    ref: $ref,
-    description: "Contact form: 5 POST per 10 min per IP",
-    expression: "(http.request.uri.path eq \"/api/contact\" and http.request.method eq \"POST\")",
-    action: "block",
-    ratelimit: {
-      characteristics: ["ip.src"],
-      period: 600,
-      requests_per_period: 5,
-      mitigation_timeout: 600
-    }
-  }])}')
-cf_write PUT "$path" "$body"
 if [ "$APPLY" = 1 ]; then
-  printf 'ok: rule %s added (%s existing rule(s) kept)\n' "$RULE_REF" "$(printf '%s' "$existing" | jq length)"
+  printf 'ok: rule %s added\n' "$RULE_REF"
 fi

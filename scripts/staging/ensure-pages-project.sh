@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+xtrace_was_on=0; case $- in *x*) xtrace_was_on=1 ;; esac
+set +x
+if [ "$xtrace_was_on" = 1 ]; then
+  echo "error: xtrace is enabled; refusing to run so credentials cannot be traced" >&2
+  exit 1
+fi
 # Ensure the Cloudflare Pages project exists (API only, never the dashboard).
 # Required env: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
 # Dry run by default; --apply performs the POST.

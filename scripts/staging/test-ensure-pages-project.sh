@@ -44,6 +44,28 @@ t_run "$S" --apply
 t_rc 1 "unexpected 404 fails"
 t_expect_writes 0 "unexpected 404 makes no write"
 
+echo "-- HTTP 200 with success false on the read is a failure"
+t_reset
+t_resp GET "$P" 200 '{"success":false,"errors":[{"code":1,"message":"x"}],"result":null}'
+t_run "$S" --apply
+t_rc 1 "read with success false fails"
+t_expect_writes 0 "no write after bad read"
+
+echo "-- malformed JSON on the read is a failure"
+t_reset
+t_resp GET "$P" 200 'not json'
+t_run "$S" --apply
+t_rc 1 "malformed JSON fails"
+t_expect_writes 0 "no write after malformed read"
+
+echo "-- HTTP 200 with success false on the write is a failure"
+t_reset
+t_resp GET "$P" 404 "$MISSING"
+t_resp POST /accounts/acct123/pages/projects 200 '{"success":false,"errors":[{"code":1,"message":"nope"}],"result":null}'
+t_run "$S" --apply
+t_rc 1 "write with success false fails"
+t_expect_out "error:" "reports an error"
+
 echo "-- missing env"
 t_reset
 set +e

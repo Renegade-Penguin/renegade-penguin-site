@@ -3,18 +3,23 @@
 # Records the full argv, and one line per call ("METHOD path body") to
 # $FAKE_DIR/calls.log. Reads the stdin config when given -K -.
 # Responses: $FAKE_DIR/resp/<METHOD>_<path with non-alnum as _>.{status,body};
-# default is 200 with {"success":true,"result":{}}.
+# default is 200 with {"success":true,"errors":[],"result":{}}.
+# Without -o the body goes to stdout; a -w containing %{stderr} sends the status
+# to stderr, otherwise it follows the body on stdout (like real curl).
 set -euo pipefail
 
 : "${FAKE_DIR:?}"
+# shellcheck source=fake-leakcheck.sh
+. "$FAKE_DIR/fake-leakcheck.sh"
+fake_leakcheck curl
 printf '%s\n' "$*" >>"$FAKE_DIR/argv.log"
 
-method=GET out="" body="" cfg="" url=""
+method=GET out="" body="" cfg="" url="" wfmt=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -X) method=$2; shift 2 ;;
     -o) out=$2; shift 2 ;;
-    -w) shift 2 ;;
+    -w) wfmt=$2; shift 2 ;;
     -K) cfg=$2; shift 2 ;;
     --max-time) shift 2 ;;
     --data-binary) body=$(cat "${2#@}"); shift 2 ;;
@@ -39,8 +44,17 @@ else
   status=200
 fi
 if [ -f "$FAKE_DIR/resp/$key.body" ]; then
-  cp "$FAKE_DIR/resp/$key.body" "$out"
+  resp=$(cat "$FAKE_DIR/resp/$key.body")
 else
-  printf '{"success":true,"errors":[],"result":{}}' >"$out"
+  resp='{"success":true,"errors":[],"result":{}}'
 fi
-printf '%s' "$status"
+
+if [ -n "$out" ]; then
+  printf '%s' "$resp" >"$out"
+else
+  printf '%s' "$resp"
+fi
+case "$wfmt" in
+  *'%{stderr}'*) printf '%s' "$status" >&2 ;;
+  *) printf '%s' "$status" ;;
+esac
