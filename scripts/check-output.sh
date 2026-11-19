@@ -10,7 +10,9 @@
 # Each check can be disabled for the revert-proof test with SKIP_<NAME>=1:
 # SKIP_NO_SCRIPT, SKIP_INLINE_HANDLER, SKIP_EXTERNAL_HOST, SKIP_NOINDEX, SKIP_SCRUB_TERMS,
 # SKIP_ROBOTS, SKIP_CSP, SKIP_ABOUT_LINK, SKIP_DASHES, SKIP_UNSAFE_SCHEME, SKIP_META_REFRESH,
-# SKIP_ACTIVE_EMBED, SKIP_BASE_ELEMENT, SKIP_DUPLICATE_ATTR, SKIP_CLAIMS.
+# SKIP_ACTIVE_EMBED, SKIP_BASE_ELEMENT, SKIP_DUPLICATE_ATTR, SKIP_CLAIMS, SKIP_OWNER_TOKENS.
+# Opt-in check: owner_tokens (check-owner-tokens.py) runs only when REQUIRE_NO_OWNER_TOKENS=1 and
+# fails on any page text holding an unresolved owner placeholder.
 set -euo pipefail
 
 DIR="${1:-}"
@@ -200,7 +202,32 @@ claims() {
   return 0
 }
 
-for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms noindex robots csp about_link dashes claims; do
+owner_tokens() {
+  # Opt-in: only when REQUIRE_NO_OWNER_TOKENS=1 (the deploy workflow sets it; CI keeps the
+  # placeholders green). check-owner-tokens.py exits 1 with "<file><TAB><detail>" lines when a
+  # page holds an unresolved owner placeholder; any other non-zero status is a helper failure.
+  # Unset, empty and 0 skip; 1 runs; any other value fails closed so "true" or "yes" cannot skip.
+  case "${REQUIRE_NO_OWNER_TOKENS:-}" in
+    "" | 0) return 0 ;;
+    1) ;;
+    *)
+      report owner_tokens "REQUIRE_NO_OWNER_TOKENS must be 0, 1 or empty, got an unexpected value"
+      return 0
+      ;;
+  esac
+  local f d status=0 out
+  out="$(python3 -I "$HERE/check-owner-tokens.py" "$DIR" 2>&1)" || status=$?
+  if [ "$status" -gt 1 ]; then
+    report owner_tokens "helper failed with status $status: $(printf '%s' "$out" | tail -n 1)"
+    return 0
+  fi
+  while IFS=$'\t' read -r f d; do
+    [ -n "$f" ] && report owner_tokens "$d ($f)"
+  done <<<"$out"
+  return 0
+}
+
+for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms noindex robots csp about_link dashes claims owner_tokens; do
   if enabled "$c"; then "$c"; fi
 done
 

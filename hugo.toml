@@ -28,6 +28,10 @@ enableGitInfo = false
   url = "/when-not-to-hire/"
   weight = 24
 [[menus.main]]
+  name = "How we work"
+  url = "/how-we-work/"
+  weight = 26
+[[menus.main]]
   name = "Experience"
   url = "/experience/"
   weight = 30
@@ -43,3 +47,20 @@ enableGitInfo = false
   name = "Contact"
   url = "/contact/"
   weight = 60
+
+[[menus.footer]]
+  name = "Sample scope of work"
+  url = "/sample-scope-of-work/"
+  weight = 10
+[[menus.footer]]
+  name = "Security and handling"
+  url = "/security-and-handling/"
+  weight = 20
+[[menus.footer]]
+  name = "Confidentiality and case studies"
+  url = "/confidentiality-and-case-studies/"
+  weight = 30
+[[menus.footer]]
+  name = "Case studies"
+  url = "/case-studies/"
+  weight = 40

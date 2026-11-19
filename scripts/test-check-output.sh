@@ -362,6 +362,94 @@ file_case "_headers route line with a trailing space" csp SKIP_CSP _headers 'ope
 file_case "_headers route line with text after the path" csp SKIP_CSP _headers 'open(sys.argv[1] + "/_headers", "rb").read() + b"\n/docs/* extra\n  X-Robots-Tag: all\n"'
 file_case "_headers with /* repeated" csp SKIP_CSP _headers 'open(sys.argv[1] + "/_headers", "rb").read() + b"\n/*\n  X-Frame-Options: DENY\n"'
 
+# Opt-in owner-token check: a page holding an unresolved owner placeholder fails only when
+# REQUIRE_NO_OWNER_TOKENS=1 (the deploy workflow sets it); CI keeps placeholders green.
+tok_tree="$(stage clean)"
+python3 -I -c '
+import sys
+open(sys.argv[1] + "/owner.html", "w").write("<p>stance: " + chr(123) * 2 + "OWNER:state it" + chr(125) * 2 + "</p>")
+' "$tok_tree"
+run_check "$tok_tree" production
+if [ "$RC" = "0" ]; then echo "ok: owner token passes when the check is not enabled"; else soft "owner token must pass when not enabled: $OUT"; fi
+run_check "$tok_tree" production REQUIRE_NO_OWNER_TOKENS=1
+if [ "$RC" != "0" ] && grep -q '^FAIL owner_tokens:' <<<"$OUT"; then echo "ok: owner token fails when REQUIRE_NO_OWNER_TOKENS=1"; else soft "owner token must fail when enabled: rc=$RC $OUT"; fi
+run_check "$tok_tree" production REQUIRE_NO_OWNER_TOKENS=1 SKIP_OWNER_TOKENS=1
+if [ "$RC" = "0" ]; then echo "ok: SKIP_OWNER_TOKENS=1 disables the owner token check"; else soft "SKIP_OWNER_TOKENS=1 must pass: $OUT"; fi
+run_check "$(stage clean)" production REQUIRE_NO_OWNER_TOKENS=1
+if [ "$RC" = "0" ]; then echo "ok: clean tree passes with REQUIRE_NO_OWNER_TOKENS=1"; else soft "clean tree must pass with the check enabled: $OUT"; fi
+
+# tok_case <label> <file name> <html>: the page must fail with REQUIRE_NO_OWNER_TOKENS=1 and pass without it.
+tok_case() {
+  local t
+  t="$(stage clean)"
+  printf '%s' "$3" >"$t/$2"
+  run_check "$t" production REQUIRE_NO_OWNER_TOKENS=1
+  if [ "$RC" = "0" ] || ! grep -q '^FAIL owner_tokens:' <<<"$OUT"; then
+    soft "$1: expected FAIL owner_tokens when enabled, rc=$RC: $OUT"
+    return 0
+  fi
+  run_check "$t" production
+  if [ "$RC" != "0" ]; then
+    soft "$1: expected pass when the check is not enabled, rc=$RC: $OUT"
+    return 0
+  fi
+  echo "ok: $1 is caught only when REQUIRE_NO_OWNER_TOKENS=1"
+}
+tok_case "decimal-entity braces" dec.html '<p>&#123;&#123;OWNER:x}}</p>'
+tok_case "hex-entity braces" hex.html '<p>&#x7b;&#x7b;OWNER:x}}</p>'
+tok_case "named-entity braces (lbrace)" lbrace.html '<p>&lbrace;&lbrace;OWNER:x}}</p>'
+tok_case "named-entity braces (lcub)" lcub.html '<p>&lcub;&lcub;OWNER:x}}</p>'
+tok_case "token split by inline tags" split.html '<p>{{<b>OWN</b><i>ER</i>:x}}</p>'
+tok_case "token in an attribute" attr.html '<a href="/x" title="{{OWNER:x}}">link</a>'
+tok_case "token in a self-closing tag attribute" selfclose.html '<img src="/a.png" alt="{{OWNER:x}}" />'
+tok_case "token in the title" title.html '<title>{{OWNER:x}}</title><p>body</p>'
+tok_case "token in meta content" meta.html '<meta name="description" content="{{OWNER:x}}"><p>body</p>'
+tok_case "token in an HTML comment" comment.html '<!-- {{OWNER:x}} --><p>body</p>'
+tok_case "token with spaced braces" spaced.html '<p>{ { OWNER: x} }</p>'
+tok_case "lowercase token" lower.html '<p>{{owner:x}}</p>'
+tok_case "token in a .HTML file" UPPER.HTML '<p>{{OWNER:x}}</p>'
+
+# Near misses must not trip the check (proves the marker is not shortened or loosened).
+near="$(stage clean)"
+printf '%s' '<p>{{OWNED}} the OWNER: field, {OWNER:x} and {{ONER:x}}</p>' >"$near/near.html"
+run_check "$near" production REQUIRE_NO_OWNER_TOKENS=1
+if [ "$RC" = "0" ]; then echo "ok: near-miss text passes with REQUIRE_NO_OWNER_TOKENS=1"; else soft "near-miss text must pass: rc=$RC $OUT"; fi
+
+# REQUIRE_NO_OWNER_TOKENS: unset, empty and 0 skip; 1 runs; anything else fails closed.
+tok_tree="$(stage clean)"
+printf '%s' '<p>{{OWNER:x}}</p>' >"$tok_tree/owner.html"
+run_check "$tok_tree" production REQUIRE_NO_OWNER_TOKENS=0
+if [ "$RC" = "0" ]; then echo "ok: REQUIRE_NO_OWNER_TOKENS=0 skips the check"; else soft "REQUIRE_NO_OWNER_TOKENS=0 must skip: $OUT"; fi
+run_check "$tok_tree" production REQUIRE_NO_OWNER_TOKENS=
+if [ "$RC" = "0" ]; then echo "ok: empty REQUIRE_NO_OWNER_TOKENS skips the check"; else soft "empty REQUIRE_NO_OWNER_TOKENS must skip: $OUT"; fi
+for v in true yes 2 TRUE ' 1' 01; do
+  for tree in "$(stage clean)" "$tok_tree"; do
+    run_check "$tree" production "REQUIRE_NO_OWNER_TOKENS=$v"
+    if [ "$RC" != "0" ] && grep -q '^FAIL owner_tokens: REQUIRE_NO_OWNER_TOKENS' <<<"$OUT"; then
+      echo "ok: REQUIRE_NO_OWNER_TOKENS='$v' fails closed"
+    else
+      soft "REQUIRE_NO_OWNER_TOKENS='$v' must fail closed, rc=$RC: $OUT"
+    fi
+  done
+done
+
+# check-owner-tokens.py with a directory that does not exist must not read as a pass.
+set +e
+OUT="$(python3 -I scripts/check-owner-tokens.py "$WORK/no-such-dir" 2>&1)"
+RC=$?
+set -e
+if [ "$RC" = "2" ]; then echo "ok: check-owner-tokens.py rejects a missing directory"; else soft "check-owner-tokens.py on a missing directory: expected exit 2, got $RC: $OUT"; fi
+
+# The owner token helper crashing must fail the build when the check is enabled.
+stub="$(mktemp -d "$WORK/stub.XXXXXX")"
+cp -R scripts/. "$stub/"
+printf '%s\n' 'raise RuntimeError("stub crash")' >"$stub/check-owner-tokens.py"
+set +e
+OUT="$(env EXPECT_ENV=production SCRUB_TERMS_FILE="$TERMS" REQUIRE_NO_OWNER_TOKENS=1 "$stub/check-output.sh" "$(stage clean)" 2>&1)"
+RC=$?
+set -e
+if [ "$RC" != "0" ] && grep -q '^FAIL owner_tokens:' <<<"$OUT"; then echo "ok: crashing check-owner-tokens.py fails the build"; else soft "crashing check-owner-tokens.py must fail the build: rc=$RC $OUT"; fi
+
 # A crashing helper must fail the build (fail closed): swap one helper for a stub.
 for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check-claims.py; do
   stub="$(mktemp -d "$WORK/stub.XXXXXX")"
@@ -381,7 +469,7 @@ for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check
 done
 
 # Each helper catches its own unexpected exceptions and exits 70 (here: missing arguments).
-for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check-claims.py; do
+for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check-claims.py check-owner-tokens.py; do
   set +e
   OUT="$(python3 -I "scripts/$helper" 2>&1)"
   RC=$?
