@@ -21,4 +21,8 @@ grep -q '<html lang=en' "$OUT/index.html" || grep -q '<html lang="en"' "$OUT/ind
 grep -q '<meta name=viewport' "$OUT/index.html" || grep -q '<meta name="viewport"' "$OUT/index.html" || fail "viewport meta missing"
 h1=$(grep -o '<h1[ >]' "$OUT/index.html" | wc -l)
 [ "$h1" = "1" ] || fail "home page must have exactly one h1, found $h1"
+[ -f "$OUT/fonts/orbitron-latin-wght-normal.woff2" ] || fail "orbitron font missing from build"
+[ -f "$OUT/fonts/OFL-Orbitron.txt" ] || fail "Orbitron license text missing from build"
+grep -q 'class=case-strip' "$OUT/index.html" || grep -q 'class="case-strip"' "$OUT/index.html" || fail "home page missing case-strip"
+grep -qE '<link rel=stylesheet [^>]*integrity=' "$OUT/index.html" || grep -qE '<link rel="stylesheet"[^>]*integrity=' "$OUT/index.html" || fail "stylesheet link has no integrity attribute"
 echo "PASS: build ok"

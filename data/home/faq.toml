@@ -1,0 +1,22 @@
+eyebrow = "Questions"
+title = "What to expect"
+
+[[items]]
+title = "What happens on the fit call?"
+body = "A free 20 to 30 minute conversation covers the problem, fit, and practical options for working together."
+
+[[items]]
+title = "Is the assessment billable?"
+body = "Yes. It covers goals, starting point, and compliance needs, then receives full credit toward a continuing engagement."
+
+[[items]]
+title = "Do you resell or take fees from vendors?"
+body = "No. Recommendations may include open source or proprietary technology, but there is no resale income or referral fee."
+
+[[items]]
+title = "Do you work with small organizations?"
+body = "Yes, when the scope and minimums fit. Community and non-corporate education may be free, at cost, or arranged to fit."
+
+[[items]]
+title = "Can you speak at our event?"
+body = "Yes. Corporate and vendor events are paid engagements. Community and non-corporate education follows flexible arrangements."

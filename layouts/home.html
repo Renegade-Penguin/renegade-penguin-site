@@ -1,21 +1,14 @@
 {{ define "main" }}
-<section class="panel hero">
-  <img src="/brand/penguin-color.png" alt="Renegade Penguin mascot: a penguin holding a rifle" width="512" height="512">
-  <h1>{{ .Title }}</h1>
-  <p class="sub">{{ .Description }}</p>
-  <a class="cta" href="#services">See services</a>
-</section>
-{{ $cards := slice }}
-{{ with site.GetPage "/services" }}{{ $cards = where .Pages.ByWeight "RelPermalink" "ne" "" }}{{ end }}
-<section class="services" id="services"{{ if $cards }} aria-labelledby="services-label"{{ end }}>
-  {{ if $cards }}
-  <h2 class="label" id="services-label">Services</h2>
-  {{ range $cards }}
-  <article class="card">
-    <h3><a href="{{ .RelPermalink }}">{{ .Title }}</a></h3>
-    {{ with .Params.summary }}<p>{{ . }}</p>{{ end }}
-  </article>
-  {{ end }}
-  {{ end }}
-</section>
+{{ $d := hugo.Data.home }}
+{{ partial "home-hero.html" $d.hero }}
+<div class="home-body">
+{{ partial "home-what-we-do.html" (index $d "what-we-do") }}
+{{ partial "home-engagement.html" $d.engagement }}
+{{ partial "home-no-vendor-pitches.html" (index $d "no-vendor-pitches") }}
+{{ partial "home-built-in-the-open.html" (index $d "built-in-the-open") }}
+{{ partial "home-speaking.html" $d.speaking }}
+{{ partial "home-pricing-teaser.html" (index $d "pricing-teaser") }}
+{{ partial "home-behind.html" $d.behind }}
+{{ partial "home-faq.html" $d.faq }}
+</div>
 {{ end }}

@@ -25,4 +25,8 @@ The goal is understanding, not performance. Technical concepts are explained in 
 
 Corporate and vendor events are booked as paid engagements. Community and conference organizers are welcome to inquire when admission is covered, with lodging and travel also covered depending on the event.
 
+Community and non-corporate education is offered free, at cost, or through another arrangement that fits the event. The details depend on the audience, format, and resources available.
+
+Corporate and vendor events are paid engagements. To start the conversation, organizers should send the intended audience, session length, format, travel requirements, and budget range.
+
 Education and speaking do not replace a security assessment, legal advice, or hands-on engineering. If a session uncovers a larger issue, any follow-up work is scoped separately.

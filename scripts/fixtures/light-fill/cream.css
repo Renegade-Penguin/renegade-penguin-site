@@ -1,0 +1,3 @@
+:root { --bg: #0F0F0F; --cream: #F5EFE0; }
+.band { background: var(--cream); }
+.hero { background-color: #FFF8E7; }

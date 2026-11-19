@@ -1,0 +1,17 @@
+eyebrow = "How it works"
+title = "Start with the real problem"
+
+[[items]]
+title = "Fit call"
+body = "A free 20 to 30 minute call decides whether the fit is right and how to proceed."
+stamp = "FREE"
+
+[[items]]
+title = "Assessment"
+body = "A paid review covers goals, starting point, and compliance needs. Its cost is credited if the engagement continues."
+stamp = "CREDITED"
+
+[[items]]
+title = "Plan and build"
+body = "Receive clear priorities, requirements, and hands-on work shaped around the agreed scope and minimums."
+stamp = "DELIVERED"

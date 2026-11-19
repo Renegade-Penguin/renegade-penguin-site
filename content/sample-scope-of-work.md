@@ -4,7 +4,7 @@ description = "A plain-language example of how an advisory retainer may be struc
 weight = 30
 +++
 
-# Sample Only
+## Sample Only
 
 This page is an example, not an offer or a binding agreement. The final statement of work will reflect the client’s environment, priorities, and written agreement.
 

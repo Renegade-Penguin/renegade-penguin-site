@@ -1,0 +1,10 @@
+{{- $file := "RP-0001 / Security advisory" -}}
+{{- $status := "open for new engagements" -}}
+{{- with .Params.file }}{{ $file = . }}{{ end -}}
+{{- with .Params.status }}{{ $status = . }}{{ end -}}
+<div class="case-strip">
+  <div class="bar">
+    <span>File: {{ $file }}</span>
+    <span>Status: {{ $status }}</span>
+  </div>
+</div>
