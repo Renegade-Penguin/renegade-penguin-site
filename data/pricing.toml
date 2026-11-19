@@ -23,5 +23,5 @@ drivers = "Number of AI tools and teams in use, sensitive or regulated data, ven
 [speaking]
 hourly = "per engagement"  # owner approval pending
 retainer = "not offered"  # owner approval pending
-minimum = "keynotes from $5,000"  # owner approval pending
-drivers = "Length, audience size, custom material, travel, and whether the session is a talk or a working workshop."  # owner approval pending
+minimum = "keynotes from $5,000 for corporate and vendor events"  # owner approval pending
+drivers = "length, audience size, custom material, workshop versus talk, travel, and whether the event is corporate, vendor, or community"  # owner approval pending

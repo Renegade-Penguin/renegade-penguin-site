@@ -33,9 +33,11 @@ The standard review covers acceptable use, shadow AI inventory, data flows, and 
 
 ## Education and speaking
 
-- Speaking or workshop rate: {{< pricing tier="speaking" field="hourly" >}}
-- Minimum engagement: {{< pricing tier="speaking" field="minimum" >}}
-- Pricing drivers: {{< pricing tier="speaking" field="drivers" >}}
+- Engagement: {{< pricing tier="speaking" field="hourly" >}}
+- Minimum: {{< pricing tier="speaking" field="minimum" >}}
+- Quote factors: {{< pricing tier="speaking" field="drivers" >}}
+
+Fees apply to corporate and vendor events. Community and conference events are considered when the organizer covers admission and, depending on the event, lodging and travel.
 
 ## What affects a quote
 
