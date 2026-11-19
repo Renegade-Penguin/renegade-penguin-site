@@ -102,8 +102,21 @@ if [ "$CF_STATUS" != 200 ]; then
 fi
 sitekey=$(printf '%s' "$CF_BODY" | jq -r --arg n "$WIDGET_NAME" \
   '[.result[]? | select(.name == $n)][0].sitekey // empty')
+matches=$(printf '%s' "$CF_BODY" | jq -r --arg n "$WIDGET_NAME" '[.result[]? | select(.name == $n)] | length')
 
+if [ "$matches" -gt 1 ]; then
+  cf_die "more than one widget named $WIDGET_NAME exists; not choosing between them. Delete the extra widgets by hand, then re-run"
+fi
 if [ -n "$sitekey" ]; then
+  # An existing widget must already be bound the way we need. Its secret cannot
+  # be recovered, so a wrong widget cannot be fixed or reused here: fail closed.
+  ok=$(printf '%s' "$CF_BODY" | jq -r --arg n "$WIDGET_NAME" --arg a "$CF_STAGING_HOST" --arg b "$CF_APEX_HOST" '
+    [.result[]? | select(.name == $n)][0]
+    | ((.domains // []) as $d | ($d | index($a)) != null and ($d | index($b)) != null and .mode == "managed")')
+  if [ "$ok" != true ]; then
+    printf 'sitekey: %s\n' "$sitekey"
+    cf_die "widget $WIDGET_NAME exists but its domains or mode differ from the expected (domains $CF_STAGING_HOST and $CF_APEX_HOST, mode managed). The secret of an existing widget cannot be recovered, so it cannot be fixed or reused here. Delete the widget (DELETE /accounts/$CLOUDFLARE_ACCOUNT_ID/challenges/widgets/$sitekey), then re-run"
+  fi
   printf 'widget %s already exists\nsitekey: %s\n' "$WIDGET_NAME" "$sitekey"
   printf 'note: the secret is only returned at creation; it was not re-sent to Doppler\n'
   exit 0

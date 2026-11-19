@@ -51,12 +51,20 @@ project `no-php-no-cry`, config `dev_renegadepenguin`.
 Run each in dry run first, read the output, then re-run with `--apply`.
 
 1. `scripts/staging/ensure-pages-project.sh` creates the Pages project
-   `renegade-penguin-site` (production branch `main`) if it is missing.
+   `renegade-penguin-site` (production branch `main`) if it is missing. If it
+   already exists, its `production_branch` must be `main`; otherwise the script
+   fails with a fixed message and changes nothing.
 2. `scripts/staging/attach-staging-domain.sh` attaches
    `staging.renegadepenguinllc.com`, creates the proxied CNAME `staging` to
    `renegade-penguin-site.pages.dev` (the API does not create it, and the
    domain stays pending without it), PATCHes to retry validation, and succeeds
    only when the domain reads `active`. Exit 2 means still pending; re-run it.
+   An existing `staging` CNAME is validated before anything is written: it must
+   be type `CNAME`, named `staging.renegadepenguinllc.com`, point to
+   `renegade-penguin-site.pages.dev`, be proxied, and be the only staging CNAME.
+   Any mismatch (stale target, unproxied, wrong type, duplicate) fails with a
+   message naming the differing fields; the record is never reconciled
+   silently and no other record is touched.
 3. `scripts/staging/ensure-turnstile.sh` creates the managed Turnstile widget
    `renegade-penguin-contact` for the staging and apex hostnames. It prints
    only the sitekey. The secret goes to Doppler on stdin only
@@ -71,7 +79,12 @@ Run each in dry run first, read the output, then re-run with `--apply`.
    if that fails. If the widget is created but storing the secret fails, it
    prints the sitekey and the recovery step (delete or rotate that widget) and
    exits non-zero. Cloudflare returns the secret only at creation, so an
-   existing widget is reported and the secret is not re-sent. Note: the
+   existing widget is reported (sitekey only) and the secret is not re-sent.
+   An existing widget must list both `staging.renegadepenguinllc.com` and
+   `renegadepenguinllc.com` and have mode `managed`; otherwise the script fails
+   closed, saying the secret of an existing widget cannot be recovered and that
+   the fix is to delete the widget and re-run. Two widgets with the same name
+   also fail closed. Note: the
    preflight confirms the config is readable; write permission cannot be
    checked without writing, so a write failure is caught only by the recovery
    path above.

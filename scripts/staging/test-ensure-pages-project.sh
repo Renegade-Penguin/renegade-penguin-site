@@ -31,11 +31,26 @@ t_token_never_leaks
 
 echo "-- apply, project exists"
 t_reset
-t_resp GET "$P" 200 '{"success":true,"result":{"name":"renegade-penguin-site"}}'
+t_resp GET "$P" 200 '{"success":true,"result":{"name":"renegade-penguin-site","production_branch":"main"}}'
 t_run "$S" --apply
-t_rc 0 "apply when it exists"
+t_rc 0 "apply when it exists with production branch main"
 t_expect_writes 0 "already-exists makes no duplicate"
 t_token_never_leaks
+
+echo "-- existing project with another production branch fails closed"
+t_reset
+t_resp GET "$P" 200 '{"success":true,"result":{"name":"renegade-penguin-site","production_branch":"trunk"}}'
+t_run "$S" --apply
+t_rc 1 "mismatching production branch fails"
+t_expect_out "production branch is not main; not changing it" "fixed message"
+t_expect_writes 0 "no write on a mismatching branch"
+
+echo "-- existing project without a production branch fails closed"
+t_reset
+t_resp GET "$P" 200 '{"success":true,"result":{"name":"renegade-penguin-site"}}'
+t_run "$S" --apply
+t_rc 1 "missing production branch fails"
+t_expect_writes 0 "no write when the branch is absent"
 
 echo "-- 404 with another code is not treated as missing"
 t_reset
@@ -61,7 +76,7 @@ t_expect_writes 0 "no write after a NUL body"
 
 echo "-- normal bodies still pass, including trailing newlines"
 t_reset
-printf '{"success":true,"result":{"name":"renegade-penguin-site"}}\n\n' >"$T/nl.body"
+printf '{"success":true,"result":{"name":"renegade-penguin-site","production_branch":"main"}}\n\n' >"$T/nl.body"
 t_resp_file GET "$P" 200 "$T/nl.body"
 t_run "$S" --apply
 t_rc 0 "body with trailing newlines passes the size check"
@@ -69,7 +84,7 @@ t_rc 0 "body with trailing newlines passes the size check"
 echo "-- exported CF_TOKEN_PRIVATE must not reach children"
 t_reset
 t_env CF_TOKEN_PRIVATE=placeholder
-t_resp GET "$P" 200 '{"success":true,"result":{}}'
+t_resp GET "$P" 200 '{"success":true,"result":{"production_branch":"main"}}'
 t_run "$S" --apply
 t_rc 0 "apply with pre-exported CF_TOKEN_PRIVATE"
 t_token_never_leaks

@@ -161,11 +161,38 @@ t_run "$S" --apply
 t_rc 1 "malformed JSON is a failure"
 t_expect_writes 0 "no write after malformed read"
 
+t_bad_widget() { # label JSON-WIDGET-LIST
+  t_reset
+  t_resp GET "$LIST" 200 '{"success":true,"result":'"$2"'}'
+  t_resp POST "$W" 200 "$CREATED"
+  t_run "$S" --apply
+  t_rc 1 "$1 fails closed"
+  t_expect_out "The secret of an existing widget cannot be recovered" "$1 says the secret cannot be recovered"
+  t_expect_out "Delete the widget (DELETE /accounts/acct123/challenges/widgets/0xEXIST), then re-run" "$1 gives the recovery step"
+  t_expect_out "sitekey: 0xEXIST" "$1 may print the sitekey"
+  t_expect_writes 0 "$1 makes no write"
+  no_doppler "$1"
+  t_token_never_leaks
+}
+
+echo "-- existing widget with the wrong domains or mode fails closed"
+t_bad_widget "missing apex domain" '[{"name":"renegade-penguin-contact","sitekey":"0xEXIST","mode":"managed","domains":["staging.renegadepenguinllc.com"]}]'
+t_bad_widget "missing staging domain" '[{"name":"renegade-penguin-contact","sitekey":"0xEXIST","mode":"managed","domains":["renegadepenguinllc.com"]}]'
+t_bad_widget "no domains" '[{"name":"renegade-penguin-contact","sitekey":"0xEXIST","mode":"managed"}]'
+t_bad_widget "wrong mode" '[{"name":"renegade-penguin-contact","sitekey":"0xEXIST","mode":"invisible","domains":["staging.renegadepenguinllc.com","renegadepenguinllc.com"]}]'
+
+echo "-- two widgets with the same name fail closed"
+t_reset
+t_resp GET "$LIST" 200 '{"success":true,"result":[{"name":"renegade-penguin-contact","sitekey":"0xA","mode":"managed","domains":["staging.renegadepenguinllc.com","renegadepenguinllc.com"]},{"name":"renegade-penguin-contact","sitekey":"0xB","mode":"managed","domains":["staging.renegadepenguinllc.com","renegadepenguinllc.com"]}]}'
+t_run "$S" --apply
+t_rc 1 "duplicate widget names fail"
+t_expect_writes 0 "no write for duplicate names"
+
 echo "-- apply, widget exists"
 t_reset
-t_resp GET "$LIST" 200 '{"success":true,"result":[{"name":"renegade-penguin-contact","sitekey":"0xEXIST"}]}'
+t_resp GET "$LIST" 200 '{"success":true,"result":[{"name":"renegade-penguin-contact","sitekey":"0xEXIST","mode":"managed","domains":["staging.renegadepenguinllc.com","renegadepenguinllc.com"]}]}'
 t_run "$S" --apply
-t_rc 0 "apply when it exists"
+t_rc 0 "apply when it exists and matches"
 t_expect_writes 0 "already-exists makes no duplicate"
 t_expect_out "sitekey: 0xEXIST" "existing sitekey printed"
 no_doppler "existing widget"

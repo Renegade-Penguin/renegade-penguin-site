@@ -30,27 +30,51 @@ cf_init "attach-staging-domain" "$@" -- CLOUDFLARE_ZONE_ID
 dom_path="/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CF_PROJECT/domains"
 dom_item="$dom_path/$CF_STAGING_HOST"
 
-# 1. Attach the hostname to the project.
+# Reads first, so an existing record that is wrong stops the script before any
+# write: 1. the domain on the Pages project, 2. the staging CNAME.
 cf_read "$dom_item"
 case "$CF_STATUS" in
-  200) printf 'domain %s already attached\n' "$CF_STAGING_HOST" ;;
-  404)
-    cf_write POST "$dom_path" "$(jq -cn --arg n "$CF_STAGING_HOST" '{name: $n}')"
-    ;;
+  200) domain_attached=1 ;;
+  404) domain_attached=0 ;;
   *) cf_die "GET domain returned HTTP $CF_STATUS $(cf_errors)" ;;
 esac
 
-# 2. Proxied CNAME staging -> <project>.pages.dev (not created by step 1).
 dns_path="/zones/$CLOUDFLARE_ZONE_ID/dns_records"
+want_target="$CF_PROJECT.pages.dev"
 cf_read "$dns_path?type=CNAME&name=$CF_STAGING_HOST"
 if [ "$CF_STATUS" != 200 ]; then
   cf_die "GET dns_records returned HTTP $CF_STATUS $(cf_errors)"
 fi
 found=$(printf '%s' "$CF_BODY" | jq -r '.result | length')
-if [ "$found" -gt 0 ]; then
-  printf 'CNAME %s already exists\n' "$CF_STAGING_HOST"
+if [ "$found" -gt 1 ]; then
+  cf_die "more than one CNAME record named $CF_STAGING_HOST exists; not changing any of them. Remove the extra records by hand, then re-run"
+fi
+if [ "$found" -eq 1 ]; then
+  # Validate the existing record; never reconcile it silently.
+  differs=$(printf '%s' "$CF_BODY" | jq -r --arg h "$CF_STAGING_HOST" --arg c "$want_target" '
+    .result[0] | [
+      (if .type != "CNAME" then "type" else empty end),
+      (if .name != $h then "name" else empty end),
+      (if .content != $c then "content" else empty end),
+      (if .proxied != true then "proxied" else empty end)
+    ] | join(", ")')
+  if [ -n "$differs" ]; then
+    cf_die "the existing CNAME record for $CF_STAGING_HOST differs from the expected one (type CNAME, content $want_target, proxied true) in: $differs. Not changing it; fix or delete it by hand, then re-run"
+  fi
+fi
+
+# 1. Attach the hostname to the project.
+if [ "$domain_attached" = 1 ]; then
+  printf 'domain %s already attached\n' "$CF_STAGING_HOST"
 else
-  body=$(jq -cn --arg c "$CF_PROJECT.pages.dev" \
+  cf_write POST "$dom_path" "$(jq -cn --arg n "$CF_STAGING_HOST" '{name: $n}')"
+fi
+
+# 2. Proxied CNAME staging -> <project>.pages.dev (not created by step 1).
+if [ "$found" -eq 1 ]; then
+  printf 'CNAME %s already exists and is correct\n' "$CF_STAGING_HOST"
+else
+  body=$(jq -cn --arg c "$want_target" \
     '{type: "CNAME", name: "staging", content: $c, proxied: true, ttl: 1}')
   cf_write POST "$dns_path" "$body"
 fi

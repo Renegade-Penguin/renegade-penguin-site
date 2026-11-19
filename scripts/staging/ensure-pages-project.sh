@@ -29,7 +29,12 @@ cf_read "$path"
 
 case "$CF_STATUS" in
   200)
-    printf 'ok: Pages project %s already exists; nothing to do\n' "$CF_PROJECT"
+    # Validate the existing project; never change it silently.
+    branch=$(printf '%s' "$CF_BODY" | jq -r '.result.production_branch // "(none)"')
+    if [ "$branch" != "main" ]; then
+      cf_die "Pages project $CF_PROJECT exists but its production branch is not main; not changing it. Fix it by hand, then re-run"
+    fi
+    printf 'ok: Pages project %s already exists with production branch main; nothing to do\n' "$CF_PROJECT"
     exit 0
     ;;
   404)
