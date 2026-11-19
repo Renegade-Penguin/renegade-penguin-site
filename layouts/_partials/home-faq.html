@@ -1,0 +1,9 @@
+<section class="home-sec" id="faq" aria-labelledby="faq-h">
+  {{ partial "section-head.html" (dict "n" "08" "title" .title "tag" .eyebrow "id" "faq-h") }}
+  {{- range .items }}
+  <details class="faq">
+    <summary>{{ .title }}</summary>
+    <p>{{ .body }}</p>
+  </details>
+  {{- end }}
+</section>

@@ -1,0 +1,18 @@
+eyebrow = "What we do"
+title = "Security that holds up"
+
+[[items]]
+title = "Architecture and best practices"
+body = "Design practical security foundations around the systems, risks, and constraints already in place."
+
+[[items]]
+title = "Shift left with developers"
+body = "Help developers address security earlier without turning delivery into a maze of disconnected controls."
+
+[[items]]
+title = "Build and run programs"
+body = "Create secure programs that work in practice, then help operate and improve them."
+
+[[items]]
+title = "Set the starting team"
+body = "Vet initial security staffing, responsibilities, tools, and requirements before costly assumptions take root."

@@ -1,0 +1,15 @@
+eyebrow = "Built in the open"
+title = "See the working principles"
+intro = "Public repositories show how the work is built, giving clients a practical foundation they can run on themselves."
+
+[[items]]
+title = "{{OWNER:repo name}}"
+body = "{{OWNER:one-line description}}"
+
+[[items]]
+title = "{{OWNER:repo name}}"
+body = "{{OWNER:one-line description}}"
+
+[[items]]
+title = "{{OWNER:repo name}}"
+body = "{{OWNER:one-line description}}"

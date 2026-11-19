@@ -1,5 +1,5 @@
 <div class="sec">
   <span class="no">&sect;{{ .n }}</span>
-  <h2>{{ .title }}</h2>
+  <h2{{ with .id }} id="{{ . }}"{{ end }}>{{ .title }}</h2>
   {{- with .tag }}<span class="tag">{{ . }}</span>{{ end }}
 </div>

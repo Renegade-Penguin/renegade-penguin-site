@@ -1,0 +1,15 @@
+eyebrow = "Engagement models"
+title = "Scope before price"
+intro = "Pricing starts with the work itself and a scoping call. Engagement minimums apply."
+
+[[items]]
+title = "Advisory"
+body = "Ongoing guidance for decisions, priorities, and program direction."
+
+[[items]]
+title = "Project"
+body = "Defined assessment, architecture, program, or implementation work."
+
+[[items]]
+title = "Speaking"
+body = "Paid corporate and vendor sessions shaped for the audience."

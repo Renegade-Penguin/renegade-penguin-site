@@ -1,0 +1,17 @@
+<section class="panel hero" aria-labelledby="hero-title">
+  <img src="/brand/penguin-color.png" alt="Renegade Penguin mascot: a penguin holding a rifle" width="512" height="512">
+  <div class="hero-copy">
+    <p class="eyebrow">{{ .eyebrow }}</p>
+    <h1 id="hero-title">{{ .title }}</h1>
+    <p class="sub">{{ .body }}</p>
+    <p class="actions">
+      <a class="btn btn-primary" href="/contact/">{{ .primary_label }}</a>
+      <a class="btn" href="#built-in-the-open">{{ .secondary_label }}</a>
+    </p>
+    <ul class="chips" aria-label="Sectors">
+      {{- range .chips }}
+      <li class="chip">{{ . }}</li>
+      {{- end }}
+    </ul>
+  </div>
+</section>
