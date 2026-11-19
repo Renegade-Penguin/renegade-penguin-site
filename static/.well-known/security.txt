@@ -1,0 +1,5 @@
+Contact: mailto:contact@renegadepenguinllc.com
+Expires: 2027-05-19T00:00:00Z
+Preferred-Languages: en
+Canonical: https://renegadepenguinllc.com/.well-known/security.txt
+Policy: https://renegadepenguinllc.com/security-policy/
