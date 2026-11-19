@@ -313,6 +313,8 @@ file_case "term split by U+00AD" scrub_terms SKIP_SCRUB_TERMS shy.html '("<p>zzb
 file_case "term split by U+FEFF" scrub_terms SKIP_SCRUB_TERMS bom.html '("<p>zzbanned" + chr(0xfeff) + "termzz</p>").encode()'
 file_case "term split by U+202E" scrub_terms SKIP_SCRUB_TERMS rlo.html '("<p>zzbanned" + chr(0x202e) + "termzz</p>").encode()'
 file_case "term split by U+FE0F" scrub_terms SKIP_SCRUB_TERMS vs.html '("<p>zzbanned" + chr(0xfe0f) + "termzz</p>").encode()'
+file_case "banned claim in a page" claims SKIP_CLAIMS claim.html 'b"<p>100% guaranteed</p>"'
+file_case "bare dollar figure in a page" claims SKIP_CLAIMS price.html '("<p>from " + chr(36) + "5,000</p>").encode()'
 file_case "BOM-less UTF-16LE text" scrub_terms SKIP_SCRUB_TERMS notes.dat '"zzbannedtermzz".encode("utf-16-le")'
 file_case "BOM-less UTF-16BE text" scrub_terms SKIP_SCRUB_TERMS notes2.dat '"zzbannedtermzz".encode("utf-16-be")'
 file_case "extensionless html after 1025 spaces" no_script SKIP_NO_SCRIPT page2 '(" " * 1025 + "<html><body><script>var x=1</script></body></html>").encode()'
@@ -361,7 +363,7 @@ file_case "_headers route line with text after the path" csp SKIP_CSP _headers '
 file_case "_headers with /* repeated" csp SKIP_CSP _headers 'open(sys.argv[1] + "/_headers", "rb").read() + b"\n/*\n  X-Frame-Options: DENY\n"'
 
 # A crashing helper must fail the build (fail closed): swap one helper for a stub.
-for helper in check-headers.py check-html.py check-scrub.py find-dashes.py; do
+for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check-claims.py; do
   stub="$(mktemp -d "$WORK/stub.XXXXXX")"
   cp -R scripts/. "$stub/"
   printf '%s\n' 'raise RuntimeError("stub crash")' >"$stub/$helper"
@@ -379,7 +381,7 @@ for helper in check-headers.py check-html.py check-scrub.py find-dashes.py; do
 done
 
 # Each helper catches its own unexpected exceptions and exits 70 (here: missing arguments).
-for helper in check-headers.py check-html.py check-scrub.py find-dashes.py; do
+for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check-claims.py; do
   set +e
   OUT="$(python3 -I "scripts/$helper" 2>&1)"
   RC=$?

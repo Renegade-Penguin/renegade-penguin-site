@@ -5,12 +5,12 @@
 # Exit 0 when clean; otherwise non-zero with one "FAIL <check>: <detail>" line per violation.
 # Checks: no_script, inline_handler, external_host, noindex, unsafe_scheme, meta_refresh,
 # active_embed, base_element, duplicate_attr (html parser, check-html.py), scrub_terms (raw scan plus
-# check-scrub.py), robots, csp (check-headers.py), about_link, dashes.
+# check-scrub.py), robots, csp (check-headers.py), about_link, dashes, claims (check-claims.py).
 # SCRUB_TERMS_FILE is required (blank lines and lines starting with # are ignored).
 # Each check can be disabled for the revert-proof test with SKIP_<NAME>=1:
 # SKIP_NO_SCRIPT, SKIP_INLINE_HANDLER, SKIP_EXTERNAL_HOST, SKIP_NOINDEX, SKIP_SCRUB_TERMS,
 # SKIP_ROBOTS, SKIP_CSP, SKIP_ABOUT_LINK, SKIP_DASHES, SKIP_UNSAFE_SCHEME, SKIP_META_REFRESH,
-# SKIP_ACTIVE_EMBED, SKIP_BASE_ELEMENT, SKIP_DUPLICATE_ATTR.
+# SKIP_ACTIVE_EMBED, SKIP_BASE_ELEMENT, SKIP_DUPLICATE_ATTR, SKIP_CLAIMS.
 set -euo pipefail
 
 DIR="${1:-}"
@@ -185,7 +185,22 @@ dashes() {
   [ -z "$HELPER_OUT" ] || report dashes "em or en dash in: $(echo $HELPER_OUT)"
 }
 
-for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms noindex robots csp about_link dashes; do
+claims() {
+  # check-claims.py exits 1 when it has findings (printed as "<file><TAB><detail>"); any other
+  # non-zero status is a helper failure and is never read as a pass.
+  local f d status=0 out
+  out="$(python3 -I "$HERE/check-claims.py" "$DIR" 2>&1)" || status=$?
+  if [ "$status" -gt 1 ]; then
+    report claims "helper failed with status $status: $(printf '%s' "$out" | tail -n 1)"
+    return 0
+  fi
+  while IFS=$'\t' read -r f d; do
+    [ -n "$f" ] && report claims "$d ($f)"
+  done <<<"$out"
+  return 0
+}
+
+for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms noindex robots csp about_link dashes claims; do
   if enabled "$c"; then "$c"; fi
 done
 

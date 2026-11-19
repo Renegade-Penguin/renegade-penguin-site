@@ -1,0 +1,27 @@
+# Pricing data. Every value here is a PROPOSAL until the owner approves it.
+# Pages show these values only through the pricing shortcode; no page types a price by hand.
+# Each tier defines hourly, retainer, minimum and drivers.
+
+[advisory]
+hourly = "$225 to $300 per hour"  # owner approval pending
+retainer = "$3,000 to $9,000 per month"  # owner approval pending
+minimum = "one-time assessment first, then month to month"  # owner approval pending
+drivers = "Organization size, number of systems and vendors, regulated data, how often you need access, and urgency."  # owner approval pending
+
+[projects]
+hourly = "$200 to $250 per hour"  # owner approval pending
+retainer = "not offered"  # owner approval pending
+minimum = "from $5,000 per project"  # owner approval pending
+drivers = "Scope, number of systems, size of the environment, regulated data, and urgency."  # owner approval pending
+
+[ai_review]
+hourly = "fixed scope, from $7,500"  # owner approval pending
+retainer = "not offered"  # owner approval pending
+minimum = "scoped after a call"  # owner approval pending
+drivers = "Number of AI tools and teams in use, sensitive or regulated data, vendor count, and urgency."  # owner approval pending
+
+[speaking]
+hourly = "per engagement"  # owner approval pending
+retainer = "not offered"  # owner approval pending
+minimum = "keynotes from $5,000"  # owner approval pending
+drivers = "Length, audience size, custom material, travel, and whether the session is a talk or a working workshop."  # owner approval pending

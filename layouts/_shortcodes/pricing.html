@@ -1,0 +1,15 @@
+{{- /* {{< pricing tier="advisory" field="retainer" >}}: reads data/pricing.toml, fails the build when the tier or field is missing. */ -}}
+{{- $tier := .Get "tier" -}}
+{{- $field := .Get "field" -}}
+{{- if not (and $tier $field) -}}
+  {{- errorf "pricing shortcode needs tier and field (%s)" .Position -}}
+{{- end -}}
+{{- $t := index hugo.Data.pricing $tier -}}
+{{- if not $t -}}
+  {{- errorf "pricing: tier %q missing from data/pricing.toml (%s)" $tier .Position -}}
+{{- end -}}
+{{- $v := index $t $field -}}
+{{- if not $v -}}
+  {{- errorf "pricing: field %q missing for tier %q in data/pricing.toml (%s)" $field $tier .Position -}}
+{{- end -}}
+<span data-price>{{ $v }}</span>
