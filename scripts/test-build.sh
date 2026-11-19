@@ -15,7 +15,8 @@ fail() {
 [ -f "$OUT/_headers" ] || fail "_headers not copied"
 n=$(grep -c '^/\*$' "$OUT/_headers" || true)
 [ "$n" = "1" ] || fail "_headers must have exactly one /* block, found $n"
-if grep -rl '<script' "$OUT" --include='*.html' | grep -q .; then fail "<script found in html"; fi
+# Only JSON-LD data blocks (type application/ld+json, not executable) may be script elements.
+if grep -rhoE '<script[^>]*>' "$OUT" --include='*.html' | grep -vE '^<script type="?application/ld\+json"?>$' | grep -q .; then fail "<script found in html"; fi
 grep -q '<html lang=en' "$OUT/index.html" || grep -q '<html lang="en"' "$OUT/index.html" || fail "html lang=en missing"
 grep -q '<meta name=viewport' "$OUT/index.html" || grep -q '<meta name="viewport"' "$OUT/index.html" || fail "viewport meta missing"
 h1=$(grep -o '<h1[ >]' "$OUT/index.html" | wc -l)
