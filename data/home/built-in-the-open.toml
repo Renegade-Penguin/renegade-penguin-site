@@ -3,13 +3,31 @@ title = "See the working principles"
 intro = "Public repositories show how the work is built, giving clients a practical foundation they can run on themselves."
 
 [[items]]
-title = "{{OWNER:repo name}}"
-body = "{{OWNER:one-line description}}"
+title = "Clouds-Against-Humanity"
+body = "Learn cloud security by building a homelab teaching Zero Trust, DevSecOps, IaC, and architecture"
+url = "https://github.com/ChiefGyk3D/Clouds-Against-Humanity"
 
 [[items]]
-title = "{{OWNER:repo name}}"
-body = "{{OWNER:one-line description}}"
+title = "siem-docker-stack"
+body = "Dockerized SIEM/SOC stack with hot/warm tiering: OpenSearch, Logstash, Grafana, Wazuh, Prometheus, InfluxDB, and Syslog-ng"
+url = "https://github.com/ChiefGyk3D/siem-docker-stack"
 
 [[items]]
-title = "{{OWNER:repo name}}"
-body = "{{OWNER:one-line description}}"
+title = "pfsense-siem-stack"
+body = "pfSense deployment, monitoring, and security knowledge base covering configuration, SIEM infrastructure, and IDS/IPS tuning"
+url = "https://github.com/ChiefGyk3D/pfsense-siem-stack"
+
+[[items]]
+title = "git-your-ship-together"
+body = "Reusable CI/CD workflows for repeatable, secure builds"
+url = "https://github.com/ChiefGyk3D/git-your-ship-together"
+
+[[items]]
+title = "typo-sniper"
+body = "Async typosquatting and domain threat intelligence scanner that detects lookalike domains"
+url = "https://github.com/ChiefGyk3D/typo-sniper"
+
+[[items]]
+title = "Patch-Gremlin"
+body = "Automated Debian and RHEL-based update notifications with Discord, Teams, Slack, and Matrix support"
+url = "https://github.com/ChiefGyk3D/Patch-Gremlin"

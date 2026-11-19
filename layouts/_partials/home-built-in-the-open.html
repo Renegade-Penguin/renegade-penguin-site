@@ -4,7 +4,7 @@
   <div class="grid">
     {{- range .items }}
     <div class="exhibit">
-      <h3>{{ .title }}</h3>
+      <h3><a href="{{ .url }}" rel="noopener">{{ .title }}</a></h3>
       <p>{{ .body }}</p>
     </div>
     {{- end }}

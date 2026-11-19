@@ -3,7 +3,7 @@
 # (a) every data/home section file exists and parses as TOML with the documented schema;
 # (b) the home templates hold no literal sentence of 40 or more characters;
 # (c) the built home page has one h1, one hero primary button, the sector chips, nine numbered
-#     sections and the owner placeholder inside "Built in the open";
+#     sections and six external repo links, with no owner placeholder, inside "Built in the open";
 # (d) a banned claim word placed in a home data file reaches the page and check-claims fails it.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
@@ -35,8 +35,10 @@ for n in names:
             if n != "no-vendor-pitches":
                 assert isinstance(it.get("body"), str) and it["body"].strip(), (n, "item body")
         if n == "built-in-the-open":
-            assert len(d["items"]) >= 3
-            assert all("{{OWNER:" in it["title"] and "{{OWNER:" in it["body"] for it in d["items"])
+            assert len(d["items"]) == 6, (n, len(d["items"]))
+            for it in d["items"]:
+                assert it.get("url") == "https://github.com/ChiefGyk3D/" + it["title"], (n, it)
+                assert "{{OWNER:" not in it["title"] + it["body"], (n, it)
         if n == "not-typical":
             assert len(d["items"]) == 6, (n, len(d["items"]))
         if n == "engagement":
@@ -90,6 +92,7 @@ class P(HTMLParser):
         self.sec_idx = None
         self.details = 0
         self.text_for = None
+        self.repo_links = []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -109,6 +112,8 @@ class P(HTMLParser):
             self.sec_text[self.sec_idx] = ""
         if tag == "details":
             self.details += 1
+        if tag == "a" and self.sec_idx == "built-in-the-open":
+            self.repo_links.append((a.get("href"), a.get("rel")))
 
     def handle_endtag(self, tag):
         if tag == "main":
@@ -134,7 +139,9 @@ assert p.primary_main == 1, "hero primary buttons %d" % p.primary_main
 assert p.chips == hero["chips"], p.chips
 assert len(p.secs) == 9, p.secs
 assert [s.lstrip("§") for s in p.secs] == ["01", "02", "03", "04", "05", "06", "07", "08", "09"], p.secs
-assert "{{OWNER:" in p.sec_text.get("built-in-the-open", ""), "owner placeholder missing"
+assert "{{OWNER:" not in p.sec_text.get("built-in-the-open", ""), "owner placeholder remains"
+assert len(p.repo_links) == 6, p.repo_links
+assert all(h.startswith("https://github.com/ChiefGyk3D/") and r == "noopener" for h, r in p.repo_links), p.repo_links
 assert p.details == 5, "faq details %d" % p.details
 PY
 
