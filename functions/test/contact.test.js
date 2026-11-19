@@ -310,6 +310,17 @@ const PROHIBITED = [
   ["C1 start", "\u0080"],
   ["NEL", "\u0085"],
   ["C1 end", "\u009f"],
+  ["soft hyphen", String.fromCharCode(0xad)],
+  ["BOM / zero width no-break space", String.fromCharCode(0xfeff)],
+  ["LRE", String.fromCharCode(0x202a)],
+  ["RLE", String.fromCharCode(0x202b)],
+  ["PDF", String.fromCharCode(0x202c)],
+  ["LRO", String.fromCharCode(0x202d)],
+  ["RLO", String.fromCharCode(0x202e)],
+  ["LRI", String.fromCharCode(0x2066)],
+  ["RLI", String.fromCharCode(0x2067)],
+  ["FSI", String.fromCharCode(0x2068)],
+  ["PDI", String.fromCharCode(0x2069)],
   ["LINE SEPARATOR", " "],
   ["PARAGRAPH SEPARATOR", " "],
 ];
@@ -317,7 +328,10 @@ const PROHIBITED = [
 test("the prohibited set holds the intended code points (guards against an editor rewriting escapes)", () => {
   assert.deepEqual(
     PROHIBITED.map(([, ch]) => ch.codePointAt(0)),
-    [0x0, 0x9, 0xa, 0xb, 0xc, 0xd, 0x1b, 0x1f, 0x7f, 0x80, 0x85, 0x9f, 0x2028, 0x2029],
+    [
+      0x0, 0x9, 0xa, 0xb, 0xc, 0xd, 0x1b, 0x1f, 0x7f, 0x80, 0x85, 0x9f, 0xad, 0xfeff,
+      0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069, 0x2028, 0x2029,
+    ],
   );
   for (const [, ch] of PROHIBITED) assert.equal(ch.length, 1);
 });
@@ -362,6 +376,45 @@ test("header safety: ordinary punctuation and a non-ASCII name still pass", asyn
   assert.equal(res.status, 303);
   assert.match(d.sendMail.sent[0].message.subject, /Zoë O'Brien-Smith, Jr\./);
   assert.equal(d.sendMail.sent[0].message.replyTo, "z.o+brien_x@example.co.uk");
+});
+
+// Ordinary non-ASCII names, including right-to-left scripts and the plain direction marks U+200E and
+// U+200F, are not control characters and must keep passing.
+const GOOD_NAMES = [
+  "Zoë Müller",
+  "Søren Ångström",
+  "Мария Иванова",
+  "李雷",
+  "José Núñez-Ortiz",
+  "שלום כהן",
+  "محمد علي",
+  "Dana" + String.fromCharCode(0x200e) + " Levi",
+  "דנה" + String.fromCharCode(0x200f) + " לוי",
+  "Nazanin" + String.fromCharCode(0x200c) + "Zahra",
+];
+
+for (const nm of GOOD_NAMES) {
+  test("header safety: the name " + JSON.stringify(nm) + " still passes", async () => {
+    const d = deps();
+    const res = await run({ ...GOOD, name: nm }, d);
+    assert.equal(res.status, 303);
+    assert.ok(d.sendMail.sent[0].message.subject.includes(nm));
+  });
+}
+
+test("a lone surrogate in any header property throws in the adapter", async () => {
+  const base = { subject: "S", text: "T", replyTo: "a@example.com" };
+  for (const lone of [String.fromCharCode(0xd800), String.fromCharCode(0xdc00), String.fromCharCode(0xdfff)]) {
+    for (const msg of [{ ...base, subject: "a" + lone }, { ...base, replyTo: lone + "@example.com" }]) {
+      const EMAIL = fakeBinding();
+      await assert.rejects(sendContactMail({ EMAIL, MAIL_FROM: "s@sender.example" }, msg), /invalid header value/);
+      assert.equal(EMAIL.calls.length, 0);
+    }
+  }
+  // A valid surrogate pair (an emoji in a name) is a real character and passes.
+  const EMAIL = fakeBinding();
+  await sendContactMail({ EMAIL, MAIL_FROM: "s@sender.example" }, { ...base, subject: "Sam \u{1F600}" });
+  assert.equal(EMAIL.calls.length, 1);
 });
 
 test("a line break inside the need text is kept (it is body text, not a header)", async () => {

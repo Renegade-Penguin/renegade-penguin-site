@@ -245,6 +245,23 @@ b "self-closing script on the home page" clean bad-script-selfclosing production
 b "Turnstile script inside a template element" clean bad-turnstile-template production no_script SKIP_NO_SCRIPT
 b "Turnstile script inside svg foreignObject" clean bad-turnstile-svg production no_script SKIP_NO_SCRIPT
 b "Turnstile script inside math" clean bad-turnstile-math production no_script SKIP_NO_SCRIPT
+b "Turnstile script after a self-closing template" clean bad-turnstile-template-selfclosing production no_script SKIP_NO_SCRIPT
+# Elements whose content a browser treats as text or inactive: the parser still reports the tag.
+for el in noscript title textarea xmp noembed style plaintext; do
+  b "Turnstile script inside $el" clean "bad-turnstile-ctx-$el" production no_script SKIP_NO_SCRIPT
+done
+# iframe is also an active_embed finding of its own, so both checks are skipped together.
+run_check "$(stage clean "$FIX/bad-turnstile-ctx-iframe")" production
+if [ "$RC" = "0" ] || ! grep -q "^FAIL no_script:" <<<"$OUT"; then
+  soft "Turnstile script inside iframe: expected a no_script failure, got exit $RC: $OUT"
+else
+  run_check "$(stage clean "$FIX/bad-turnstile-ctx-iframe")" production SKIP_NO_SCRIPT=1 SKIP_ACTIVE_EMBED=1
+  if [ "$RC" != "0" ]; then
+    soft "Turnstile script inside iframe: expected pass with both skips, got exit $RC: $OUT"
+  else
+    echo "ok: Turnstile script inside iframe fails no_script"
+  fi
+fi
 expect_pass "report-to with a group name" "$(stage clean "$FIX/ok-csp-report-to-group")" production
 
 # Unsafe schemes and meta refresh
