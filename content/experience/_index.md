@@ -21,6 +21,8 @@ My approach is defense first. Defensive work should still face serious scrutiny,
 
 When an engagement needs skills beyond my own, trusted specialists join the team. That may include penetration testing or telecommunications expertise for call centers. The purpose is to bring the right experience to the problem while keeping responsibility and direction clear.
 
+For red team engagements, I may work with Lorikeet Security, and for call center and telecommunications work, I may work with Call Theory. Both are trusted partners, but I scope any partner work with the client, require the client’s written consent, and keep responsibility for and direction of the engagement.
+
 ## Experience
 
 I have worked with or for these companies in the past:

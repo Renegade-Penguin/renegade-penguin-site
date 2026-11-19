@@ -20,3 +20,5 @@ The subject requires care. Advice must account for the person’s situation, the
 ## Open Work
 
 Open source work allows useful defensive knowledge to reach people beyond a single engagement. Sharing practical tools and methods strengthens the wider community while giving others the ability to examine, test, and improve the work.
+
+I volunteer with Call Center Village, a hands-on village for voice social engineering.
