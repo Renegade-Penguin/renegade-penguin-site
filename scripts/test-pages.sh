@@ -98,4 +98,13 @@ grep -Eq 'href="?/ohio/[" >]' "$OUT/index.html" || fail "footer must link /ohio/
 # The Ohio page must carry the owner verification placeholder until the owner resolves it.
 grep -q '{{OWNER:verify wording against the statute text' "$OUT/ohio/index.html" ||
   fail "/ohio/ must contain the owner verification placeholder"
+# Built CSS keeps the contact form rules and a global .lede rule; contact markup still uses them.
+css=$(cat "$OUT"/css/site*.css 2>/dev/null || true)
+[ -n "$css" ] || fail "built site.css not found"
+for sel in '.contact-form' '.hp' '.cf-turnstile'; do
+  printf '%s' "$css" | grep -Fq "$sel" || fail "built CSS lacks $sel rules"
+done
+printf '%s' "$css" | grep -Eq '(^|[}])\.lede\{' || fail "built CSS lacks a bare .lede rule"
+grep -Eq 'class="?[^">]*contact-form' "$c" || fail "/contact/ markup lacks .contact-form"
+grep -Eq 'class="?[^">]*\bhp\b' "$c" || fail "/contact/ markup lacks the .hp honeypot"
 echo "PASS: pages ok"
