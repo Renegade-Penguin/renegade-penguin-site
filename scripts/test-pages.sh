@@ -55,6 +55,33 @@ grep -Eq '<a [^>]*href="?https://chiefgyk3d\.com/"?[^>]*rel="?noopener' "$OUT/ab
   grep -Eq '<a [^>]*rel="?noopener"?[^>]*href="?https://chiefgyk3d\.com/' "$OUT/about/index.html" ||
   fail "/about/ must link https://chiefgyk3d.com/ with rel=noopener"
 
+# Task 3: every built page inherits the Dossier shell.
+while IFS= read -r f; do
+  rel="${f#"$OUT"}"
+  grep -q 'class="case-strip"\|class=case-strip' "$f" || fail "$rel has no case strip"
+  grep -Eq '<a class="?skip"? href="?#main' "$f" || fail "$rel has no skip link"
+  grep -Eq '<main[ >]' "$f" || fail "$rel has no main landmark"
+  [ "$(grep -o '<h1[ >]' "$f" | wc -l)" = "1" ] || fail "$rel must have exactly one h1"
+done < <(find "$OUT" -name '*.html' -not -path "$OUT/brand/*" | sort)
+n_built=$(find "$OUT" -name '*.html' | wc -l)
+[ "$n_built" -ge 10 ] || fail "shell loop saw only $n_built pages"
+# Case strip text comes from front matter file and status, with defaults.
+grep -q 'RP-0001' "$OUT/index.html" || fail "default case strip file text missing on home"
+# Header: one row at wide widths means a short main nav; the long tail lives in the footer nav.
+hdr=$(sed -n '/<header class="\?site-header/,/<\/header>/p' "$OUT/index.html" | tr '\n' ' ')
+hcount=$(printf '%s' "$hdr" | grep -o '<li>' | wc -l)
+[ "$hcount" -le 6 ] || fail "header nav shows $hcount items; at most 6 keep it on one row at 1440"
+for t in /when-not-to-hire/ /how-we-work/ /who-we-help/ /experience/ /community/; do
+  foot=$(sed -n '/<footer/,/<\/footer>/p' "$OUT/index.html")
+  printf '%s' "$foot" | grep -Eq "href=\"?$t[\" >]" || fail "footer nav must reach $t"
+done
+# Speaking page copy and About body.
+sp=$(sed 's/<[^>]*>/ /g' "$OUT/services/education-speaking/index.html" | tr -s ' \n' ' ')
+printf '%s' "$sp" | grep -q 'Community and non-corporate education is offered free' || fail "speaking page lacks the community education paragraph"
+printf '%s' "$sp" | grep -q 'Corporate and vendor events are paid engagements' || fail "speaking page lacks the corporate paragraph"
+ab=$(sed 's/<[^>]*>/ /g' "$OUT/about/index.html" | tr -s ' \n' ' ')
+printf '%s' "$ab" | grep -q 'independent security advisor behind Renegade Penguin LLC' || fail "about page lacks the new body"
+
 # Segment pages and the Ohio explainer.
 segs="small-business healthcare-dental aviation critical-infrastructure"
 [ -f "$OUT/who-we-help/index.html" ] || fail "/who-we-help/ missing"

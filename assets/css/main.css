@@ -33,6 +33,20 @@ a:hover { color: var(--text); }
 .site-nav a { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--space-2); color: var(--text); text-decoration: none; font: 500 0.85rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
 .site-nav a:hover { color: var(--accent); }
 .site-header .btn { margin-left: auto; }
+/* Wide screens: brand, short nav and button stay on one row. Below that the bar may wrap but never overflows. */
+@media (min-width: 64em) {
+  .site-header .bar { flex-wrap: nowrap; gap: var(--space-4); }
+  .site-nav ul { flex-wrap: nowrap; gap: 0 var(--space-2); }
+  .site-nav a, .site-header .btn { white-space: nowrap; }
+}
+@media (max-width: 40em) {
+  .site-header .bar { gap: var(--space-2) var(--space-3); }
+  .brand { letter-spacing: 0.08em; font-size: 0.85rem; min-width: 0; }
+  .site-nav ul { gap: 0 var(--space-1); }
+}
+.page { min-width: 0; }
+.page .lede { color: var(--muted); font-size: var(--text-lg); }
+.page-list { padding-left: var(--space-5); }
 .site-nav a[aria-current="page"] { color: var(--accent); }
 
 .site-footer { border-top: 2px solid var(--muted); background: var(--bg); color: var(--muted); font-size: var(--text-sm); }
