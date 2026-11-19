@@ -246,6 +246,7 @@ b "Turnstile script inside a template element" clean bad-turnstile-template prod
 b "Turnstile script inside svg foreignObject" clean bad-turnstile-svg production no_script SKIP_NO_SCRIPT
 b "Turnstile script inside math" clean bad-turnstile-math production no_script SKIP_NO_SCRIPT
 b "Turnstile script after a self-closing template" clean bad-turnstile-template-selfclosing production no_script SKIP_NO_SCRIPT
+b "Turnstile script in a textarea after stray end tags of other elements" clean bad-turnstile-stray-endtag production no_script SKIP_NO_SCRIPT
 # Elements whose content a browser treats as text or inactive: the parser still reports the tag.
 for el in noscript title textarea xmp noembed style plaintext; do
   b "Turnstile script inside $el" clean "bad-turnstile-ctx-$el" production no_script SKIP_NO_SCRIPT
