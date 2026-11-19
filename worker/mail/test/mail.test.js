@@ -7,6 +7,7 @@ import worker, { hasControlChars, RECIPIENT } from "../index.js";
 import { hasControlChars as pagesHasControlChars } from "../../../functions/api/_mail.js";
 
 const FROM = "noreply@sender.example";
+const SECRET = "worker-test-secret";
 
 function fakeEmail(fail) {
   const calls = [];
@@ -20,15 +21,15 @@ function fakeEmail(fail) {
 }
 
 function env(over = {}) {
-  return { EMAIL: fakeEmail(), MAIL_FROM: FROM, ...over };
+  return { EMAIL: fakeEmail(), MAIL_FROM: FROM, MAIL_SHARED_SECRET: SECRET, ...over };
 }
 
 const GOOD = { subject: "Contact form: Ada", text: "Hello\nthere", replyTo: "ada@example.com" };
 
-function post(body, { method = "POST", raw } = {}) {
+function post(body, { method = "POST", raw, headers } = {}) {
   return new Request("https://mail.invalid/", {
     method,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-mail-auth": SECRET, ...headers },
     body: method === "GET" || method === "HEAD" ? undefined : raw !== undefined ? raw : JSON.stringify(body),
   });
 }
@@ -89,7 +90,7 @@ test("a valid request sends once and returns 200", async () => {
 const PROHIBITED = [
   ["NUL", 0x0], ["tab", 0x9], ["LF", 0xa], ["CR", 0xd], ["ESC", 0x1b], ["US", 0x1f],
   ["DEL", 0x7f], ["C1 start", 0x80], ["NEL", 0x85], ["C1 end", 0x9f],
-  ["soft hyphen", 0xad], ["BOM", 0xfeff],
+  ["soft hyphen", 0xad], ["ALM", 0x61c], ["LRM", 0x200e], ["RLM", 0x200f], ["BOM", 0xfeff],
   ["LINE SEPARATOR", 0x2028], ["PARAGRAPH SEPARATOR", 0x2029],
   ["LRE", 0x202a], ["RLE", 0x202b], ["PDF", 0x202c], ["LRO", 0x202d], ["RLO", 0x202e],
   ["LRI", 0x2066], ["RLI", 0x2067], ["FSI", 0x2068], ["PDI", 0x2069],
@@ -112,8 +113,8 @@ test("each prohibited character class is rejected in subject and replyTo", async
   }
 });
 
-test("ordinary non-ASCII, emoji and the LRM and RLM marks pass in the subject", async () => {
-  for (const subject of ["Zoë O'Brien-Smith (R&D)", "Sam \u{1F600}", "a‎b‏c"]) {
+test("ordinary non-ASCII, emoji and right-to-left letters pass in the subject", async () => {
+  for (const subject of ["Zoë O'Brien-Smith (R&D)", "Sam \u{1F600}", "שלום כהן", "محمد علي"]) {
     const { res, e } = await call({ ...GOOD, subject });
     assert.equal(res.status, 200, subject);
     assert.equal(e.EMAIL.calls[0].subject, subject);
@@ -136,6 +137,10 @@ test("hasControlChars is identical to the copy in functions/api/_mail.js", () =>
   }
   assert.equal(hasControlChars("fine"), false);
   assert.equal(hasControlChars("a\nb"), true);
+  for (const cp of [0x61c, 0x200e, 0x200f]) {
+    assert.equal(hasControlChars("a" + String.fromCharCode(cp)), true);
+    assert.equal(pagesHasControlChars("a" + String.fromCharCode(cp)), true);
+  }
 });
 
 // ---- length limits ----
@@ -209,7 +214,138 @@ test("a send failure gives a generic 502 that echoes nothing", async () => {
 });
 
 test("a missing EMAIL binding gives a generic 502", async () => {
-  const { res, text } = await call(GOOD, { MAIL_FROM: FROM });
+  const { res, text } = await call(GOOD, { MAIL_FROM: FROM, MAIL_SHARED_SECRET: SECRET });
   assert.equal(res.status, 502);
   assert.equal(text, "send failed");
+});
+
+// ---- shared secret ----
+
+test("the shared secret header is required and is checked before the body is read", async () => {
+  for (const headers of [{ "x-mail-auth": "" }, { "x-mail-auth": "wrong" }, { "x-mail-auth": SECRET + "x" }, { "x-mail-auth": SECRET.slice(1) }]) {
+    const e = env();
+    const res = await worker.fetch(post(GOOD, { headers }), e);
+    assert.equal(res.status, 401, JSON.stringify(headers));
+    assert.equal(await res.text(), "unauthorized");
+    assert.equal(e.EMAIL.calls.length, 0);
+  }
+  const e = env();
+  const noHeader = new Request("https://mail.invalid/", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(GOOD),
+  });
+  assert.equal((await worker.fetch(noHeader, e)).status, 401);
+  // A bad body with a wrong secret is 401, not 400: the secret comes first.
+  const bad = await worker.fetch(post(null, { raw: "{not json", headers: { "x-mail-auth": "wrong" } }), env());
+  assert.equal(bad.status, 401);
+  // The body stream is never pulled when the secret is wrong.
+  let pulled = false;
+  const body = new ReadableStream({
+    pull(c) {
+      pulled = true;
+      c.enqueue(new Uint8Array(1));
+    },
+  }, { highWaterMark: 0 }); // no eager pull when the Request is built
+  const r2 = new Request("https://mail.invalid/", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-mail-auth": "wrong" },
+    body,
+    duplex: "half",
+  });
+  assert.equal((await worker.fetch(r2, env())).status, 401);
+  assert.equal(pulled, false);
+});
+
+test("an unset or empty MAIL_SHARED_SECRET fails closed with 401 for every request", async () => {
+  for (const MAIL_SHARED_SECRET of [undefined, "", null]) {
+    for (const headers of [{ "x-mail-auth": "" }, { "x-mail-auth": "undefined" }, { "x-mail-auth": "null" }]) {
+      const e = env({ MAIL_SHARED_SECRET });
+      const res = await worker.fetch(post(GOOD, { headers }), e);
+      assert.equal(res.status, 401);
+      assert.equal(e.EMAIL.calls.length, 0);
+    }
+  }
+});
+
+test("a wrong secret on a non-POST is 401 (auth first)", async () => {
+  const res = await worker.fetch(post(GOOD, { method: "GET", headers: { "x-mail-auth": "wrong" } }), env());
+  assert.equal(res.status, 401);
+});
+
+// ---- content type ----
+
+test("only application/json is accepted", async () => {
+  for (const ct of ["text/plain", "application/x-www-form-urlencoded", "application/jsonx", "text/json"]) {
+    const e = env();
+    const res = await worker.fetch(post(GOOD, { headers: { "content-type": ct } }), e);
+    assert.equal(res.status, 415, ct);
+    assert.equal(e.EMAIL.calls.length, 0);
+  }
+  for (const ct of ["application/json", "application/json; charset=utf-8", "Application/JSON"]) {
+    assert.equal((await worker.fetch(post(GOOD, { headers: { "content-type": ct } }), env())).status, 200, ct);
+  }
+});
+
+// ---- bounded body read ----
+
+const MAX_BODY = 3 * (20000 + 200 + 200);
+
+function streamRequest({ chunks, chunkSize, headers }) {
+  const state = { produced: 0, cancelled: false };
+  const body = new ReadableStream({
+    pull(controller) {
+      if (state.produced >= chunks) return controller.close();
+      state.produced++;
+      controller.enqueue(new Uint8Array(chunkSize).fill(0x20));
+    },
+    cancel() {
+      state.cancelled = true;
+    },
+  }, { highWaterMark: 0 }); // no eager pull when the Request is built
+  const req = new Request("https://mail.invalid/", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-mail-auth": SECRET, ...headers },
+    body,
+    duplex: "half",
+  });
+  return { req, state };
+}
+
+test("an oversized Content-Length is rejected before any body read", async () => {
+  const { req, state } = streamRequest({ chunks: 5, chunkSize: 1024, headers: { "content-length": String(MAX_BODY + 1) } });
+  const res = await worker.fetch(req, env());
+  assert.equal(res.status, 413);
+  assert.equal(state.produced, 0);
+});
+
+test("reading stops at the limit when Content-Length is missing or lies", async () => {
+  for (const headers of [{}, { "content-length": "10" }]) {
+    const chunkSize = 4096;
+    const { req, state } = streamRequest({ chunks: 1000, chunkSize, headers });
+    const res = await worker.fetch(req, env());
+    assert.equal(res.status, 413, JSON.stringify(headers));
+    assert.equal(state.cancelled, true);
+    assert.ok(state.produced <= Math.ceil(MAX_BODY / chunkSize) + 3, "produced " + state.produced);
+  }
+});
+
+test("a streamed body within the limit is parsed", async () => {
+  const bytes = new TextEncoder().encode(JSON.stringify(GOOD));
+  const body = new ReadableStream({
+    start(c) {
+      c.enqueue(bytes.slice(0, 5));
+      c.enqueue(bytes.slice(5));
+      c.close();
+    },
+  });
+  const req = new Request("https://mail.invalid/", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-mail-auth": SECRET },
+    body,
+    duplex: "half",
+  });
+  const e = env();
+  assert.equal((await worker.fetch(req, e)).status, 200);
+  assert.equal(e.EMAIL.calls.length, 1);
 });

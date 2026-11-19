@@ -38,6 +38,19 @@ browser -> Pages Function (functions/api/contact.js)
 | Mail Worker | `MAIL_FROM` | plain variable; the placeholder in `wrangler.jsonc` must be replaced with the real sender |
 | Pages project | `MAIL_WORKER` | service binding to `renegade-penguin-mail` |
 | Pages project | `MAIL_FROM` | plain variable, checked by the adapter for control characters |
+| Mail Worker | `MAIL_SHARED_SECRET` | encrypted secret; the Worker requires header `x-mail-auth` to equal it |
+| Pages project | `MAIL_SHARED_SECRET` | encrypted secret; the adapter sends it as `x-mail-auth` |
+
+## Shared secret
+
+`MAIL_SHARED_SECRET` is a Doppler-managed secret set as an encrypted secret on both sides: the
+Worker and the Pages project. Rotate each side independently (set the new value on both, then
+redeploy). Never put it in the repository or in wrangler `vars`. The Worker compares in constant
+time before reading the body, and fails closed with 401 when it is unset or empty. The adapter
+refuses to send without it. Other Worker checks: `Content-Type` must be `application/json` (415),
+the body is read incrementally and capped at 61200 bytes (413), and every direction-control
+character (U+061C, U+200E, U+200F and the embeddings, overrides and isolates) is rejected in
+`subject` and `replyTo`.
 
 ## Not done yet
 

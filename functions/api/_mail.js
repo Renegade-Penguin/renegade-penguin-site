@@ -9,15 +9,17 @@
 //
 // Environment (Pages project):
 //   MAIL_WORKER  service binding to renegade-penguin-mail (an object with an async fetch(request))
+//   MAIL_SHARED_SECRET  encrypted secret, sent as header x-mail-auth; must equal the Worker's value
 //   MAIL_FROM    sender address; checked here, and the Worker uses its own MAIL_FROM, not this one
 //   MAIL_TO      recipient, checked here; the Worker ignores it and sends to its pinned address
 //                (default contact@renegadepenguinllc.com)
 
 export const DEFAULT_TO = "contact@renegadepenguinllc.com";
 
-// A header-bound value never carries: a C0 or C1 control, DEL, U+00AD (soft hyphen), U+2028,
-// U+2029, the bidi embeddings and overrides U+202A to U+202E, the bidi isolates U+2066 to U+2069,
-// U+FEFF, or a lone surrogate. U+200E, U+200F and ordinary non-ASCII letters are allowed.
+// A header-bound value never carries: a C0 or C1 control, DEL, U+00AD (soft hyphen), U+061C,
+// U+200E, U+200F, U+2028, U+2029, the bidi embeddings and overrides U+202A to U+202E, the bidi
+// isolates U+2066 to U+2069, U+FEFF, or a lone surrogate. That is every Unicode bidi formatting
+// character. Ordinary non-ASCII letters (including right-to-left scripts) are allowed.
 // Values are rejected, never repaired. contact.js uses the same test on visitor input.
 export function hasControlChars(value) {
   for (const ch of String(value)) {
@@ -26,6 +28,9 @@ export function hasControlChars(value) {
       c <= 0x1f ||
       (c >= 0x7f && c <= 0x9f) ||
       c === 0xad ||
+      c === 0x61c ||
+      c === 0x200e ||
+      c === 0x200f ||
       c === 0x2028 ||
       c === 0x2029 ||
       (c >= 0x202a && c <= 0x202e) ||
@@ -49,6 +54,9 @@ export async function sendContactMail(env, message) {
   if (!env || !env.MAIL_WORKER || typeof env.MAIL_WORKER.fetch !== "function") {
     throw new Error("mail binding MAIL_WORKER is not configured");
   }
+  if (!env.MAIL_SHARED_SECRET) {
+    throw new Error("MAIL_SHARED_SECRET is not configured");
+  }
   if (!env.MAIL_FROM) {
     throw new Error("MAIL_FROM is not configured");
   }
@@ -63,7 +71,7 @@ export async function sendContactMail(env, message) {
   const res = await env.MAIL_WORKER.fetch(
     new Request("https://mail.invalid/", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-mail-auth": String(env.MAIL_SHARED_SECRET) },
       body,
     }),
   );
