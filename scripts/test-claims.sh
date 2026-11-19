@@ -59,6 +59,7 @@ scratch() { # <name> <data file content>
   mkdir -p "$d/content/p" "$d/data"
   cp "$ROOT/hugo.toml" "$d/"
   cp -r "$ROOT/layouts" "$ROOT/assets" "$ROOT/static" "$d/"
+  cp -r "$ROOT/data/home" "$d/data/"  # the home partials read data/home
   printf -- '---\ntitle: "Home"\n---\n' >"$d/content/_index.md"
   printf -- '---\ntitle: "P"\n---\n\n{{< pricing tier="advisory" field="hourly" >}}\n' >"$d/content/p/_index.md"
   printf '%s' "$2" >"$d/data/pricing.toml"
