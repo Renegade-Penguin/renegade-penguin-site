@@ -149,7 +149,7 @@ css = "".join(open(f, encoding="utf-8").read() for f in glob.glob(out + "/**/*.c
 assert css, "no built css collected"
 assert re.search(r"\.grid\.grid-six\{[^}]*repeat\(3,", css), "grid-six 3 column rule missing"
 assert re.search(r"@media[^{]*\{[^@]*\.grid\.grid-six\{[^}]*repeat\(2,", css), "grid-six 2 column rule missing"
-assert re.search(r"@media[^{]*\{[^@]*\.grid\.grid-six\{[^}]*(repeat\(1,|1fr\))", css), "grid-six 1 column rule missing"
+assert re.search(r"@media[^{]*560px[^{]*\{\.grid\.grid-six\{[^}]*repeat\(1,", css), "grid-six 1 column rule missing"
 html = open(out + "/index.html", encoding="utf-8").read()
 m = re.search(r'<section[^>]*id=(?:"?)not-typical(?:"?)[^>]*>(.*?)</section>', html, re.S)
 assert m, "not-typical section missing"
