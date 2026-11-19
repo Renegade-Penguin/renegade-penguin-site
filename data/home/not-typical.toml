@@ -1,0 +1,27 @@
+eyebrow = "Practitioner Led"
+title = "Not the Typical vCISO or vCIO"
+intro = "Renegade Penguin brings about 16 years of hands-on security work to the decisions most advisors only discuss. The advice comes from building, testing, and questioning the systems involved."
+
+[[items]]
+title = "Hands-On Judgment"
+body = "Every recommendation is grounded in field experience and direct technical understanding, not recycled guidance from books or vendor decks."
+
+[[items]]
+title = "Wireless From First Principles"
+body = "Networking knowledge reaches the radio layer, including how wireless communications behave, fail, and must be positioned to work well."
+
+[[items]]
+title = "Continuity Under Failure"
+body = "Emergency communications experience shapes business continuity and disaster recovery plans around real failure conditions, practical testing, and operational recovery."
+
+[[items]]
+title = "Both Sides Understood"
+body = "Experience with defensive security and the underground provides context for threats, while deep Tor and I2P knowledge replaces fear stories with technical reality."
+
+[[items]]
+title = "Emerging Technology Tracked"
+body = "Active research covers developing systems and threats, including Veilid and post-quantum cryptography, with substantial work performed in the open source community."
+
+[[items]]
+title = "Evidence Before Claims"
+body = "Clear questions expose weak assumptions, separate working knowledge from polished talk, and give clients evidence they can use when making technical decisions."
