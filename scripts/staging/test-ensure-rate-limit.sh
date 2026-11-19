@@ -10,7 +10,7 @@ S=ensure-rate-limit.sh
 E=/zones/zone123/rulesets/phases/http_ratelimit/entrypoint
 RULES=/zones/zone123/rulesets/rs1/rules
 OTHER='{"id":"abc","ref":"someone-elses","expression":"true","action":"block","description":"keep me"}'
-OURS_FULL='{"id":"r9","ref":"renegade-penguin-contact-ratelimit","description":"Contact form: 5 POST per 10 min per data center per IP","expression":"(http.request.uri.path eq \"/api/contact\" and http.request.method eq \"POST\")","action":"block","ratelimit":{"characteristics":["cf.colo.id","ip.src"],"period":600,"requests_per_period":5,"mitigation_timeout":600,"counting_expression":""},"last_updated":"x"}'
+OURS_FULL='{"id":"r9","ref":"renegade-penguin-contact-ratelimit","description":"Contact form: 5 POST per 10 s per data center per IP","expression":"(http.request.uri.path eq \"/api/contact\" and http.request.method eq \"POST\")","action":"block","ratelimit":{"characteristics":["cf.colo.id","ip.src"],"period":10,"requests_per_period":5,"mitigation_timeout":10,"counting_expression":""},"last_updated":"x"}'
 OURS_DIFF='{"id":"r9","ref":"renegade-penguin-contact-ratelimit","expression":"true","action":"log","ratelimit":{"characteristics":["cf.colo.id","ip.src"],"period":10,"requests_per_period":1000,"mitigation_timeout":10}}'
 HAVE_OTHER='{"success":true,"result":{"id":"rs1","rules":['"$OTHER"']}}'
 HAVE_OURS='{"success":true,"result":{"id":"rs1","rules":['"$OTHER"','"$OURS_FULL"']}}'
@@ -29,8 +29,8 @@ t_rc 0 "dry run"
 t_expect_writes 0 "dry run makes no write call"
 t_expect_out "WOULD POST /zones/<zone>/rulesets" "dry run prints the create"
 t_expect_out '"requests_per_period":5' "5 requests"
-t_expect_out '"period":600' "per 10 minutes"
-t_expect_out '"mitigation_timeout":600' "block 10 minutes"
+t_expect_out '"period":10,' "10 second period"
+t_expect_out '"mitigation_timeout":10}' "block 10 seconds"
 t_token_never_leaks
 
 echo "-- dry run, existing ruleset"
@@ -106,6 +106,22 @@ code=$(printf 'header = "Authorization: Bearer x"\n' | PATH="$T/bin:$PATH" FAKE_
   bash "$T/bin/curl" -sS -K - -X POST --data-binary @<(printf '%s' "$OLDBODY") -w '%{http_code}' -o /dev/null https://api.cloudflare.com/client/v4/zones/zone123/rulesets)
 set -e
 if [ "$code" = 400 ]; then t_ok "old ip.src-only body gets HTTP 400"; else t_fail "fake accepted a body without cf.colo.id (got $code)"; fi
+
+echo "-- the fake API rejects periods and timeouts other than 10 (guard bites)"
+t_reset
+t_resp GET "$E" 404 "$NF"
+t_run "$S" --apply
+t_rc 0 "script's own 10 s rule is accepted by the Free-plan fake"
+post_code() { # json body -> http code
+  printf 'header = "Authorization: Bearer x"\n' | PATH="$T/bin:$PATH" FAKE_DIR="$T" FAKE_REAL_JQ="$FAKE_REAL_JQ" FAKE_REAL_DIRNAME="$FAKE_REAL_DIRNAME" TMPDIR="$T/tmp" \
+    bash "$T/bin/curl" -sS -K - -X POST --data-binary @<(printf '%s' "$1") -w '%{http_code}' -o /dev/null https://api.cloudflare.com/client/v4/zones/zone123/rulesets
+}
+set +e
+code=$(post_code '{"rules":[{"ratelimit":{"characteristics":["cf.colo.id","ip.src"],"period":600,"requests_per_period":5,"mitigation_timeout":10}}]}')
+code2=$(post_code '{"rules":[{"ratelimit":{"characteristics":["cf.colo.id","ip.src"],"period":10,"requests_per_period":5,"mitigation_timeout":600}}]}')
+set -e
+if [ "$code" = 400 ]; then t_ok "period 600 gets HTTP 400"; else t_fail "fake accepted period 600 (got $code)"; fi
+if [ "$code2" = 400 ]; then t_ok "mitigation_timeout 600 gets HTTP 400"; else t_fail "fake accepted timeout 600 (got $code2)"; fi
 
 echo "-- identifiers are masked in all output"
 ACCT=0123456789abcdef0123456789abcdef
