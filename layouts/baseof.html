@@ -13,6 +13,8 @@
 <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}">
 <link rel="preload" href="/fonts/jost-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" type="image/png" href="/brand/penguin-color.png">
+{{ if ne .Kind "404" }}<link rel="canonical" href="{{ .Permalink }}">{{ end }}
+{{ partial "jsonld.html" . }}
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>

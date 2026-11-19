@@ -15,6 +15,7 @@ file that is not a known binary type and whose first non-blank, non-comment cont
 is a tag (see sniff).
 """
 import codecs
+import json
 import os
 import re
 import sys
@@ -129,6 +130,26 @@ def sniff(text):
     return None
 
 
+JSONLD = "application/ld+json"
+# A JSON-LD block is inert data, but "<!--" or "<script" inside it can put a browser's
+# script-data parser in the double-escaped state, where the closing tag no longer ends
+# the element; so neither may appear, and "</script" cannot (it would end the element).
+SCRIPT_TRAPS = ("<!--", "<script", "</script")
+
+
+def jsonld_problem(body):
+    """Return why a JSON-LD body is not allowed, or None when it is plain JSON."""
+    low = body.lower()
+    for trap in SCRIPT_TRAPS:
+        if trap in low:
+            return "body contains %s" % trap
+    try:
+        json.loads(body)
+    except ValueError:
+        return "body is not valid JSON"
+    return None
+
+
 class Checker(HTMLParser):
     def __init__(self, path, env, rel=""):
         super().__init__(convert_charrefs=True)
@@ -142,6 +163,13 @@ class Checker(HTMLParser):
         self.out = []
         self.in_style = False
         self.robots_noindex = False
+        self.script = None  # body parts while inside a JSON-LD script element
+
+    def close(self):
+        super().close()
+        if self.script is not None:
+            self.add("no_script", "script element that is never closed")
+            self.script = None
 
     def add(self, check, detail):
         self.out.append((check, self.path, detail))
@@ -159,6 +187,17 @@ class Checker(HTMLParser):
             and set(a) <= {"src", "async", "defer"}
         )
 
+    def jsonld_script_ok(self, a):
+        """A JSON-LD data block: type exactly application/ld+json, no src, outside every
+        inert context, not self-closing, and not nested in another JSON-LD block."""
+        return (
+            not self.reject_script
+            and not any(self.inert.values())
+            and self.script is None
+            and a.get("type", "").strip().lower() == JSONLD
+            and "src" not in a
+        )
+
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
         # Browsers use the first of two same-named attributes, so keep the first and
@@ -174,6 +213,8 @@ class Checker(HTMLParser):
             if self.turnstile_script_ok(a):
                 self.turnstile_seen = True
                 self.in_turnstile = True
+            elif self.jsonld_script_ok(a):
+                self.script = []  # a JSON-LD data block: its body is judged when it ends
             elif not self.reject_script:  # a self-closing script is reported by handle_startendtag
                 self.add("no_script", "script element")
         if tag in INERT_CONTEXTS:
@@ -254,8 +295,16 @@ class Checker(HTMLParser):
             self.in_style = False
         if tag.lower() == "script":
             self.in_turnstile = False
+            if self.script is not None:
+                body = "".join(self.script)
+                self.script = None
+                problem = jsonld_problem(body)
+                if problem:
+                    self.add("no_script", "JSON-LD script element %s" % problem)
 
     def handle_data(self, data):
+        if self.script is not None:
+            self.script.append(data)
         if self.in_turnstile and data.strip():
             self.add("no_script", "inline content in the Turnstile script")
         if (self.in_style or any(self.inert.values())) and "<script" in data.lower():

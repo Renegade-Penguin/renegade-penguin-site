@@ -19,6 +19,10 @@ HUGO="${HUGO:-hugo}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 FAILS=0
+# The hand-made fixtures carry no footer year or security.txt, so the clock-dependent fresh
+# check is off for every case here; the real builds below turn it on with SKIP_FRESH=0, and
+# scripts/test-fresh.sh covers the check itself.
+export SKIP_FRESH=1
 fail() {
   echo "FAIL: $*" >&2
   exit 1
@@ -51,8 +55,11 @@ run_check() { # <dir> <env> [VAR=1 ...]; sets RC and OUT. Later VAR=... wins.
   set -e
 }
 
-expect_pass() { # <label> <tree> <env>
-  run_check "$2" "$3"
+expect_pass() { # <label> <tree> <env> [VAR=1 ...]
+  local label="$1" tree="$2" envn="$3"
+  shift 3
+  run_check "$tree" "$envn" "$@"
+  set -- "$label"
   if [ "$RC" != "0" ]; then
     soft "$1: expected pass, got exit $RC: $OUT"
     return 0
@@ -323,6 +330,29 @@ snippet_case "anchor to chiefgyk3d.com without rel" '<a href="https://chiefgyk3d
 snippet_case "anchor to github.com with target and no rel" '<a href="https://github.com/x" target="_blank">x</a>' production external_host SKIP_EXTERNAL_HOST
 expect_pass "anchor to the site own host without rel" "$(snippet_tree '<a href="https://renegadepenguinllc.com/x">x</a><a href="/y">y</a>')" production
 
+# JSON-LD: a data block is the only script element allowed.
+LD='{"@context":"https://schema.org","@type":"Organization","name":"Fixture"}'
+expect_pass "JSON-LD script element" "$(snippet_tree "<script type=\"application/ld+json\">$LD</script>")" production
+expect_pass "JSON-LD script element, type in upper case" "$(snippet_tree "<script type=\"Application/LD+JSON\">$LD</script>")" production
+snippet_case "script with another type" "<script type=\"text/javascript\">$LD</script>" production no_script SKIP_NO_SCRIPT
+snippet_case "script with no type" "<script>$LD</script>" production no_script SKIP_NO_SCRIPT
+snippet_case "JSON-LD script with a src" "<script type=\"application/ld+json\" src=\"/x.json\">$LD</script>" production no_script SKIP_NO_SCRIPT
+snippet_case "JSON-LD script with invalid JSON" '<script type="application/ld+json">{"a":</script>' production no_script SKIP_NO_SCRIPT
+snippet_case "JSON-LD script with an empty body" '<script type="application/ld+json"></script>' production no_script SKIP_NO_SCRIPT
+snippet_case "JSON-LD script that is never closed" "<script type=\"application/ld+json\">$LD" production no_script SKIP_NO_SCRIPT
+snippet_case "JSON-LD body with an escape-state opener" '<script type="application/ld+json">{"a":"<!--<script>"}</script>' production no_script SKIP_NO_SCRIPT
+# A JSON-LD block inside an inert context is still refused (those contexts are the ones the
+# Turnstile rules also treat as inert).
+for el in template svg math noscript title textarea xmp noembed style; do
+  snippet_case "JSON-LD script inside <$el>" "<$el><script type=\"application/ld+json\">$LD</script></$el>" production no_script SKIP_NO_SCRIPT
+done
+t="$(snippet_tree "<iframe><script type=\"application/ld+json\">$LD</script></iframe>")"
+run_check "$t" production
+if [ "$RC" != "0" ] && grep -q '^FAIL no_script:' <<<"$OUT"; then echo "ok: JSON-LD script inside <iframe> fails on no_script"; else soft "JSON-LD script inside iframe: no 'FAIL no_script:' in: $OUT"; fi
+snippet_case "self-closing JSON-LD script" '<script type="application/ld+json" />' production no_script SKIP_NO_SCRIPT
+snippet_case "JSON-LD script nested in a JSON-LD script" "<script type=\"application/ld+json\"><script type=\"application/ld+json\">$LD</script></script>" production no_script SKIP_NO_SCRIPT
+snippet_case "JSON-LD script with an inline handler" "<script type=\"application/ld+json\" onload=\"x()\">$LD</script>" production inline_handler SKIP_INLINE_HANDLER
+
 # UTF-16 and non-UTF-8 text files, built at run time (binary content).
 t="$(stage clean)"
 python3 -I -c '
@@ -592,8 +622,8 @@ HUGO_OUT="$WORK/real"
 mkdir -p "$HUGO_OUT/prod" "$HUGO_OUT/stg"
 "$HUGO" --minify --destination "$HUGO_OUT/prod" >/dev/null || fail "production hugo build failed"
 HUGO_PARAMS_ENVIRONMENT=staging "$HUGO" --minify --destination "$HUGO_OUT/stg" >/dev/null || fail "staging hugo build failed"
-expect_pass "real production build" "$HUGO_OUT/prod" production
-expect_pass "real staging build" "$HUGO_OUT/stg" staging
+expect_pass "real production build" "$HUGO_OUT/prod" production SKIP_FRESH=0
+expect_pass "real staging build" "$HUGO_OUT/stg" staging SKIP_FRESH=0
 
 # Independent assertions on the real builds (not through check-output.sh).
 if grep -rliE 'noindex' "$HUGO_OUT/prod" --include='*.html' | grep -q .; then soft "production build contains noindex"; fi

@@ -1,40 +1,35 @@
----
-title: "About"
-description: "A one-person-led cybersecurity and IT consulting business supported by a trusted network of specialists."
----
++++
+title = "About"
+description = "Renegade Penguin provides practical, defense-first cybersecurity and IT consulting without a preferred vendor or predetermined answer."
+weight = 20
++++
 
 Renegade Penguin LLC is a one-person-led cybersecurity and IT consulting business supported by a trusted network of specialists.
 
-## How I Work
+## How the work gets done
 
-I begin with the organization’s actual needs, risks, and constraints. I do not begin with a preferred vendor, product, or predetermined answer.
+I begin with the organization’s actual needs, risks, and constraints. I do not begin with a preferred vendor, product, or predetermined answer. No vendor or approach is a sacred cow. Recommendations serve the work, not a product.
 
-The approach is defense first. I help organizations understand their current posture, choose a practical direction, and improve systems that need to stand up to real attacks. Friends and associates on the offensive side test the work and challenge its assumptions.
+The direction is clear: help organizations understand their cybersecurity posture, decide where they can and should go, and build a defensible path forward. That means choosing a practical direction and improving systems that need to stand up to real attacks.
 
-When an engagement requires additional expertise, we assemble a team from a trusted network. That may include specialists in penetration testing or telecommunications for call centers. The structure stays focused on the work at hand.
-
-## Where I Have Worked
-
-My experience includes medical, dental, private aviation, critical infrastructure, and managed service provider work for small businesses. I work with businesses ranging from one person to organizations with many thousands of people.
-
-## Community and Public Work
-
-Much of my work is open source because community comes first. I also provide free help to smaller and minority communities and domestic violence support organizations that lack resources.
-
-For personal writing, projects, and other content, visit [ChiefGyk3D](https://chiefgyk3d.com/).
-
-## Clear Direction
-
-I help organizations understand their cybersecurity posture, decide where they can and should go, and build a defensible path forward. No vendor or approach is a sacred cow. Recommendations serve the work, not a product.
+The work begins with defense. Trusted friends and associates on the offensive side test those defenses and challenge the assumptions behind them. When an engagement needs more depth or additional expertise, we assemble a team from a trusted network. That may include specialists in penetration testing or telecommunications for call centers.
 
 Services include AI security, defensive engineering, OSINT, OPSEC, threat modeling education, and speaking.
 
-## Defense First
+## Where I have worked
 
-The work begins with defense. Trusted friends and associates on the offensive side test those defenses against real attacks.
+My work has included medical, dental, private aviation, critical infrastructure, and managed service provider work for small businesses.
 
-When an engagement needs more depth, a trusted network of specialists can join as a team, including experts in telecommunications for call centers and penetration testing.
+I have worked with businesses ranging from one person to organizations with many thousands of people.
 
-## Community Matters
+## Community and public work
 
-Much of the work is open source because community comes first. Renegade Penguin also provides free help to smaller and minority communities and domestic violence support organizations that lack resources.
+Much of my work is open source because community comes first. Renegade Penguin also provides free help to smaller and minority communities and domestic violence support organizations that lack resources.
+
+For personal writing, projects, and other content, visit [ChiefGyk3D](https://chiefgyk3d.com/).
+
+## Credentials
+
+{{OWNER:certifications held, if any}}
+
+{{OWNER:years in the field, if wanted}}

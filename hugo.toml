@@ -76,3 +76,23 @@ enableGitInfo = false
   name = "Ohio"
   url = "/ohio/"
   weight = 80
+# Trust and legal pages (issue #20) sort after the entries above.
+[[menus.footer]]
+  name = "Privacy"
+  url = "/privacy/"
+  weight = 90
+[[menus.footer]]
+  name = "Terms"
+  url = "/terms/"
+  weight = 100
+[[menus.footer]]
+  name = "Accessibility"
+  url = "/accessibility/"
+  weight = 110
+[[menus.footer]]
+  name = "Security policy"
+  url = "/security-policy/"
+  weight = 120
+
+# Sitemap and canonical links: Hugo's sitemap lists every page; the thank-you page opts out in
+# its own front matter and the 404 page is never listed (scripts/test-trust.sh checks both).

@@ -10,9 +10,12 @@
 # Each check can be disabled for the revert-proof test with SKIP_<NAME>=1:
 # SKIP_NO_SCRIPT, SKIP_INLINE_HANDLER, SKIP_EXTERNAL_HOST, SKIP_NOINDEX, SKIP_SCRUB_TERMS,
 # SKIP_ROBOTS, SKIP_CSP, SKIP_ABOUT_LINK, SKIP_DASHES, SKIP_UNSAFE_SCHEME, SKIP_META_REFRESH,
-# SKIP_ACTIVE_EMBED, SKIP_BASE_ELEMENT, SKIP_DUPLICATE_ATTR, SKIP_CLAIMS, SKIP_OWNER_TOKENS.
+# SKIP_ACTIVE_EMBED, SKIP_BASE_ELEMENT, SKIP_DUPLICATE_ATTR, SKIP_CLAIMS, SKIP_OWNER_TOKENS,
+# SKIP_FRESH.
 # Opt-in check: owner_tokens (check-owner-tokens.py) runs only when REQUIRE_NO_OWNER_TOKENS=1 and
 # fails on any page text holding an unresolved owner placeholder.
+# fresh (check-fresh.py): no placeholder links or lorem, a current footer year, a security.txt
+# that has not expired and is at most a year out.
 set -euo pipefail
 
 DIR="${1:-}"
@@ -227,7 +230,22 @@ owner_tokens() {
   return 0
 }
 
-for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms noindex robots csp about_link dashes claims owner_tokens; do
+fresh() {
+  # check-fresh.py exits 1 when it has findings (printed as "<file><TAB><detail>"); any other
+  # non-zero status is a helper failure and is never read as a pass.
+  local f d status=0 out
+  out="$(python3 -I "$HERE/check-fresh.py" "$DIR" 2>&1)" || status=$?
+  if [ "$status" -gt 1 ]; then
+    report fresh "helper failed with status $status: $(printf '%s' "$out" | tail -n 1)"
+    return 0
+  fi
+  while IFS=$'\t' read -r f d; do
+    [ -n "$f" ] && report fresh "$d ($f)"
+  done <<<"$out"
+  return 0
+}
+
+for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms noindex robots csp about_link dashes claims owner_tokens fresh; do
   if enabled "$c"; then "$c"; fi
 done
 
