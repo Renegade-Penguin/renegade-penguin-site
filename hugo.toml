@@ -94,10 +94,5 @@ enableGitInfo = false
   url = "/security-policy/"
   weight = 120
 
-# The thanks page (contact form confirmation) stays out of the sitemap. The 404 page is never
-# in a Hugo sitemap.
-[[cascade]]
-  [cascade.sitemap]
-    disable = true
-  [cascade.target]
-    path = "/thanks{,/**}"
+# Sitemap and canonical links: Hugo's sitemap lists every page; the thank-you page opts out in
+# its own front matter and the 404 page is never listed (scripts/test-trust.sh checks both).

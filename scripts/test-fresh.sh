@@ -13,7 +13,7 @@ soft() {
   FAILS=$((FAILS + 1))
 }
 
-YEAR="$(date +%Y)"
+YEAR="$(date -u +%Y)"
 stamp() { date -u -d "$1" +%Y-%m-%dT%H:%M:%SZ; }
 
 # mk <name> <year> <expires-or-"none"> [extra body html]: a minimal clean-shaped tree.
@@ -83,6 +83,32 @@ bad_case "stale footer year on a sub page" "$d" 'about/index.html'
 d="$(mk nofooter "$YEAR" "$GOOD")"
 printf '%s' '<!doctype html><html lang=en><head><title>T</title></head><body><main><h1>T</h1></main></body></html>' >"$d/index.html"
 bad_case "home page without a footer" "$d" 'no footer copyright year'
+
+# New Year: the accepted years are judged in UTC with one hour of slack either side.
+cat >"$WORK/clock.py" <<'PY'
+import importlib.util, sys
+from datetime import datetime, timezone
+spec = importlib.util.spec_from_file_location("check_fresh", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+def utc(*a):
+    return datetime(*a, tzinfo=timezone.utc)
+cases = [
+    (utc(2027, 6, 1, 12, 0, 0), {2027}),                    # mid-year: only this year
+    (utc(2027, 1, 1, 0, 30, 0), {2026, 2027}),              # just after New Year: last year too
+    (utc(2026, 12, 31, 23, 30, 0), {2026, 2027}),           # just before: next year too
+    (utc(2027, 1, 1, 1, 0, 1), {2027}),                     # more than an hour after: last year fails
+    (utc(2026, 12, 31, 22, 59, 59), {2026}),                # more than an hour before: next year fails
+]
+for now, want in cases:
+    got = m.accepted_years(now)
+    if got != want:
+        sys.exit("accepted_years(%s) = %s, want %s" % (now, sorted(got), sorted(want)))
+print("ok")
+PY
+rc=0
+out="$(python3 -I "$WORK/clock.py" "$FRESH" 2>&1)" || rc=$?
+if [ "$rc" = 0 ] && [ "$out" = ok ]; then echo "ok: New Year slack is one hour in UTC"; else soft "New Year clock cases: exit $rc: $out"; fi
 
 # A failing helper must be non-zero, never a pass: bad usage exits 70.
 rc=0

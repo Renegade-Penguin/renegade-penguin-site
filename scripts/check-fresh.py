@@ -9,9 +9,11 @@ Rules:
   - an <a> whose href is exactly "#" or empty (the attribute with no value included);
   - the word "lorem" in a page (case-insensitive, whole word);
   - every page with a <footer> must show a copyright year (a (c) sign followed by four
-    digits) equal to the year of the system clock at check time, and the site's
+    digits) equal to the UTC year of the system clock at check time, and the site's
     index.html must have such a footer. The Hugo footer prints the build year, so a
-    stale build, or a hard-coded year, fails;
+    stale build, or a hard-coded year, fails. A build that ran within one hour either side of
+    New Year may show the neighboring year, so the years one hour before and after the check
+    time are accepted too (see accepted_years);
   - <dir>/.well-known/security.txt must exist, have a Contact field, and exactly one
     Expires field in RFC 3339 form that is in the future and at most 365 days ahead.
 """
@@ -27,6 +29,13 @@ YEAR = re.compile(r"(?:©|\(c\))\s*((?:19|20)\d\d)\b", re.I)
 RFC3339 = re.compile(
     r"^(\d{4})-(\d{2})-(\d{2})[Tt ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?([Zz]|[+-]\d{2}:\d{2})$")
 MAX_AHEAD = timedelta(days=365)
+NEW_YEAR_SLACK = timedelta(hours=1)
+
+
+def accepted_years(now):
+    """The footer years that count as current at the UTC time `now`: the year itself, plus
+    the year an hour earlier or later, so a build near midnight on December 31 is not failed."""
+    return {(now - NEW_YEAR_SLACK).year, now.year, (now + NEW_YEAR_SLACK).year}
 
 
 class Page(HTMLParser):
@@ -63,7 +72,7 @@ def read(path):
         return fh.read().decode("utf-8", errors="replace")
 
 
-def check_pages(root, year, out):
+def check_pages(root, years_ok, out):
     saw_root_footer = False
     for dp, _dirs, files in os.walk(root):
         for name in sorted(files):
@@ -83,9 +92,9 @@ def check_pages(root, year, out):
                 years = YEAR.findall(" ".join(p.footer_text))
                 if not years:
                     out.append((rel, "footer has no copyright year"))
-                elif any(int(y) != year for y in years):
-                    out.append((rel, "footer year %s is not the current year %d"
-                                % (",".join(years), year)))
+                elif any(int(y) not in years_ok for y in years):
+                    out.append((rel, "footer year %s is not the current year %s"
+                                % (",".join(years), "/".join(str(y) for y in sorted(years_ok)))))
                 elif rel == "index.html":
                     saw_root_footer = True
     if not saw_root_footer and not any(r == "index.html" for r, _ in out):
@@ -143,17 +152,18 @@ def main():
         return 70
     now = datetime.now(timezone.utc)
     out = []
-    check_pages(root, datetime.now().year, out)
+    check_pages(root, accepted_years(now), out)
     check_security_txt(root, now, out)
     for rel, detail in out:
         print("%s\t%s" % (rel, detail))
     return 1 if out else 0
 
 
-try:
-    sys.exit(main())
-except SystemExit:
-    raise
-except Exception as exc:  # fail closed: a crash must never read as a pass
-    print("checker error: %s: %s" % (type(exc).__name__, exc), file=sys.stderr)
-    sys.exit(70)
+if __name__ == "__main__":  # importable by scripts/test-fresh.sh for the clock cases
+    try:
+        sys.exit(main())
+    except SystemExit:
+        raise
+    except Exception as exc:  # fail closed: a crash must never read as a pass
+        print("checker error: %s: %s" % (type(exc).__name__, exc), file=sys.stderr)
+        sys.exit(70)

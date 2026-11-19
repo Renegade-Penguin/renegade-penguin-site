@@ -341,6 +341,16 @@ snippet_case "JSON-LD script with invalid JSON" '<script type="application/ld+js
 snippet_case "JSON-LD script with an empty body" '<script type="application/ld+json"></script>' production no_script SKIP_NO_SCRIPT
 snippet_case "JSON-LD script that is never closed" "<script type=\"application/ld+json\">$LD" production no_script SKIP_NO_SCRIPT
 snippet_case "JSON-LD body with an escape-state opener" '<script type="application/ld+json">{"a":"<!--<script>"}</script>' production no_script SKIP_NO_SCRIPT
+# A JSON-LD block inside an inert context is still refused (those contexts are the ones the
+# Turnstile rules also treat as inert).
+for el in template svg math noscript title textarea xmp noembed style; do
+  snippet_case "JSON-LD script inside <$el>" "<$el><script type=\"application/ld+json\">$LD</script></$el>" production no_script SKIP_NO_SCRIPT
+done
+t="$(snippet_tree "<iframe><script type=\"application/ld+json\">$LD</script></iframe>")"
+run_check "$t" production
+if [ "$RC" != "0" ] && grep -q '^FAIL no_script:' <<<"$OUT"; then echo "ok: JSON-LD script inside <iframe> fails on no_script"; else soft "JSON-LD script inside iframe: no 'FAIL no_script:' in: $OUT"; fi
+snippet_case "self-closing JSON-LD script" '<script type="application/ld+json" />' production no_script SKIP_NO_SCRIPT
+snippet_case "JSON-LD script nested in a JSON-LD script" "<script type=\"application/ld+json\"><script type=\"application/ld+json\">$LD</script></script>" production no_script SKIP_NO_SCRIPT
 snippet_case "JSON-LD script with an inline handler" "<script type=\"application/ld+json\" onload=\"x()\">$LD</script>" production inline_handler SKIP_INLINE_HANDLER
 
 # UTF-16 and non-UTF-8 text files, built at run time (binary content).

@@ -9,6 +9,7 @@
   "sameAs" (slice "https://chiefgyk3d.com/")
 -}}
 <script type="application/ld+json">{{ $org | jsonify | safeJS }}</script>
+{{- /* OWNER TO CONFIRM: the Person uses only the public handle and the title Founder. Add a real name or credentials only when the owner supplies them. */ -}}
 {{- if eq .RelPermalink "/about/" }}
 {{- $person := dict
   "@context" "https://schema.org"

@@ -35,7 +35,8 @@ grep -Eq '<input [^>]*name="?website"?[^>]*tabindex="?-1' "$c" || fail "/contact
 grep -Eq '<input [^>]*name="?consent"?[^>]*required|<input [^>]*required[^>]*name="?consent' "$c" || fail "/contact/ consent must be required"
 if grep -q 'challenges\.cloudflare\.com' "$c"; then fail "/contact/ without a sitekey must not mention Turnstile"; fi
 if grep -q 'cf-turnstile' "$c"; then fail "/contact/ without a sitekey must have no widget"; fi
-if grep -q '<script' "$c"; then fail "/contact/ without a sitekey must have no script"; fi
+# JSON-LD data blocks (type application/ld+json, issue #20) are not scripts that run: ignore them.
+if grep -o '<script[^>]*>' "$c" | grep -vq 'application/ld+json'; then fail "/contact/ without a sitekey must have no script"; fi
 if grep -q '[$]' "$c"; then fail "/contact/ must not hold a currency figure"; fi
 t="$OUT/contact/thanks/index.html"
 [ -f "$t" ] || fail "/contact/thanks/ missing"
@@ -44,12 +45,12 @@ OUT2="$(mktemp -d)"
 trap 'rm -rf "$OUT" "$OUT2"' EXIT
 HUGO_PARAMS_TURNSTILESITEKEY=fixturekey "$HUGO" --minify --destination "$OUT2" >/dev/null || fail "hugo build with a sitekey exited non-zero"
 c2="$OUT2/contact/index.html"
-[ "$(grep -o '<script' "$c2" | wc -l)" = "1" ] || fail "/contact/ with a sitekey must have exactly one script"
+[ "$(grep -o '<script[^>]*>' "$c2" | grep -vc 'application/ld+json')" = "1" ] || fail "/contact/ with a sitekey must have exactly one script"
 grep -Eq '<script src="?https://challenges\.cloudflare\.com/turnstile/v0/api\.js"? async defer>' "$c2" || fail "/contact/ Turnstile script tag is not the expected one"
 grep -Eq '<div [^>]*class="?cf-turnstile"?' "$c2" || fail "/contact/ with a sitekey needs the widget div"
 grep -Eq 'data-sitekey="?fixturekey' "$c2" || fail "/contact/ widget must carry the sitekey param"
 grep -Eq 'data-action="?contact' "$c2" || fail "/contact/ widget must carry data-action contact"
-if grep -rl '<script' "$OUT2" --include='*.html' | grep -v '/contact/index.html$' | grep -q .; then fail "script outside /contact/ in the sitekey build"; fi
+if grep -rHo '<script[^>]*>' "$OUT2" --include='*.html' | grep -v 'application/ld+json' | grep -v '/contact/index.html:' | grep -q .; then fail "script outside /contact/ in the sitekey build"; fi
 grep -Eq '<a [^>]*href="?https://chiefgyk3d\.com/"?[^>]*rel="?noopener' "$OUT/about/index.html" ||
   grep -Eq '<a [^>]*rel="?noopener"?[^>]*href="?https://chiefgyk3d\.com/' "$OUT/about/index.html" ||
   fail "/about/ must link https://chiefgyk3d.com/ with rel=noopener"

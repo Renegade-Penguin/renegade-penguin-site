@@ -12,11 +12,7 @@ fail() {
   exit 1
 }
 
-# A copy of the content tree with a thanks page, to prove the sitemap leaves it out.
-cp -R content "$WORK/content"
-mkdir -p "$WORK/content/thanks"
-printf '+++\ntitle = "Thanks"\n+++\n\nThanks for writing.\n' >"$WORK/content/thanks/_index.md"
-"$HUGO" --minify --contentDir "$WORK/content" --destination "$OUT" >/dev/null || fail "hugo build exited non-zero"
+"$HUGO" --minify --destination "$OUT" >/dev/null || fail "hugo build exited non-zero"
 
 for p in privacy terms accessibility security-policy about; do
   f="$OUT/$p/index.html"
@@ -30,7 +26,7 @@ for p in privacy terms accessibility security-policy about; do
     grep -Eq "href=\"?/$q/[\" >]" "$f" || fail "/$p/ footer has no link to /$q/"
   done
 done
-[ -f "$OUT/thanks/index.html" ] || fail "test thanks page was not built"
+[ -f "$OUT/contact/thanks/index.html" ] || fail "the thanks page was not built"
 if grep -q '/thanks' "$OUT/sitemap.xml"; then fail "the thanks page is in the sitemap"; fi
 if grep -qi '404' "$OUT/sitemap.xml"; then fail "the 404 page is in the sitemap"; fi
 [ -f "$OUT/404.html" ] || fail "404.html missing"
