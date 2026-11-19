@@ -14,7 +14,9 @@ unset CF_TOKEN_PRIVATE
 CF_TOKEN_PRIVATE=${CLOUDFLARE_API_TOKEN:-}
 unset CLOUDFLARE_API_TOKEN
 # Ensure one zone rate-limit rule for POST /api/contact (phase http_ratelimit):
-# 5 requests per 10 minutes per IP, block for 10 minutes.
+# 5 requests per 10 minutes per IP per data center, block for 10 minutes.
+# The plan requires cf.colo.id among the characteristics (API code 20155), so
+# counting is per data center per IP.
 # The ruleset is never replaced. The phase entrypoint is read first; when it
 # exists, only this one rule is ADDED (POST to the ruleset's rules endpoint),
 # so rules other people add are never overwritten. The ruleset is created, with
@@ -33,11 +35,11 @@ cf_init "ensure-rate-limit" "$@" -- CLOUDFLARE_ZONE_ID
 
 rule=$(jq -cn --arg ref "$RULE_REF" '{
   ref: $ref,
-  description: "Contact form: 5 POST per 10 min per IP",
+  description: "Contact form: 5 POST per 10 min per data center per IP",
   expression: "(http.request.uri.path eq \"/api/contact\" and http.request.method eq \"POST\")",
   action: "block",
   ratelimit: {
-    characteristics: ["ip.src"],
+    characteristics: ["cf.colo.id", "ip.src"],
     period: 600,
     requests_per_period: 5,
     mitigation_timeout: 600

@@ -34,9 +34,9 @@ t_resp GET "$DNS" 200 '{"success":true,"result":[]}'
 t_run "$S"
 t_rc 0 "dry run"
 t_expect_writes 0 "dry run makes no write call"
-t_expect_out "WOULD POST $D" "dry run prints domain attach"
-t_expect_out "WOULD POST /zones/zone123/dns_records" "dry run prints CNAME create"
-t_expect_out "WOULD PATCH $D/$H" "dry run prints PATCH"
+t_expect_out "WOULD POST ${D/acct123/<account>}" "dry run prints domain attach"
+t_expect_out "WOULD POST /zones/<zone>/dns_records" "dry run prints CNAME create"
+t_expect_out "WOULD PATCH ${D/acct123/<account>}/$H" "dry run prints PATCH"
 t_token_never_leaks
 
 echo "-- apply, nothing exists, becomes active"

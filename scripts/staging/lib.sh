@@ -36,6 +36,20 @@ CF_STATUS=""
 CF_BODY=""
 CF_TMP=""
 
+# cf_mask TEXT: print TEXT with the account and zone IDs replaced by
+# placeholders, so identifiers never reach the output. Output only; the real
+# IDs are still used for the calls.
+cf_mask() {
+  local t=$1
+  if [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+    t=${t//"$CLOUDFLARE_ACCOUNT_ID"/<account>}
+  fi
+  if [ -n "${CLOUDFLARE_ZONE_ID:-}" ]; then
+    t=${t//"$CLOUDFLARE_ZONE_ID"/<zone>}
+  fi
+  printf '%s' "$t"
+}
+
 cf_die() {
   printf 'error: %s\n' "$*" >&2
   exit 1
@@ -155,7 +169,7 @@ cf_errors() {
 
 # cf_read PATH: GET, allowed in dry run. Does not fail on 404; the caller decides.
 cf_read() {
-  printf 'READ  GET %s\n' "$1"
+  printf 'READ  GET %s\n' "$(cf_mask "$1")"
   cf_call GET "$1"
 }
 
@@ -164,7 +178,7 @@ cf_read() {
 cf_write() {
   local method=$1 path=$2 body=${3:-}
   if [ "$APPLY" != 1 ]; then
-    printf 'WOULD %s %s\n' "$method" "$path"
+    printf 'WOULD %s %s\n' "$method" "$(cf_mask "$path")"
     if [ -n "$body" ]; then
       printf '      body: %s\n' "$body"
     fi
@@ -172,12 +186,12 @@ cf_write() {
     CF_BODY=""
     return 0
   fi
-  printf 'WRITE %s %s\n' "$method" "$path"
+  printf 'WRITE %s %s\n' "$method" "$(cf_mask "$path")"
   cf_call "$method" "$path" "$body"
   case "$CF_STATUS" in
     2??) ;;
     *)
-      printf 'error: %s %s returned HTTP %s %s\n' "$method" "$path" "$CF_STATUS" "$(cf_errors)" >&2
+      printf 'error: %s %s returned HTTP %s %s\n' "$method" "$(cf_mask "$path")" "$CF_STATUS" "$(cf_errors)" >&2
       exit 1
       ;;
   esac

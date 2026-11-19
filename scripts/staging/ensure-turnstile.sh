@@ -115,7 +115,7 @@ if [ -n "$sitekey" ]; then
     | ((.domains // []) as $d | ($d | index($a)) != null and ($d | index($b)) != null and .mode == "managed")')
   if [ "$ok" != true ]; then
     printf 'sitekey: %s\n' "$sitekey"
-    cf_die "widget $WIDGET_NAME exists but its domains or mode differ from the expected (domains $CF_STAGING_HOST and $CF_APEX_HOST, mode managed). The secret of an existing widget cannot be recovered, so it cannot be fixed or reused here. Delete the widget (DELETE /accounts/$CLOUDFLARE_ACCOUNT_ID/challenges/widgets/$sitekey), then re-run"
+    cf_die "widget $WIDGET_NAME exists but its domains or mode differ from the expected (domains $CF_STAGING_HOST and $CF_APEX_HOST, mode managed). The secret of an existing widget cannot be recovered, so it cannot be fixed or reused here. Delete the widget (DELETE /accounts/<account>/challenges/widgets/$sitekey), then re-run"
   fi
   printf 'widget %s already exists\nsitekey: %s\n' "$WIDGET_NAME" "$sitekey"
   printf 'note: the secret is only returned at creation; it was not re-sent to Doppler\n'
@@ -128,7 +128,7 @@ body=$(jq -cn --arg n "$WIDGET_NAME" --arg a "$CF_STAGING_HOST" --arg b "$CF_APE
 if [ "$APPLY" != 1 ]; then
   printf 'WOULD READ doppler configs get --project %s --config %s (preflight, metadata only)\n' \
     "$DOPPLER_PROJECT" "$DOPPLER_CONFIG"
-  printf 'WOULD POST %s\n      body: %s\n' "$base" "$body"
+  printf 'WOULD POST %s\n      body: %s\n' "$(cf_mask "$base")" "$body"
   printf 'dry run: would then pipe the secret to: doppler secrets set TURNSTILE_SECRET_KEY --project %s --config %s\n' \
     "$DOPPLER_PROJECT" "$DOPPLER_CONFIG"
   exit 0
@@ -142,11 +142,11 @@ if ! doppler configs get --project "$DOPPLER_PROJECT" --config "$DOPPLER_CONFIG"
   cf_die "cannot read Doppler config $DOPPLER_PROJECT/$DOPPLER_CONFIG; nothing was created"
 fi
 
-printf 'WRITE POST %s\n' "$base"
+printf 'WRITE POST %s\n' "$(cf_mask "$base")"
 create_widget "$body"
 case "$CF_STATUS" in
   2??) ;;
-  *) cf_die "POST $base returned HTTP $CF_STATUS; nothing was stored" ;;
+  *) cf_die "POST $(cf_mask "$base") returned HTTP $CF_STATUS; nothing was stored" ;;
 esac
 if [ -z "$WIDGET_SITEKEY" ]; then
   cf_die "create response had no sitekey; check the Cloudflare account for a stray widget named $WIDGET_NAME"
@@ -154,8 +154,8 @@ fi
 if [ "$WIDGET_STATE" != stored ]; then
   printf 'error: widget %s WAS CREATED but its secret was NOT saved to Doppler.\n' "$WIDGET_NAME" >&2
   printf 'sitekey: %s\n' "$WIDGET_SITEKEY" >&2
-  printf 'Recovery: delete the widget (DELETE /accounts/%s/challenges/widgets/%s) or rotate its secret, then re-run.\n' \
-    "$CLOUDFLARE_ACCOUNT_ID" "$WIDGET_SITEKEY" >&2
+  printf 'Recovery: delete the widget (DELETE /accounts/<account>/challenges/widgets/%s) or rotate its secret, then re-run.\n' \
+    "$WIDGET_SITEKEY" >&2
   exit 1
 fi
 printf 'ok: created widget %s\nsitekey: %s\n' "$WIDGET_NAME" "$WIDGET_SITEKEY"

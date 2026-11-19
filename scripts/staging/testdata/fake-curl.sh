@@ -68,6 +68,14 @@ else
   bodyfile="$FAKE_DIR/default.body"
   printf '{"success":true,"errors":[],"result":{}}' >"$bodyfile"
 fi
+# Like the live API: a rate-limit rule counting by ip.src without cf.colo.id is
+# rejected with HTTP 400 code 20155 (unless a canned response was given).
+if [ ! -f "$FAKE_DIR/resp/$key.status" ] && [ "$method" = POST ] &&
+  [[ "$body" == *'"characteristics":'* ]] && [[ "$body" != *'"cf.colo.id"'* ]]; then
+  status=400
+  bodyfile="$FAKE_DIR/default.body"
+  printf '%s' '{"success":false,"errors":[{"code":20155,"message":"'"'"'[ip.src]'"'"' is not a valid value for characteristics because characteristics field is missing '"'"'cf.colo.id'"'"', this is required"}],"result":null}' >"$bodyfile"
+fi
 size=$(wc -c <"$bodyfile")
 size=${size//[[:space:]]/}
 

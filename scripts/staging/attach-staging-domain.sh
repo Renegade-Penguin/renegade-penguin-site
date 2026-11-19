@@ -84,7 +84,7 @@ cf_write PATCH "$dom_item" '{}'
 
 # 4. Done only when the domain reports active.
 if [ "$APPLY" != 1 ]; then
-  printf 'dry run: would then GET %s and require status active\n' "$dom_item"
+  printf 'dry run: would then GET %s and require status active\n' "$(cf_mask "$dom_item")"
   exit 0
 fi
 cf_read "$dom_item"
