@@ -16,7 +16,7 @@ Do not hire Renegade Penguin for an advisory retainer if you need:
 - Legal advice, privacy counsel, or an attestation
 - Someone to approve a decision leadership has already made
 - A document created only to satisfy a customer checkbox
-- A guarantee that an incident will not happen
+- Assurance that an incident will not happen
 - A specific product sold regardless of whether it fits
 
 A defined project may be a better fit when the problem has a clear end point, such as hardening an environment, reviewing an architecture, improving incident readiness, or examining AI use and data flows. A full-time hire may be the better answer when the work requires daily authority and direct management. And a managed provider is usually the right choice when the need is continuous operations rather than advice.

@@ -20,6 +20,14 @@ enableGitInfo = false
   url = "/services/"
   weight = 20
 [[menus.main]]
+  name = "Pricing"
+  url = "/pricing/"
+  weight = 22
+[[menus.main]]
+  name = "When not to hire"
+  url = "/when-not-to-hire/"
+  weight = 24
+[[menus.main]]
   name = "Experience"
   url = "/experience/"
   weight = 30

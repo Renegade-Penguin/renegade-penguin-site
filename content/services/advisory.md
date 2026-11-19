@@ -27,7 +27,7 @@ The work is defense first and vendor-neutral. Recommendations are based on your 
 
 ## What is not included
 
-An advisory retainer is not a managed security service, help desk, outsourced IT department, penetration test, legal opinion, or guarantee against incidents. Hands-on engineering can be scoped as a separate project when needed.
+An advisory retainer is not a managed security service, help desk, outsourced IT department, penetration test, legal opinion, or assurance against incidents. Hands-on engineering can be scoped as a separate project when needed.
 
 ## How it starts
 
