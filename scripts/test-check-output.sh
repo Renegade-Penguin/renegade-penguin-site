@@ -203,6 +203,68 @@ b "script-src-elem *" clean bad-csp-script-elem production csp SKIP_CSP
 b "frame-src host" clean bad-csp-frame-src production csp SKIP_CSP
 b "object-src data:" clean bad-csp-object-data production csp SKIP_CSP
 
+# Contact page Turnstile exception (issue #4): one script tag, on contact/index.html only,
+# and the Turnstile origins only in a contact route CSP that detaches the all-routes one.
+expect_pass "contact page with the one Turnstile script" "$(stage clean "$FIX/ok-turnstile")" production
+expect_pass "contact page with the Turnstile script without async" "$(stage clean "$FIX/ok-turnstile-noasync")" production
+expect_pass "contact CSP block with the Turnstile origins" "$(stage clean "$FIX/ok-turnstile-csp-contact")" production
+b "Turnstile script on the home page" clean bad-turnstile-home production no_script SKIP_NO_SCRIPT
+b "Turnstile script on another page" clean bad-turnstile-other-page production no_script SKIP_NO_SCRIPT
+b "second script on the contact page" clean bad-turnstile-second production no_script SKIP_NO_SCRIPT
+b "script from another allowed origin on the contact page" clean bad-turnstile-origin production no_script SKIP_NO_SCRIPT
+b "inline script on the contact page" clean bad-turnstile-inline production no_script SKIP_NO_SCRIPT
+b "extra attribute on the Turnstile script" clean bad-turnstile-attr production no_script SKIP_NO_SCRIPT
+# A different path on the Turnstile host trips both the script allowlist and the host check.
+run_check "$(stage clean "$FIX/bad-turnstile-path")" production
+if [ "$RC" = "0" ] || ! grep -q "^FAIL no_script:" <<<"$OUT" || ! grep -q "^FAIL external_host:" <<<"$OUT"; then
+  soft "other path on the Turnstile host: expected no_script and external_host failures, got exit $RC: $OUT"
+else
+  run_check "$(stage clean "$FIX/bad-turnstile-path")" production SKIP_NO_SCRIPT=1 SKIP_EXTERNAL_HOST=1
+  if [ "$RC" != "0" ]; then
+    soft "other path on the Turnstile host: expected pass with both skips, got exit $RC: $OUT"
+  else
+    echo "ok: other path on the Turnstile host fails no_script and external_host"
+  fi
+fi
+b "Turnstile origins in the all-routes CSP" clean bad-turnstile-csp-star production csp SKIP_CSP
+b "extra host in the contact CSP" clean bad-turnstile-csp-contact-host production csp SKIP_CSP
+b "Turnstile origin in connect-src of the contact CSP" clean bad-turnstile-csp-contact-connect production csp SKIP_CSP
+b "contact CSP without detaching the all-routes CSP" clean bad-turnstile-csp-no-detach production csp SKIP_CSP
+b "Turnstile CSP on a route other than contact" clean bad-turnstile-csp-other-route production csp SKIP_CSP
+b "contact CSP detached after it is set" clean bad-turnstile-csp-detach-last production csp SKIP_CSP
+b "contact CSP detached and never set" clean bad-turnstile-csp-detach-only production csp SKIP_CSP
+b "contact CSP set twice" clean bad-turnstile-csp-two-sets production csp SKIP_CSP
+b "Turnstile origin in a sandbox directive" clean bad-turnstile-csp-sandbox production csp SKIP_CSP
+b "Turnstile origin in a trusted-types directive" clean bad-turnstile-csp-trusted-types production csp SKIP_CSP
+b "Turnstile origin where a directive name belongs" clean bad-turnstile-csp-standalone production csp SKIP_CSP
+b "unknown CSP directive" clean bad-csp-unknown-directive production csp SKIP_CSP
+b "value on a no-value CSP directive" clean bad-csp-novalue-token production csp SKIP_CSP
+b "Turnstile script with an inline body" clean bad-turnstile-src-body production no_script SKIP_NO_SCRIPT
+b "self-closing Turnstile script" clean bad-turnstile-selfclosing production no_script SKIP_NO_SCRIPT
+b "self-closing script on the home page" clean bad-script-selfclosing production no_script SKIP_NO_SCRIPT
+b "Turnstile script inside a template element" clean bad-turnstile-template production no_script SKIP_NO_SCRIPT
+b "Turnstile script inside svg foreignObject" clean bad-turnstile-svg production no_script SKIP_NO_SCRIPT
+b "Turnstile script inside math" clean bad-turnstile-math production no_script SKIP_NO_SCRIPT
+b "Turnstile script after a self-closing template" clean bad-turnstile-template-selfclosing production no_script SKIP_NO_SCRIPT
+b "Turnstile script in a textarea after stray end tags of other elements" clean bad-turnstile-stray-endtag production no_script SKIP_NO_SCRIPT
+# Elements whose content a browser treats as text or inactive: the parser still reports the tag.
+for el in noscript title textarea xmp noembed style plaintext; do
+  b "Turnstile script inside $el" clean "bad-turnstile-ctx-$el" production no_script SKIP_NO_SCRIPT
+done
+# iframe is also an active_embed finding of its own, so both checks are skipped together.
+run_check "$(stage clean "$FIX/bad-turnstile-ctx-iframe")" production
+if [ "$RC" = "0" ] || ! grep -q "^FAIL no_script:" <<<"$OUT"; then
+  soft "Turnstile script inside iframe: expected a no_script failure, got exit $RC: $OUT"
+else
+  run_check "$(stage clean "$FIX/bad-turnstile-ctx-iframe")" production SKIP_NO_SCRIPT=1 SKIP_ACTIVE_EMBED=1
+  if [ "$RC" != "0" ]; then
+    soft "Turnstile script inside iframe: expected pass with both skips, got exit $RC: $OUT"
+  else
+    echo "ok: Turnstile script inside iframe fails no_script"
+  fi
+fi
+expect_pass "report-to with a group name" "$(stage clean "$FIX/ok-csp-report-to-group")" production
+
 # Unsafe schemes and meta refresh
 b "javascript: href" clean bad-scheme-js production unsafe_scheme SKIP_UNSAFE_SCHEME
 b "obfuscated javascript: href" clean bad-scheme-js-obfuscated production unsafe_scheme SKIP_UNSAFE_SCHEME

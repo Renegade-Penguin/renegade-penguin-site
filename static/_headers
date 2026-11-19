@@ -1,5 +1,6 @@
 # Cloudflare Pages response headers. GitHub Pages ignores this file.
 # No script, no third-party origin: every source is 'self' or 'none'.
+# The one exception is the contact route below (Turnstile spam check, issue #4).
 /*
   Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
@@ -7,3 +8,11 @@
   Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Cross-Origin-Opener-Policy: same-origin
+
+# Contact page and thank-you page. Cloudflare applies every matching block, and a repeated header is
+# joined, so two policies would both be enforced (their intersection). This block therefore detaches
+# the all-routes policy and sets its own. The other security headers are inherited from /* unchanged.
+# Not yet tested in a browser against the live Turnstile iframe: style-src may need adjusting in staging.
+/contact/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; script-src https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'

@@ -18,17 +18,43 @@ header lines under it are indented. Rules:
     holds only 'none' or 'self' (no wildcard, scheme, host, unsafe-* token or nonce),
     report-uri and report-to hold only a relative path, and base-uri, form-action
     and frame-ancestors are present.
+
+One exception, the contact page (issue #4): the "/contact/*" block must replace the
+all-routes policy, because Cloudflare would otherwise apply both and the browser enforces
+their intersection. It lists "! Content-Security-Policy" and then sets exactly one policy,
+which follows every rule above except that script-src and frame-src may also hold
+https://challenges.cloudflare.com (Turnstile). That origin is allowed nowhere else, and no
+other route may set or detach a policy. The other security headers are inherited from "/*".
 """
 import re
 import sys
 
 SAFE = {"'none'", "'self'"}
+TURNSTILE = "https://challenges.cloudflare.com"
+CONTACT_ROUTE = "/contact/*"
+CONTACT_ALLOW = {"script-src": {TURNSTILE}, "frame-src": {TURNSTILE}}
 REQUIRED = ("base-uri", "form-action", "frame-ancestors")
 LOCKED = ("default-src", "script-src", "style-src", "connect-src")
-# Directives that take no source list; every other directive may hold only SAFE tokens.
-EXEMPT = {"sandbox", "upgrade-insecure-requests", "block-all-mixed-content",
-          "require-trusted-types-for", "trusted-types"}
+# Directives with a source list: every token must be 'none', 'self' or an extra the caller allows.
+SOURCE_LIST = {
+    "default-src", "script-src", "script-src-elem", "script-src-attr", "style-src",
+    "style-src-elem", "style-src-attr", "img-src", "font-src", "connect-src", "media-src",
+    "object-src", "child-src", "frame-src", "worker-src", "manifest-src", "prefetch-src",
+    "base-uri", "form-action", "frame-ancestors",
+}
+# Directives with their own grammar, each handled explicitly in check_policy.
+NO_VALUE = {"upgrade-insecure-requests", "block-all-mixed-content"}
+SANDBOX_FLAGS = {
+    "allow-downloads", "allow-forms", "allow-modals", "allow-orientation-lock",
+    "allow-pointer-lock", "allow-popups", "allow-popups-to-escape-sandbox",
+    "allow-presentation", "allow-same-origin", "allow-scripts",
+    "allow-storage-access-by-user-activation", "allow-top-navigation",
+    "allow-top-navigation-by-user-activation", "allow-top-navigation-to-custom-protocols",
+}
+TRUSTED_TYPES_OK = {"'none'", "'allow-duplicates'"}
 REPORTING = ("report-uri", "report-to")
+GROUP_NAME = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")  # tokens are lower-cased before the check
+KNOWN = SOURCE_LIST | NO_VALUE | set(REPORTING) | {"sandbox", "require-trusted-types-for", "trusted-types"}
 CSP = "content-security-policy"
 SECURITY_HEADERS = {
     "x-content-type-options", "referrer-policy", "strict-transport-security",
@@ -77,28 +103,58 @@ def relative_path(tok):
     return tok.startswith("/") and not tok.startswith("//") and ":" not in tok
 
 
-def check_policy(policy):
+def check_policy(policy, extra=None):
+    """extra maps a directive name to additional source tokens allowed in it."""
+    extra = extra or {}
     problems = []
     dirs = {}
+    parsed = []
+    # Parse every directive first: the name is the first token and must be a known one, so a
+    # source standing where a name belongs (or a misspelled name) is a finding, not skipped.
     for part in policy.split(";"):
         toks = part.split()
-        if toks:
-            dirs.setdefault(toks[0].lower(), [t.lower() for t in toks[1:]])
+        if not toks:
+            continue
+        name, args = toks[0].lower(), [t.lower() for t in toks[1:]]
+        if name not in KNOWN:
+            problems.append("unknown directive %s" % name)
+            continue
+        if name in dirs:
+            problems.append("%s appears more than once" % name)
+        dirs.setdefault(name, args)
+        parsed.append((name, args))
     if "default-src" not in dirs:
         problems.append("default-src missing")
-    for d, toks in dirs.items():
-        if d in EXEMPT:
-            continue
-        if d in REPORTING:
+    for d, toks in parsed:
+        if d in NO_VALUE:
+            if toks:
+                problems.append("%s takes no value, found %s" % (d, toks[0]))
+        elif d == "sandbox":
+            for t in toks:
+                if t not in SANDBOX_FLAGS:
+                    problems.append("sandbox has disallowed token %s" % t)
+        elif d == "require-trusted-types-for":
+            for t in toks:
+                if t != "'script'":
+                    problems.append("require-trusted-types-for has disallowed token %s" % t)
+        elif d == "trusted-types":
+            for t in toks:
+                if t not in TRUSTED_TYPES_OK:
+                    problems.append("trusted-types has disallowed token %s" % t)
+        elif d == "report-to":
+            # One group name (a token, defined by a Reporting-Endpoints or Report-To header), not a url.
+            if len(toks) != 1 or not GROUP_NAME.match(toks[0]):
+                problems.append("report-to must be one group name (letters, digits, - _ .)")
+        elif d == "report-uri":
             for t in toks:
                 if t != "'none'" and not relative_path(t):
                     problems.append("%s must be a relative path, found %s" % (d, t))
-            continue
-        if d in LOCKED and not toks:
-            problems.append("%s is empty" % d)
-        for t in toks:
-            if t not in SAFE:
-                problems.append("%s has disallowed token %s" % (d, t))
+        else:  # a source list
+            if d in LOCKED and not toks:
+                problems.append("%s is empty" % d)
+            for t in toks:
+                if t not in SAFE and t not in extra.get(d, ()):
+                    problems.append("%s has disallowed token %s" % (d, t))
     for d in REQUIRED:
         if d not in dirs:
             problems.append("%s missing" % d)
@@ -159,6 +215,8 @@ def check_blocks(blocks):
         for name, _value, detached in hs:
             if name not in PROTECTED:
                 continue
+            if route == CONTACT_ROUTE and name == CSP:
+                continue  # judged below: detach, then set one policy
             if detached:
                 problems.append("route %s detaches %s" % (route, name))
             if name in seen:
@@ -185,10 +243,16 @@ def check_blocks(blocks):
     for route, hs in blocks:
         if route == SITE_ROUTE:
             continue
+        if route == CONTACT_ROUTE:
+            ops = [(h[2], h[1]) for h in hs if h[0] == CSP]
+            if len(ops) == 2 and ops[0][0] and not ops[1][0]:
+                problems.extend(check_policy(ops[1][1], CONTACT_ALLOW))
+            elif ops:
+                problems.append("route %s must detach Content-Security-Policy, then set exactly one" % route)
         for name, value, detached in hs:
             if detached:
                 continue
-            if name == CSP:
+            if name == CSP and route != CONTACT_ROUTE:
                 problems.append("route %s sets Content-Security-Policy" % route)
             elif name in SECURITY_HEADERS and base.get(name) != value:
                 problems.append("route %s changes %s" % (route, name))
