@@ -73,12 +73,23 @@ main.home { max-width: var(--shell); margin: 0 auto; padding: var(--space-5) var
 .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .chip { border: 1px solid var(--rule); color: var(--muted); font: 500 0.8rem var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; padding: 0.35rem 0.8rem; }
 .home-body .sec { margin-top: var(--space-6); }
-.grid { list-style: none; margin: 0 0 var(--space-4); padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-4); }
-/* Six-card sections (not-typical): 3 x 2 wide, 2 columns medium, 1 column phone. */
-.grid.grid-six { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 900px) { .grid.grid-six { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .grid.grid-six { grid-template-columns: repeat(1, minmax(0, 1fr)); } }
-.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-4); }
+/* Adaptive grids: a 12 column track. Each item spans 12/columns, and the leftover final items of a row
+   span wider, so a row never has an empty cell. The count class grid-n<items> comes from the data
+   (len .items). Wide: 3 -> 3, 4 -> 4, 5 -> 3+2, 6 -> 3x2, 7 -> 4+3, 8 -> 4x2. Medium: 2 columns, an odd
+   last item spans the row. Phone: 1 column. A count with no rule falls back to one column. */
+.grid { list-style: none; margin: 0 0 var(--space-4); padding: 0; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); }
+.grid > * { grid-column: span 12; }
+.grid.grid-n2 > * { grid-column: span 6; }
+.grid.grid-n3 > *, .grid.grid-n5 > *, .grid.grid-n6 > * { grid-column: span 4; }
+.grid.grid-n4 > *, .grid.grid-n7 > *, .grid.grid-n8 > * { grid-column: span 3; }
+.grid.grid-n5 > :nth-child(n+4) { grid-column: span 6; }
+.grid.grid-n7 > :nth-child(n+5) { grid-column: span 4; }
+@media (min-width: 561px) and (max-width: 900px) {
+  .grid[class] > :nth-child(n) { grid-column: span 6; }
+  .grid[class] > :nth-child(n):last-child:nth-child(odd) { grid-column: span 12; }
+}
+@media (max-width: 560px) { .grid[class] > :nth-child(n) { grid-column: span 12; } }
+.steps { margin: 0; }
 .step { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
 .exhibit h3 { margin-top: 0; }
 .exhibit p { margin: 0; color: var(--muted); }

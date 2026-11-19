@@ -1,6 +1,6 @@
 <section class="home-sec" id="what-we-do" aria-labelledby="what-we-do-h">
   {{ partial "section-head.html" (dict "n" "01" "title" .title "tag" .eyebrow "id" "what-we-do-h") }}
-  <div class="grid">
+  <div class="grid grid-n{{ len .items }}">
     {{- range .items }}
     <article class="card">
       <h3>{{ .title }}</h3>

@@ -40,7 +40,8 @@ for n in names:
                 assert it.get("url") == "https://github.com/ChiefGyk3D/" + it["title"], (n, it)
                 assert "{{OWNER:" not in it["title"] + it["body"], (n, it)
         if n == "not-typical":
-            assert len(d["items"]) == 6, (n, len(d["items"]))
+            assert len(d["items"]) == 8, (n, len(d["items"]))
+            assert [i["title"] for i in d["items"]][4:6] == ["Travel Data Exposure", "Darknet Perspective"], d["items"]
         if n == "engagement":
             assert [i.get("stamp") for i in d["items"]] == ["FREE", "CREDITED", "DELIVERED"]
 b = tomllib.load(open("data/home/behind.toml", "rb"))
@@ -145,23 +146,88 @@ assert all(h.startswith("https://github.com/ChiefGyk3D/") and r == "noopener" fo
 assert p.details == 5, "faq details %d" % p.details
 PY
 
-# (e) the not-typical section lays six cards out 3x2: modifier rule in built CSS, class on that section only.
-python3 -I - "$OUT" <<'PY' || soft "(e) not-typical grid modifier"
+# (e) adaptive grids: every card grid carries grid-n<count> matching its real child count, and the built
+# CSS has the per-count rules, so no row can render an empty cell (issues #59 and #62).
+python3 -I - "$OUT" <<'PY' || soft "(e) adaptive grid classes and rules"
 import glob
 import re
 import sys
+import tomllib
+from html.parser import HTMLParser
 
 out = sys.argv[1]
 css = "".join(open(f, encoding="utf-8").read() for f in glob.glob(out + "/**/*.css", recursive=True))
 assert css, "no built css collected"
-assert re.search(r"\.grid\.grid-six\{[^}]*repeat\(3,", css), "grid-six 3 column rule missing"
-assert re.search(r"@media[^{]*\{[^@]*\.grid\.grid-six\{[^}]*repeat\(2,", css), "grid-six 2 column rule missing"
-assert re.search(r"@media[^{]*560px[^{]*\{\.grid\.grid-six\{[^}]*repeat\(1,", css), "grid-six 1 column rule missing"
+# wide span per item for the counts that exist on the home page, plus the stretch rules
+for n, span in ((3, 4), (4, 3), (6, 4), (8, 3)):
+    assert re.search(r"\.grid\.grid-n%d>\*(?:,[^{]*)?\{[^}]*span %d" % (n, span), css), "grid-n%d wide rule missing" % n
+assert re.search(r"\.grid\.grid-n5>:nth-child\(n\+4\)\{[^}]*span 6", css), "grid-n5 stretch rule missing"
+assert re.search(r"@media[^{]*560px[^{]*\{[^@]*span 12", css), "phone one column rule missing"
+assert re.search(r"@media[^{]*900px[^{]*\{[^@]*span 6", css), "medium two column rule missing"
+assert re.search(r"@media[^{]*900px[^{]*\{[^@]*:last-child:nth-child\(odd\)[^}]*span 12", css), "medium odd last item rule missing"
+assert "grid-six" not in css, "dead grid-six css remains"
+
+sections = {"what-we-do": "what-we-do", "not-typical": "not-typical", "how-it-works": "engagement",
+            "no-vendor-pitches": "no-vendor-pitches", "built-in-the-open": "built-in-the-open",
+            "engagement-models": "pricing-teaser"}
+
+class G(HTMLParser):
+    """Collects, per home-sec id, the grid's class list and direct child count."""
+    def __init__(self):
+        super().__init__()
+        self.sec = None
+        self.depth = None
+        self.found = {}
+        self.cur = None
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        c = (a.get("class") or "").split()
+        if tag == "section" and "home-sec" in c:
+            self.sec = a.get("id")
+        if self.sec and self.cur is None and "grid" in c:
+            self.cur = self.sec
+            self.found[self.cur] = {"classes": c, "children": 0}
+            self.depth = 0
+            return
+        if self.cur is not None:
+            if self.depth == 0:
+                self.found[self.cur]["children"] += 1
+            if tag not in ("br", "img", "input", "hr", "meta", "link"):
+                self.depth += 1
+
+    def handle_endtag(self, tag):
+        if self.cur is not None:
+            if self.depth == 0:
+                self.cur = None
+            else:
+                self.depth -= 1
+        if tag == "section":
+            self.sec = None
+
+def check(html):
+    g = G()
+    g.feed(html)
+    assert set(g.found) == set(sections), sorted(g.found)
+    for sid, data in g.found.items():
+        want = len(tomllib.load(open("data/home/%s.toml" % sections[sid], "rb"))["items"])
+        assert data["children"] == want, (sid, data, want)
+        assert "grid-n%d" % want in data["classes"], ("count class missing or wrong", sid, data["classes"], want)
+    return {s: d["children"] for s, d in g.found.items()}
+
 html = open(out + "/index.html", encoding="utf-8").read()
-m = re.search(r'<section[^>]*id=(?:"?)not-typical(?:"?)[^>]*>(.*?)</section>', html, re.S)
-assert m, "not-typical section missing"
-assert re.search(r'class="?grid grid-six"?[ >]', m.group(1)), "grid-six not applied to not-typical"
-assert html.count("grid-six") == 1, "grid-six must appear on one element only"
+counts = check(html)
+assert {3, 4, 6, 8} <= set(counts.values()), counts
+assert counts["not-typical"] == 8, counts
+assert "grid-six" not in html
+# negative case: the guard bites when a grid loses its count class
+for bad in (re.sub(r"grid-n8", "grid-x", html), re.sub(r"grid-n3", "", html, count=1)):
+    try:
+        check(bad)
+    except AssertionError:
+        pass
+    else:
+        raise SystemExit("guard did not fail on a grid without its count class")
 PY
 
 # (d) end to end: a banned word in a home data file reaches the page and check-claims fails it.

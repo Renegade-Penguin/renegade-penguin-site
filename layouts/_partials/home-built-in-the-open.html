@@ -1,7 +1,7 @@
 <section class="home-sec" id="built-in-the-open" aria-labelledby="built-in-the-open-h">
   {{ partial "section-head.html" (dict "n" "05" "title" .title "tag" .eyebrow "id" "built-in-the-open-h") }}
   <p class="lede">{{ .intro }}</p>
-  <div class="grid">
+  <div class="grid grid-n{{ len .items }}">
     {{- range .items }}
     <div class="exhibit">
       <h3><a href="{{ .url }}" rel="noopener">{{ .title }}</a></h3>
