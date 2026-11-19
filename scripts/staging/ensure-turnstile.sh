@@ -37,17 +37,32 @@ DOPPLER_CONFIG="dev_renegadepenguin"
 # the body is exactly one object with success true, hand the secret to doppler.
 # Sets WIDGET_SITEKEY, WIDGET_STATE (stored, failed or skipped) and CF_STATUS.
 create_widget() {
-  local body=$1 status
+  local body=$1 status trailer size
+  local LC_ALL=C # so ${#var} below counts bytes
+  # Clear any inherited value AND its export attribute before the response is
+  # assigned, so no child process can ever inherit the response.
+  unset RESP_PRIVATE
   WIDGET_SITEKEY=""
   WIDGET_STATE=skipped
   printf '%s' "$body" >"$CF_TMP/body"
-  # The status follows the body after a newline (curl expands \n in -w).
+  # The trailer "<status> <bytes downloaded>" follows the body after a newline
+  # (curl expands \n in -w). Trailing newlines of the body are preserved
+  # because the trailer is the last thing in the substitution.
   RESP_PRIVATE=$(cf_auth_config |
-    curl -sS --max-time 30 -K - -X POST -w '\n%{http_code}' \
+    curl -sS --max-time 30 -K - -X POST -w '\n%{http_code} %{size_download}' \
       --data-binary "@$CF_TMP/body" "$CF_API_BASE$base") || RESP_PRIVATE=""
-  status=${RESP_PRIVATE##*$'\n'}
-  if [[ "$status" =~ ^[0-9]{3}$ ]]; then
+  trailer=${RESP_PRIVATE##*$'\n'}
+  if [[ "$trailer" =~ ^[0-9]{3}\ [0-9]+$ ]]; then
+    status=${trailer%% *}
+    size=${trailer##* }
     RESP_PRIVATE=${RESP_PRIVATE%$'\n'*}
+    # NUL guard without a file: command substitution drops NUL bytes, so the
+    # captured length differs from what curl downloaded. Reject before the
+    # envelope check and before anything reaches doppler.
+    if [ "${#RESP_PRIVATE}" -ne "$size" ]; then
+      status="$status-bad-size"
+      RESP_PRIVATE=""
+    fi
   else
     # Unexpected shape: never let body text (which may hold the secret) be
     # mistaken for a status or printed.

@@ -23,6 +23,8 @@ CF_APEX_HOST="renegadepenguinllc.com"
 # Exactly one top-level value, an object, with success true. Use with jq -es.
 CF_ENVELOPE_FILTER='length == 1 and (.[0] | type == "object") and .[0].success == true'
 
+# Clear any inherited value and its export attribute before assigning.
+unset APPLY CF_STATUS CF_BODY CF_TMP
 APPLY=0
 CF_STATUS=""
 CF_BODY=""
@@ -104,14 +106,30 @@ cf_auth_config() {
 cf_call() {
   local method=$1 path=$2 body=${3:-}
   local out="$CF_TMP/out"
-  local args=(-sS --max-time 30 -K - -X "$method" -o "$out" -w '%{http_code}')
+  local args=(-sS --max-time 30 -K - -X "$method" -o "$out" -w '%{http_code} %{size_download}')
+  local trailer size=0
+  local LC_ALL=C # so ${#var} below counts bytes
   if [ -n "$body" ]; then
     printf '%s' "$body" >"$CF_TMP/body"
     args+=(--data-binary "@$CF_TMP/body")
   fi
   : >"$out"
-  CF_STATUS=$(cf_auth_config | curl "${args[@]}" "$CF_API_BASE$path") || CF_STATUS=000
-  CF_BODY=$(cat "$out")
+  trailer=$(cf_auth_config | curl "${args[@]}" "$CF_API_BASE$path") || trailer=""
+  # Keep trailing newlines of the body (the sentinel x is stripped again).
+  CF_BODY=$(cat "$out"; printf x)
+  CF_BODY=${CF_BODY%x}
+  if [[ "$trailer" =~ ^([0-9]{3})\ ([0-9]+)$ ]]; then
+    CF_STATUS=${BASH_REMATCH[1]}
+    size=${BASH_REMATCH[2]}
+  else
+    CF_STATUS=000
+  fi
+  # NUL guard without a second file: command substitution drops NUL bytes, so
+  # the captured length differs from what curl downloaded. Reject such a body
+  # before the envelope check.
+  if [ "${#CF_BODY}" -ne "$size" ]; then
+    CF_STATUS="$CF_STATUS-bad-size"
+  fi
   case "$CF_STATUS" in
     2??)
       if ! printf '%s' "$CF_BODY" | jq -es "$CF_ENVELOPE_FILTER" >/dev/null 2>&1; then

@@ -43,19 +43,28 @@ if [ -f "$FAKE_DIR/resp/$key.status" ]; then
 else
   status=200
 fi
+# The body is a file, copied bytewise (it may hold NUL or invalid UTF-8).
 if [ -f "$FAKE_DIR/resp/$key.body" ]; then
-  resp=$(cat "$FAKE_DIR/resp/$key.body")
+  bodyfile="$FAKE_DIR/resp/$key.body"
 else
-  resp='{"success":true,"errors":[],"result":{}}'
+  bodyfile="$FAKE_DIR/default.body"
+  printf '{"success":true,"errors":[],"result":{}}' >"$bodyfile"
 fi
+size=$(wc -c <"$bodyfile")
+size=${size//[[:space:]]/}
 
 if [ -n "$out" ]; then
-  printf '%s' "$resp" >"$out"
+  cat "$bodyfile" >"$out"
 else
-  printf '%s' "$resp"
+  cat "$bodyfile"
 fi
+# Expand the -w tokens the scripts use; real curl also expands \n.
+fmt=$wfmt
+fmt=${fmt//'%{stderr}'/}
+fmt=${fmt//'%{http_code}'/$status}
+fmt=${fmt//'%{size_download}'/$size}
+fmt=${fmt//'\n'/$'\n'}
 case "$wfmt" in
-  *'%{stderr}'*) printf '%s' "$status" >&2 ;;
-  '\n'*) printf '\n%s' "$status" ;; # real curl expands \n in -w
-  *) printf '%s' "$status" ;;
+  *'%{stderr}'*) printf '%s' "$fmt" >&2 ;;
+  *) printf '%s' "$fmt" ;;
 esac

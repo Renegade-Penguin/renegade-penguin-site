@@ -52,6 +52,15 @@ t_resp() {
   printf '%s' "$4" >"$T/resp/$key.body"
 }
 
+# t_resp_file METHOD PATH STATUS FILE: like t_resp, but the body is a file
+# copied bytewise (for bodies holding NUL or invalid UTF-8).
+t_resp_file() {
+  local key
+  key=$(printf '%s_%s' "$1" "$2" | tr -c 'A-Za-z0-9\n' '_')
+  printf '%s' "$3" >"$T/resp/$key.status"
+  cp "$4" "$T/resp/$key.body"
+}
+
 # t_run SCRIPT [ARGS...]: run with the fake curl/jq/doppler first on PATH.
 # T_BASH_FLAGS and T_ENV (arrays) add bash flags and env settings.
 # Sets RC and OUT (stdout and stderr combined).

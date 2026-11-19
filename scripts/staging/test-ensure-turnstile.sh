@@ -124,6 +124,36 @@ for combo in "false-true" "true-false" "true-true"; do
   t_token_never_leaks
 done
 
+echo "-- create body holding a NUL byte: rejected before any delivery"
+t_reset
+t_resp GET "$LIST" 200 '{"success":true,"result":[]}'
+printf '{"success":true,"result":{"sitekey":"0xSITEKEY","secret":"%s","x":"a\0b"}}' "$TEST_SECRET" >"$T/nul.body"
+t_resp_file POST "$W" 200 "$T/nul.body"
+t_run "$S" --apply
+t_rc 1 "NUL-bearing create response is rejected"
+if grep -q 'secrets set' "$T/doppler-argv.log"; then t_fail "doppler set invoked after a NUL body"; else t_ok "doppler set never invoked after a NUL body"; fi
+t_token_never_leaks
+
+echo "-- create body with invalid UTF-8 inside a JSON string"
+t_reset
+t_resp GET "$LIST" 200 '{"success":true,"result":[]}'
+printf '{"success":true,"result":{"sitekey":"0xSITEKEY","secret":"%s","x":"a\xffb"}}' "$TEST_SECRET" >"$T/utf8.body"
+t_resp_file POST "$W" 200 "$T/utf8.body"
+t_run "$S" --apply
+# jq replaces the bad byte with U+FFFD and accepts the document; documented.
+t_rc 0 "invalid UTF-8 in an unrelated string is accepted (documented)"
+if [ "$(cat "$T/doppler-stdin.log")" = "$TEST_SECRET" ]; then t_ok "secret still delivered intact"; else t_fail "secret altered"; fi
+t_token_never_leaks
+
+echo "-- exported RESP_PRIVATE / CF_TOKEN_PRIVATE must not reach children"
+t_reset
+T_ENV=(RESP_PRIVATE=placeholder CF_TOKEN_PRIVATE=placeholder)
+t_resp GET "$LIST" 200 '{"success":true,"result":[]}'
+t_resp POST "$W" 200 "$CREATED"
+t_run "$S" --apply
+t_rc 0 "apply with pre-exported private variables"
+t_token_never_leaks
+
 echo "-- malformed list response"
 t_reset
 t_resp GET "$LIST" 200 'not json'

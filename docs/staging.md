@@ -22,6 +22,18 @@ rule is created or changed for it). Nothing here uses the dashboard.
 - A call succeeds only on a 2xx status and a body that is exactly one JSON
   object with `success: true`; anything else (malformed JSON, several
   concatenated documents, an array) is a failure.
+- Private variables (`CF_TOKEN_PRIVATE`, `RESP_PRIVATE`, `CF_BODY`, ...) are
+  unset before they are assigned, so a value exported by the caller can never
+  leave them exported to child processes.
+- NUL guard, without a file: curl reports the bytes it downloaded
+  (`size_download`) and the script compares that with the byte length
+  (`LC_ALL=C`) of what the shell captured. Command substitution drops NUL
+  bytes, so a body containing one is rejected before the envelope check and
+  before anything reaches Doppler.
+- Invalid UTF-8 inside a JSON string is ACCEPTED: jq replaces the bad bytes
+  with U+FFFD and parses the document. It is only an issue if the bad bytes are
+  inside the widget secret itself, which would then be stored altered; real
+  Turnstile secrets are plain ASCII.
 
 ## Required environment
 

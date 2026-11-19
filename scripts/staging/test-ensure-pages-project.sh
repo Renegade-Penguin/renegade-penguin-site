@@ -51,6 +51,29 @@ t_run "$S" --apply
 t_rc 1 "read with success false fails"
 t_expect_writes 0 "no write after bad read"
 
+echo "-- body holding a NUL byte on the read is a failure"
+t_reset
+printf '{"success":true,"result":{"x":"a\0b"}}' >"$T/nul.body"
+t_resp_file GET "$P" 200 "$T/nul.body"
+t_run "$S" --apply
+t_rc 1 "NUL-bearing body fails"
+t_expect_writes 0 "no write after a NUL body"
+
+echo "-- normal bodies still pass, including trailing newlines"
+t_reset
+printf '{"success":true,"result":{"name":"renegade-penguin-site"}}\n\n' >"$T/nl.body"
+t_resp_file GET "$P" 200 "$T/nl.body"
+t_run "$S" --apply
+t_rc 0 "body with trailing newlines passes the size check"
+
+echo "-- exported CF_TOKEN_PRIVATE must not reach children"
+t_reset
+T_ENV=(CF_TOKEN_PRIVATE=placeholder)
+t_resp GET "$P" 200 '{"success":true,"result":{}}'
+t_run "$S" --apply
+t_rc 0 "apply with pre-exported CF_TOKEN_PRIVATE"
+t_token_never_leaks
+
 echo "-- concatenated JSON documents on the read are failures"
 for combo in "false-true" "true-false" "true-true"; do
   t_reset
