@@ -25,7 +25,11 @@ command -v "$HUGO" >/dev/null 2>&1 || {
 
 bad=0
 ok=0
-for d in scripts/fixtures/claims-*/; do
+python3 -I scripts/gen-claims-fixtures.py "$TMP/gen" || {
+  echo "FAIL: fixture generator failed" >&2
+  exit 1
+}
+for d in scripts/fixtures/claims-*/ "$TMP"/gen/claims-*/; do
   name="$(basename "$d")"
   rc=0
   out="$(python3 -I scripts/check-claims.py "$d" 2>&1)" || rc=$?
@@ -41,8 +45,8 @@ for d in scripts/fixtures/claims-*/; do
   esac
 done
 # Collect loosely, assert strictly: the fixtures must have been found.
-[ "$bad" -ge 8 ] || soft "expected at least 8 bad fixtures, found $bad"
-[ "$ok" -ge 3 ] || soft "expected at least 3 ok fixtures, found $ok"
+[ "$bad" -ge 30 ] || soft "expected at least 30 bad fixtures, found $bad"
+[ "$ok" -ge 9 ] || soft "expected at least 9 ok fixtures, found $ok"
 
 # A missing directory is an error, never a pass.
 rc=0
@@ -72,6 +76,18 @@ d="$(scratch good "$FULL")"
   soft "build with a complete tier failed"
 }
 grep -q '<span data-price>H</span>' "$d/out/p/index.html" 2>/dev/null || soft "shortcode output not wrapped in span data-price"
+
+# End to end: a banned phrase in the data file reaches the built page and the checker fails it.
+d="$(scratch banned-data '[advisory]
+hourly = "guaranteed 100% certified $9"
+retainer = "R"
+minimum = "M"
+drivers = "D"
+')"
+"$HUGO" --source "$d" --destination "$d/out" >/dev/null 2>&1 || soft "build with banned data failed to build"
+rc=0
+python3 -I scripts/check-claims.py "$d/out" >/dev/null 2>&1 || rc=$?
+[ "$rc" = "1" ] || soft "banned phrase in data/pricing.toml: check-claims expected exit 1, got $rc"
 
 d="$(scratch no-tier '[projects]
 hourly = "H"
