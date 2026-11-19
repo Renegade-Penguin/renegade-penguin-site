@@ -17,14 +17,32 @@ printf '%s\n' "$*" >>"$FAKE_DIR/argv.log"
 method=GET out="" body="" cfg="" url="" wfmt=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    -X) method=$2; shift 2 ;;
-    -o) out=$2; shift 2 ;;
-    -w) wfmt=$2; shift 2 ;;
-    -K) cfg=$2; shift 2 ;;
+    -X)
+      method=$2
+      shift 2
+      ;;
+    -o)
+      out=$2
+      shift 2
+      ;;
+    -w)
+      wfmt=$2
+      shift 2
+      ;;
+    -K)
+      cfg=$2
+      shift 2
+      ;;
     --max-time) shift 2 ;;
-    --data-binary) body=$(cat "${2#@}"); shift 2 ;;
+    --data-binary)
+      body=$(cat "${2#@}")
+      shift 2
+      ;;
     -*) shift ;;
-    *) url=$1; shift ;;
+    *)
+      url=$1
+      shift
+      ;;
   esac
 done
 

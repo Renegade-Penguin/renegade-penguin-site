@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-xtrace_was_on=0; case $- in *x*) xtrace_was_on=1 ;; esac
+xtrace_was_on=0
+case $- in *x*) xtrace_was_on=1 ;; esac
 set +x
 if [ "$xtrace_was_on" = 1 ]; then
   echo "error: xtrace is enabled; refusing to run so credentials cannot be traced" >&2
@@ -8,6 +9,8 @@ fi
 # Privatize the token before ANY external command or command substitution:
 # a non-exported variable, and the exported one is unset.
 unset CF_TOKEN_PRIVATE
+# Read by the sourced lib.sh (a cross-file use); it must not be exported.
+# shellcheck disable=SC2034
 CF_TOKEN_PRIVATE=${CLOUDFLARE_API_TOKEN:-}
 unset CLOUDFLARE_API_TOKEN
 # Ensure the Turnstile widget renegade-penguin-contact exists.

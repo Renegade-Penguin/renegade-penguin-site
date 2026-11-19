@@ -24,5 +24,8 @@ printf '%s' "$value" >"$FAKE_DIR/doppler-stdin.log"
 case "${FAKE_DOPPLER_MODE:-ok}" in
   ok) printf 'TURNSTILE_SECRET_KEY = %s\n' "$value" ;;
   stderr) printf 'TURNSTILE_SECRET_KEY = %s\n' "$value" >&2 ;;
-  fail) printf 'TURNSTILE_SECRET_KEY = %s\n' "$value" >&2; exit 1 ;;
+  fail)
+    printf 'TURNSTILE_SECRET_KEY = %s\n' "$value" >&2
+    exit 1
+    ;;
 esac

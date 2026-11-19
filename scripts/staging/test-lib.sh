@@ -41,7 +41,22 @@ t_reset() {
   : >"$T/calls.log"
   T_BASH_FLAGS=()
   T_ENV=()
-  unset FAKE_DOPPLER_MODE FAKE_DOPPLER_PREFLIGHT
+  unset T_ACCOUNT FAKE_DOPPLER_MODE FAKE_DOPPLER_PREFLIGHT
+}
+
+# t_env NAME=VALUE...: extra environment for the next t_run only.
+t_env() {
+  T_ENV=("$@")
+}
+
+# t_bash_flags FLAG...: extra bash flags (for example -x) for the next t_run.
+t_bash_flags() {
+  T_BASH_FLAGS=("$@")
+}
+
+# t_set_account VALUE: CLOUDFLARE_ACCOUNT_ID for the next t_run (empty = missing).
+t_set_account() {
+  T_ACCOUNT=$1
 }
 
 # t_resp METHOD PATH STATUS BODY
@@ -69,7 +84,7 @@ t_run() {
   shift
   set +e
   OUT=$(env ${T_ENV[@]+"${T_ENV[@]}"} PATH="$T/bin:$PATH" FAKE_DIR="$T" TMPDIR="$T/tmp" \
-    CLOUDFLARE_API_TOKEN="$TEST_TOKEN" CLOUDFLARE_ACCOUNT_ID=acct123 CLOUDFLARE_ZONE_ID=zone123 \
+    CLOUDFLARE_API_TOKEN="$TEST_TOKEN" CLOUDFLARE_ACCOUNT_ID="${T_ACCOUNT-acct123}" CLOUDFLARE_ZONE_ID=zone123 \
     bash ${T_BASH_FLAGS[@]+"${T_BASH_FLAGS[@]}"} "$STAGING_DIR/$script" "$@" 2>&1)
   RC=$?
   set -e

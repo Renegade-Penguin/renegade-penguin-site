@@ -16,7 +16,7 @@ for s in ensure-pages-project.sh attach-staging-domain.sh ensure-turnstile.sh en
   t_reset
   t_resp GET "$LIST" 200 '{"success":true,"result":[]}'
   t_resp POST /accounts/acct123/challenges/widgets 200 "$CREATED"
-  T_BASH_FLAGS=(-x)
+  t_bash_flags -x
   t_run "$s" --apply
   t_rc 1 "$s refuses under bash -x"
   t_expect_out "$MSG" "$s prints the fixed refusal"
@@ -25,7 +25,7 @@ for s in ensure-pages-project.sh attach-staging-domain.sh ensure-turnstile.sh en
 
   echo "-- $s with SHELLOPTS=xtrace"
   t_reset
-  T_ENV=(SHELLOPTS=xtrace)
+  t_env SHELLOPTS=xtrace
   t_run "$s" --apply
   t_rc 1 "$s refuses with SHELLOPTS=xtrace"
   t_expect_out "$MSG" "$s prints the fixed refusal (SHELLOPTS)"

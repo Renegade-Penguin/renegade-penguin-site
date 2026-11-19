@@ -147,7 +147,7 @@ t_token_never_leaks
 
 echo "-- exported RESP_PRIVATE / CF_TOKEN_PRIVATE must not reach children"
 t_reset
-T_ENV=(RESP_PRIVATE=placeholder CF_TOKEN_PRIVATE=placeholder)
+t_env RESP_PRIVATE=placeholder CF_TOKEN_PRIVATE=placeholder
 t_resp GET "$LIST" 200 '{"success":true,"result":[]}'
 t_resp POST "$W" 200 "$CREATED"
 t_run "$S" --apply

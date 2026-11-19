@@ -16,8 +16,14 @@
 #   - Dry run is the default. Writes happen only with --apply.
 
 CF_API_BASE="https://api.cloudflare.com/client/v4"
+# Used only by the entrypoints that source this file (a cross-file use).
+# shellcheck disable=SC2034
 CF_PROJECT="renegade-penguin-site"
+# Used only by the entrypoints that source this file (a cross-file use).
+# shellcheck disable=SC2034
 CF_STAGING_HOST="staging.renegadepenguinllc.com"
+# Used only by the entrypoints that source this file (a cross-file use).
+# shellcheck disable=SC2034
 CF_APEX_HOST="renegadepenguinllc.com"
 
 # Exactly one top-level value, an object, with success true. Use with jq -es.
@@ -116,7 +122,10 @@ cf_call() {
   : >"$out"
   trailer=$(cf_auth_config | curl "${args[@]}" "$CF_API_BASE$path") || trailer=""
   # Keep trailing newlines of the body (the sentinel x is stripped again).
-  CF_BODY=$(cat "$out"; printf x)
+  CF_BODY=$(
+    cat "$out"
+    printf x
+  )
   CF_BODY=${CF_BODY%x}
   if [[ "$trailer" =~ ^([0-9]{3})\ ([0-9]+)$ ]]; then
     CF_STATUS=${BASH_REMATCH[1]}

@@ -68,7 +68,7 @@ t_rc 0 "body with trailing newlines passes the size check"
 
 echo "-- exported CF_TOKEN_PRIVATE must not reach children"
 t_reset
-T_ENV=(CF_TOKEN_PRIVATE=placeholder)
+t_env CF_TOKEN_PRIVATE=placeholder
 t_resp GET "$P" 200 '{"success":true,"result":{}}'
 t_run "$S" --apply
 t_rc 0 "apply with pre-exported CF_TOKEN_PRIVATE"
@@ -111,10 +111,7 @@ t_expect_out "error:" "reports an error"
 
 echo "-- missing env"
 t_reset
-set +e
-OUT=$(env -u CLOUDFLARE_ACCOUNT_ID PATH="$T/bin:$PATH" FAKE_DIR="$T" CLOUDFLARE_API_TOKEN="$TEST_TOKEN" \
-  bash "$STAGING_DIR/$S" 2>&1)
-RC=$?
-set -e
+t_set_account ""
+t_run "$S"
 t_rc 1 "missing account id fails"
 t_finish
