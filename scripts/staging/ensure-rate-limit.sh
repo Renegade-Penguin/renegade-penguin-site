@@ -35,7 +35,7 @@ cf_init "ensure-rate-limit" "$@" -- CLOUDFLARE_ZONE_ID
 
 rule=$(jq -cn --arg ref "$RULE_REF" '{
   ref: $ref,
-  description: "Contact form: 5 POST per 10 min per IP",
+  description: "Contact form: 5 POST per 10 min per data center per IP",
   expression: "(http.request.uri.path eq \"/api/contact\" and http.request.method eq \"POST\")",
   action: "block",
   ratelimit: {

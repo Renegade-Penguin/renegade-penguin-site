@@ -89,7 +89,8 @@ Run each in dry run first, read the output, then re-run with `--apply`.
    checked without writing, so a write failure is caught only by the recovery
    path above.
 4. `scripts/staging/ensure-rate-limit.sh` adds one rate-limit rule to the zone
-   (phase `http_ratelimit`): POST `/api/contact`, 5 per 10 minutes per IP,
+   (phase `http_ratelimit`) for `/api/contact`: 5 POST requests per 10 minutes
+   per data center per IP,
    block for 10 minutes. The plan requires `cf.colo.id` among the
    characteristics (API code 20155), so counting is per data center per IP
    (`cf.colo.id` plus `ip.src`): the effective global limit is looser than 5
