@@ -165,17 +165,17 @@ test("success:false with the correct hostname and action still gets 400", async 
   assert.equal(d.sendMail.sent.length, 0);
 });
 
-test("a non-ok Turnstile HTTP status gets 502 and sends nothing", async () => {
+test("a non-ok Turnstile HTTP status gets 424 and sends nothing", async () => {
   const d = deps({ httpStatus: 500 });
   const res = await run(GOOD, d);
-  assert.equal(res.status, 502);
+  assert.equal(res.status, 424);
   assert.equal(d.sendMail.sent.length, 0);
 });
 
-test("a malformed Turnstile json body gets 502 and sends nothing", async () => {
+test("a malformed Turnstile json body gets 424 and sends nothing", async () => {
   const d = deps({ malformedJson: true });
   const res = await run(GOOD, d);
-  assert.equal(res.status, 502);
+  assert.equal(res.status, 424);
   assert.equal(d.sendMail.sent.length, 0);
 });
 
@@ -211,20 +211,20 @@ test("the siteverify call goes to the Cloudflare endpoint with the secret and to
   assert.equal(sent.get("response"), "token-abc");
 });
 
-test("an unreachable Turnstile endpoint gets 502 and sends nothing", async () => {
+test("an unreachable Turnstile endpoint gets 424 and sends nothing", async () => {
   const d = deps(new Error("network down"));
   const res = await run(GOOD, d);
-  assert.equal(res.status, 502);
+  assert.equal(res.status, 424);
   assert.equal(d.sendMail.sent.length, 0);
 });
 
-test("missing server configuration gets 500 and sends nothing", async () => {
+test("missing server configuration gets 424 and sends nothing", async () => {
   for (const missing of ["TURNSTILE_SECRET", "EXPECTED_HOSTNAME"]) {
     const d = deps();
     const env = { ...ENV };
     delete env[missing];
     const res = await run(GOOD, d, undefined, env);
-    assert.equal(res.status, 500, missing);
+    assert.equal(res.status, 424, missing);
     assert.equal(d.sendMail.sent.length, 0);
   }
 });
@@ -442,7 +442,7 @@ test("a valid submission sends one plain text mail and returns 303", async () =>
   assert.equal(message.to, undefined, "the recipient is pinned by the adapter, never by the form");
 });
 
-test("a mail failure returns 502 and logs no personal data", async () => {
+test("a mail failure returns 424 and logs no personal data", async () => {
   const logged = [];
   const orig = { error: console.error, log: console.log, warn: console.warn };
   console.error = (...a) => logged.push(a);
@@ -456,7 +456,7 @@ test("a mail failure returns 502 and logs no personal data", async () => {
   } finally {
     Object.assign(console, orig);
   }
-  assert.equal(res.status, 502);
+  assert.equal(res.status, 424);
   const body = await res.text();
   assert.ok(body.length > 0);
   const dump = JSON.stringify(logged) + body;
@@ -558,7 +558,7 @@ test("adapter: ordinary punctuation and a non-ASCII subject pass", async () => {
   assert.equal(MAIL_WORKER.calls.length, 1);
 });
 
-test("a bad MAIL_FROM makes the real adapter throw, giving 502 and no mail", async () => {
+test("a bad MAIL_FROM makes the real adapter throw, giving 424 and no mail", async () => {
   const MAIL_WORKER = fakeBinding();
   const logged = [];
   const orig = console.error;
@@ -573,7 +573,7 @@ test("a bad MAIL_FROM makes the real adapter throw, giving 502 and no mail", asy
   } finally {
     console.error = orig;
   }
-  assert.equal(res.status, 502);
+  assert.equal(res.status, 424);
   assert.equal(MAIL_WORKER.calls.length, 0);
   assert.ok(!JSON.stringify(logged).includes("ada@example.com"));
 });
@@ -591,5 +591,40 @@ test("adapter: refuses without MAIL_SHARED_SECRET and sends nothing", async () =
       (e) => /MAIL_SHARED_SECRET is not configured/.test(e.message),
     );
     assert.equal(MAIL_WORKER.calls.length, 0);
+  }
+});
+
+// Cloudflare replaces 5xx responses with its own error page, so visitors would never see the
+// fallback address. Every failure path answers with a non-5xx HTML page that carries it.
+const FALLBACK = "contact@renegadepenguinllc.com";
+
+async function failurePaths() {
+  const quiet = console.error;
+  console.error = () => {};
+  try {
+    const noSecret = { ...ENV };
+    delete noSecret.TURNSTILE_SECRET;
+    return {
+      "config incomplete": await run(GOOD, deps(), undefined, noSecret),
+      "spam check unreachable": await run(GOOD, deps(new Error("network down"))),
+      "mail send failed": await run(GOOD, deps(turnstileOk(), new Error("boom"))),
+    };
+  } finally {
+    console.error = quiet;
+  }
+}
+
+test("every failure path returns a non-5xx HTML page with the fallback address", async () => {
+  const paths = await failurePaths();
+  assert.equal(Object.keys(paths).length, 3);
+  for (const [name, res] of Object.entries(paths)) {
+    assert.equal(res.status, 424, name);
+    assert.ok(res.status < 500 || res.status > 599, name);
+    assert.match(res.headers.get("content-type"), /^text\/html; charset=utf-8$/i, name);
+    const body = await res.text();
+    assert.ok(body.includes(FALLBACK), name);
+    assert.ok(body.includes('href="mailto:' + FALLBACK + '"'), name);
+    assert.ok(body.includes('href="/contact/"'), name);
+    assert.ok(!body.includes("ada@example.com") && !body.includes("Ada Example"), name);
   }
 });
