@@ -20,3 +20,13 @@ This is not a story about being proven right. It is a reminder that clear warnin
 My approach is defense first. Defensive work should still face serious scrutiny, so friends and associates on the offensive side test it against real attacks.
 
 When an engagement needs skills beyond my own, trusted specialists join the team. That may include penetration testing or telecommunications expertise for call centers. The purpose is to bring the right experience to the problem while keeping responsibility and direction clear.
+
+## Experience
+
+I have worked with or for these companies in the past:
+
+- NetJets
+- Cointelegraph
+- Henry Schein
+- GC Dental
+- SML Labs
