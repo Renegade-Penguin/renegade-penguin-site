@@ -1,6 +1,9 @@
 # Mail Worker
 
-Status: built and tested, not deployed. Nothing in Cloudflare exists for it yet (issue #31).
+Status: the Worker is deployed. The secrets `MAIL_SHARED_SECRET` (Worker and Pages) and
+`TURNSTILE_SECRET` (Pages; Doppler name `TURNSTILE_SECRET_KEY`) are set from Doppler dev. The
+`MAIL_WORKER` binding and the Pages vars come from the root `wrangler.jsonc`. Email Sending
+onboarding of the domain is the remaining dashboard step (issue #35).
 
 ## Why
 
@@ -54,8 +57,7 @@ character (U+061C, U+200E, U+200F and the embeddings, overrides and isolates) is
 
 ## Not done yet
 
-- Deploying the Worker, onboarding the sender domain to Cloudflare Email Service, and adding the
-  `MAIL_WORKER` service binding to the Pages project.
+- Email Sending onboarding of the sender domain in the Cloudflare dashboard (issue #35).
 - Verifying the whole path in staging (issue #5).
 - Running `node --test worker/mail/test/mail.test.js` in CI (the CI job lists only the functions
   test today).

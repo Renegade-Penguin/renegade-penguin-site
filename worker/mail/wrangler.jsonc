@@ -1,5 +1,7 @@
 {
-  // Mail Worker for the contact form. Not deployed yet; see docs/mail-worker.md.
+  // Mail Worker for the contact form. Deployed as renegade-penguin-mail
+  // (uploaded 2026-11-19, no public address). Email Sending domain onboarding and a live send test
+  // are still pending (issue #35); see docs/mail-worker.md.
   // No routes, workers_dev off and preview URLs off: the only caller is the Pages project,
   // through a service binding named MAIL_WORKER.
   "name": "renegade-penguin-mail",
@@ -14,8 +16,8 @@
     }
   ],
   "vars": {
-    // PLACEHOLDER: replace with the real sender on a domain onboarded to Cloudflare Email
-    // Service before deploying.
+    // The sender must be on a domain onboarded to Cloudflare Email Service. That onboarding is
+    // currently pending (issue #35).
     "MAIL_FROM": "noreply@renegadepenguinllc.com"
   }
 }

@@ -26,6 +26,14 @@ The Turnstile sitekey is public and is not read here: it is the Hugo param
 without the Turnstile script, so a build without a key makes no third-party request, and the
 form shows only the no-JavaScript fallback in the page copy.
 
+## Deployment state
+
+The mail Worker is deployed. `MAIL_SHARED_SECRET` (Worker and Pages) and `TURNSTILE_SECRET` (Pages;
+Doppler name `TURNSTILE_SECRET_KEY`) are set from Doppler dev. The `MAIL_WORKER` binding and the
+`EXPECTED_HOSTNAME` and `MAIL_FROM` variables come from `wrangler.jsonc` at the repo root, which is
+the source of truth for them (they cannot be edited in the dashboard). Email Sending onboarding of
+the domain is the remaining dashboard step (issue #35).
+
 ## Unverified
 
 The exact Email Service binding call has not been confirmed to work from a Pages Function. Confirm
