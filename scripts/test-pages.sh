@@ -73,7 +73,7 @@ hcount=$(printf '%s' "$hdr" | grep -o '<li>' | wc -l)
 [ "$hcount" -le 6 ] || fail "header nav shows $hcount items; at most 6 keep it on one row at 1440"
 for t in /when-not-to-hire/ /how-we-work/ /who-we-help/ /experience/ /community/; do
   foot=$(sed -n '/<footer/,/<\/footer>/p' "$OUT/index.html")
-  printf '%s' "$foot" | grep -Eq "href=\"?$t[\" >]" || fail "footer nav must reach $t"
+  printf '%s' "$foot" | grep -Eq "href=\"?${t}[\" >]" || fail "footer nav must reach $t"
 done
 # Speaking page copy and About body.
 sp=$(sed 's/<[^>]*>/ /g' "$OUT/services/education-speaking/index.html" | tr -s ' \n' ' ')

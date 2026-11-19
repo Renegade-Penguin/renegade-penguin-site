@@ -7,7 +7,6 @@
 # (d) a banned claim word placed in a home data file reaches the page and check-claims fails it.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
-ROOT="$PWD"
 HUGO="${HUGO:-hugo}"
 BASE="${TEST_TMP_BASE:-$HOME/.local/share/renegade-penguin-site-dev}"
 mkdir -p "$BASE" || exit 1
