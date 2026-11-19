@@ -20,6 +20,6 @@ Aircraft systems, maintenance equipment, fuel systems, cameras, building control
 
 Scheduling, maintenance, avionics, connectivity, payment, and support vendors may hold data or maintain remote access. Reviews focus on what each vendor can reach, how access is controlled, and what happens during an outage or incident.
 
-The applicable regulatory scope depends on the organization and its operations. {{OWNER:confirm which TSA or other rules the owner wants to reference}}
+The applicable regulatory scope depends on the organization and its operations. Applicable requirements depend on the operator and its regulators; no specific rule is named here, and Renegade Penguin makes no claim of compliance.
 
 A one-time assessment establishes priorities, while an advisory retainer supports vendor reviews and ongoing decisions. See the [services](/services/) or [contact Renegade Penguin](/contact/) to discuss your operation.
