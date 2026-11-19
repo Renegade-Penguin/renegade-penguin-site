@@ -1,0 +1,12 @@
+{
+  "name": "renegade-penguin-site",
+  "pages_build_output_dir": "./public",
+  "compatibility_date": "2026-11-01",
+  // Staging values. EXPECTED_HOSTNAME must change to the apex at cutover (issue #7).
+  // Secrets are set separately and are not in this file.
+  "vars": {
+    "EXPECTED_HOSTNAME": "staging.renegadepenguinllc.com",
+    "MAIL_FROM": "noreply@renegadepenguinllc.com"
+  },
+  "services": [{ "binding": "MAIL_WORKER", "service": "renegade-penguin-mail" }]
+}
