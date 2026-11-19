@@ -138,6 +138,25 @@ assert "{{OWNER:" in p.sec_text.get("built-in-the-open", ""), "owner placeholder
 assert p.details == 5, "faq details %d" % p.details
 PY
 
+# (e) the not-typical section lays six cards out 3x2: modifier rule in built CSS, class on that section only.
+python3 -I - "$OUT" <<'PY' || soft "(e) not-typical grid modifier"
+import glob
+import re
+import sys
+
+out = sys.argv[1]
+css = "".join(open(f, encoding="utf-8").read() for f in glob.glob(out + "/**/*.css", recursive=True))
+assert css, "no built css collected"
+assert re.search(r"\.grid\.grid-six\{[^}]*repeat\(3,", css), "grid-six 3 column rule missing"
+assert re.search(r"@media[^{]*\{[^@]*\.grid\.grid-six\{[^}]*repeat\(2,", css), "grid-six 2 column rule missing"
+assert re.search(r"@media[^{]*\{[^@]*\.grid\.grid-six\{[^}]*(repeat\(1,|1fr\))", css), "grid-six 1 column rule missing"
+html = open(out + "/index.html", encoding="utf-8").read()
+m = re.search(r'<section[^>]*id=(?:"?)not-typical(?:"?)[^>]*>(.*?)</section>', html, re.S)
+assert m, "not-typical section missing"
+assert re.search(r'class="?grid grid-six"?[ >]', m.group(1)), "grid-six not applied to not-typical"
+assert html.count("grid-six") == 1, "grid-six must appear on one element only"
+PY
+
 # (d) end to end: a banned word in a home data file reaches the page and check-claims fails it.
 S="$TMP/scratch"
 mkdir -p "$S"
