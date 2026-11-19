@@ -7,7 +7,7 @@ binding. Issue #4 built it; issue #5 deploys and verifies it in staging.
 What it does, in order: reject non-POST (405), reject a body over 20000 bytes (413), drop a
 filled honeypot field `website` with a 303 to `/contact/thanks/` and no mail, validate and trim
 the fields (400 with a plain message), verify the Turnstile token server side (400), send one
-plain text mail with Reply-To set to the visitor (502 and no personal data in logs on failure),
+plain text mail with Reply-To set to the visitor (on failure a 424 HTML page with the fallback address, never a 5xx because Cloudflare replaces those with its own page, and no personal data in logs),
 then 303 to `/contact/thanks/`.
 
 ## Required settings (names only; no values live in this repository)

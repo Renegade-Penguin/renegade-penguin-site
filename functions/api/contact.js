@@ -25,6 +25,28 @@ function text(status, message, extra = {}) {
   });
 }
 
+// Cloudflare replaces any 5xx response with its own error page, so the visitor would never see
+// the fallback address. Failures that are ours answer 424 with a small self-contained page.
+// Nothing from the request is echoed.
+const FALLBACK_EMAIL = "contact@renegadepenguinllc.com";
+const FAILURE_PAGE =
+  '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+  '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+  "<title>Message not sent</title>" +
+  "<style>body{background:#0F0F0F;color:#F0F0F0;font-family:system-ui,sans-serif;line-height:1.6;" +
+  "max-width:36rem;margin:3rem auto;padding:0 1rem}a{color:#FBB03B}</style></head><body><main>" +
+  "<h1>We could not send your message</h1>" +
+  "<p>Sorry, something went wrong on our side and your message did not go through.</p>" +
+  '<p>Please email us directly at <a href="mailto:' + FALLBACK_EMAIL + '">' + FALLBACK_EMAIL + "</a>.</p>" +
+  '<p><a href="/contact/">Go back to the contact form</a></p></main></body></html>';
+
+function failurePage() {
+  return new Response(FAILURE_PAGE, {
+    status: 424,
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+  });
+}
+
 function thanks() {
   return new Response(null, { status: 303, headers: { location: THANKS, "cache-control": "no-store" } });
 }
@@ -120,7 +142,7 @@ export async function handleContact(request, env, deps = {}) {
 
   if (!env.TURNSTILE_SECRET || !env.EXPECTED_HOSTNAME) {
     console.error("contact: server configuration is incomplete");
-    return text(500, "The form is not available right now.");
+    return failurePage();
   }
   const token = String(form.get("cf-turnstile-response") ?? "");
   if (!token || token.length > MAX_TOKEN) return text(400, "Please complete the spam check and try again.");
@@ -128,7 +150,7 @@ export async function handleContact(request, env, deps = {}) {
   try {
     human = await verifyTurnstile(token, env, request, doFetch);
   } catch {
-    return text(502, "The spam check could not be reached. Please try again.");
+    return failurePage();
   }
   if (!human) return text(400, "The spam check failed. Please go back and try again.");
 
@@ -155,7 +177,7 @@ export async function handleContact(request, env, deps = {}) {
   } catch (err) {
     // Log the error class only: messages can echo the address or the body.
     console.error("contact: mail send failed (" + (err && err.name ? err.name : "Error") + ")");
-    return text(502, "Your message could not be sent. Please email contact@renegadepenguinllc.com instead.");
+    return failurePage();
   }
   return thanks();
 }
