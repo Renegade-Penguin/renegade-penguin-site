@@ -1,0 +1,21 @@
+{
+  // Mail Worker for the contact form. Not deployed yet; see docs/mail-worker.md.
+  // No routes, workers_dev off and preview URLs off: the only caller is the Pages project,
+  // through a service binding named MAIL_WORKER.
+  "name": "renegade-penguin-mail",
+  "main": "index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "destination_address": "contact@renegadepenguinllc.com"
+    }
+  ],
+  "vars": {
+    // PLACEHOLDER: replace with the real sender on a domain onboarded to Cloudflare Email
+    // Service before deploying.
+    "MAIL_FROM": "noreply@renegadepenguinllc.com"
+  }
+}

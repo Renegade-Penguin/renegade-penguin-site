@@ -1,17 +1,17 @@
-// Mail adapter for the contact form. The only module that touches the platform mail binding.
+// Mail adapter for the contact form. The only module that touches the mail path.
 //
-// UNVERIFIED (issue #5): the exact Cloudflare Email Service binding call is not confirmed to
-// work from a Pages Function. The send_email binding is not listed in the Pages Functions
-// binding docs read on 2026-11-19, and the message field names used below (to, from, subject,
-// text, replyTo) follow the Workers send_email documentation. Confirm both in staging. If the
-// binding is not available in Pages, change only this file (service binding to a small Worker,
-// or the Email Service REST API); contact.js and its tests do not change.
+// Design (issue #31): Pages Functions do not list send_email as a supported binding (Cloudflare
+// docs read 2026-11-19), so this adapter calls a small separate Worker (worker/mail) through a
+// service binding named MAIL_WORKER. That Worker owns the send_email binding, pins the recipient
+// and takes the sender from its own MAIL_FROM. UNVERIFIED until staging (issue #5): nothing is
+// deployed yet, so the service binding and the Worker send have not run against Cloudflare.
+// contact.js and its tests do not change.
 //
-// Environment:
-//   EMAIL       the mail binding (an object with an async send(message) method)
-//   MAIL_FROM   sender address on an onboarded domain (required)
-//   MAIL_TO     recipient, pinned here and never taken from the form
-//               (default contact@renegadepenguinllc.com)
+// Environment (Pages project):
+//   MAIL_WORKER  service binding to renegade-penguin-mail (an object with an async fetch(request))
+//   MAIL_FROM    sender address; checked here, and the Worker uses its own MAIL_FROM, not this one
+//   MAIL_TO      recipient, checked here; the Worker ignores it and sends to its pinned address
+//                (default contact@renegadepenguinllc.com)
 
 export const DEFAULT_TO = "contact@renegadepenguinllc.com";
 
@@ -46,17 +46,26 @@ function headerValue(name, value) {
 }
 
 export async function sendContactMail(env, message) {
-  if (!env || !env.EMAIL || typeof env.EMAIL.send !== "function") {
-    throw new Error("mail binding EMAIL is not configured");
+  if (!env || !env.MAIL_WORKER || typeof env.MAIL_WORKER.fetch !== "function") {
+    throw new Error("mail binding MAIL_WORKER is not configured");
   }
   if (!env.MAIL_FROM) {
     throw new Error("MAIL_FROM is not configured");
   }
-  await env.EMAIL.send({
-    from: headerValue("from", env.MAIL_FROM),
-    to: headerValue("to", env.MAIL_TO || DEFAULT_TO),
+  headerValue("from", env.MAIL_FROM);
+  headerValue("to", env.MAIL_TO || DEFAULT_TO);
+  const body = JSON.stringify({
     subject: headerValue("subject", message.subject),
     text: String(message.text),
     replyTo: headerValue("replyTo", message.replyTo),
   });
+  // The URL is a placeholder: a service binding ignores the host.
+  const res = await env.MAIL_WORKER.fetch(
+    new Request("https://mail.invalid/", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    }),
+  );
+  if (!res.ok) throw new Error("mail worker returned status " + res.status);
 }

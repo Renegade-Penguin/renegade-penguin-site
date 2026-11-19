@@ -18,7 +18,7 @@ then 303 to `/contact/thanks/`.
 | `EXPECTED_HOSTNAME` | plain variable | Hostname Turnstile must report (the site host, or the staging host in staging). |
 | `MAIL_FROM` | plain variable | Sender address on a domain onboarded to Cloudflare Email Service. |
 | `MAIL_TO` | plain variable | Recipient. Optional; defaults to `contact@renegadepenguinllc.com`. Never taken from the form. |
-| `EMAIL` | binding | The mail binding, called as `env.EMAIL.send({ from, to, subject, text, replyTo })`. |
+| `MAIL_WORKER` | service binding | The mail Worker (`worker/mail`, see `docs/mail-worker.md`), called with `env.MAIL_WORKER.fetch`. |
 
 The Turnstile sitekey is public and is not read here: it is the Hugo param
 `params.turnstileSitekey` in `hugo.toml` (empty by default, set per environment with

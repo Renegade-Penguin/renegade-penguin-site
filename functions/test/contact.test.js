@@ -406,15 +406,15 @@ test("a lone surrogate in any header property throws in the adapter", async () =
   const base = { subject: "S", text: "T", replyTo: "a@example.com" };
   for (const lone of [String.fromCharCode(0xd800), String.fromCharCode(0xdc00), String.fromCharCode(0xdfff)]) {
     for (const msg of [{ ...base, subject: "a" + lone }, { ...base, replyTo: lone + "@example.com" }]) {
-      const EMAIL = fakeBinding();
-      await assert.rejects(sendContactMail({ EMAIL, MAIL_FROM: "s@sender.example" }, msg), /invalid header value/);
-      assert.equal(EMAIL.calls.length, 0);
+      const MAIL_WORKER = fakeBinding();
+      await assert.rejects(sendContactMail({ MAIL_WORKER, MAIL_FROM: "s@sender.example" }, msg), /invalid header value/);
+      assert.equal(MAIL_WORKER.calls.length, 0);
     }
   }
   // A valid surrogate pair (an emoji in a name) is a real character and passes.
-  const EMAIL = fakeBinding();
-  await sendContactMail({ EMAIL, MAIL_FROM: "s@sender.example" }, { ...base, subject: "Sam \u{1F600}" });
-  assert.equal(EMAIL.calls.length, 1);
+  const MAIL_WORKER = fakeBinding();
+  await sendContactMail({ MAIL_WORKER, MAIL_FROM: "s@sender.example" }, { ...base, subject: "Sam \u{1F600}" });
+  assert.equal(MAIL_WORKER.calls.length, 1);
 });
 
 test("a line break inside the need text is kept (it is body text, not a header)", async () => {
@@ -471,61 +471,85 @@ test("onRequest is wired to the handler (GET gives 405)", async () => {
 
 // ---- the mail adapter ----
 
-function fakeBinding() {
+// Fake service binding: fetch(request) records the parsed JSON body and answers with `status`.
+function fakeBinding(status = 200) {
   const calls = [];
-  return { calls, send: async (m) => void calls.push(m) };
+  const requests = [];
+  return {
+    calls,
+    requests,
+    fetch: async (req) => {
+      requests.push({ url: req.url, method: req.method, contentType: req.headers.get("content-type") });
+      calls.push(JSON.parse(await req.text()));
+      return new Response("ok", { status });
+    },
+  };
 }
 
-test("adapter: sends through the EMAIL binding with from and to taken from env", async () => {
-  const EMAIL = fakeBinding();
+test("adapter: posts JSON to the MAIL_WORKER service binding and sends no from or to", async () => {
+  const MAIL_WORKER = fakeBinding();
   await sendContactMail(
-    { EMAIL, MAIL_FROM: "site@sender.example", MAIL_TO: "inbox@example.com" },
+    { MAIL_WORKER, MAIL_FROM: "site@sender.example", MAIL_TO: "inbox@example.com" },
     { subject: "S", text: "T", replyTo: "ada@example.com", to: "attacker@example.com", from: "evil@example.com" },
   );
-  assert.equal(EMAIL.calls.length, 1);
-  const m = EMAIL.calls[0];
-  assert.equal(m.from, "site@sender.example");
-  assert.equal(m.to, "inbox@example.com");
+  assert.equal(MAIL_WORKER.calls.length, 1);
+  const m = MAIL_WORKER.calls[0];
+  assert.deepEqual(Object.keys(m).sort(), ["replyTo", "subject", "text"]);
+  assert.deepEqual(MAIL_WORKER.requests[0], {
+    url: "https://mail.invalid/",
+    method: "POST",
+    contentType: "application/json",
+  });
   assert.equal(m.subject, "S");
   assert.equal(m.text, "T");
   assert.equal(m.replyTo, "ada@example.com");
 });
 
-test("adapter: MAIL_TO defaults to contact@renegadepenguinllc.com", async () => {
-  const EMAIL = fakeBinding();
-  await sendContactMail({ EMAIL, MAIL_FROM: "site@sender.example" }, { subject: "S", text: "T", replyTo: "a@example.com" });
-  assert.equal(EMAIL.calls[0].to, "contact@renegadepenguinllc.com");
+test("adapter: a non-2xx answer from the Worker throws and the message is not echoed", async () => {
+  const MAIL_WORKER = fakeBinding(502);
+  await assert.rejects(
+    sendContactMail({ MAIL_WORKER, MAIL_FROM: "site@sender.example" }, { subject: "S", text: "T", replyTo: "a@example.com" }),
+    (e) => /status 502/.test(e.message) && !e.message.includes("a@example.com"),
+  );
+});
+
+test("adapter: a rejected fetch propagates", async () => {
+  const MAIL_WORKER = { fetch: async () => { throw new Error("boom"); } };
+  await assert.rejects(
+    sendContactMail({ MAIL_WORKER, MAIL_FROM: "site@sender.example" }, { subject: "S", text: "T", replyTo: "a@example.com" }),
+    /boom/,
+  );
 });
 
 test("adapter: throws on a prohibited character in any header property and sends nothing", async () => {
   const base = { subject: "S", text: "T", replyTo: "a@example.com" };
   for (const [label, ch] of PROHIBITED) {
     const cases = {
-      subject: [{ EMAIL: null, MAIL_FROM: "s@sender.example" }, { ...base, subject: "a" + ch + "b" }],
-      replyTo: [{ EMAIL: null, MAIL_FROM: "s@sender.example" }, { ...base, replyTo: "a" + ch + "@example.com" }],
-      MAIL_FROM: [{ EMAIL: null, MAIL_FROM: "s" + ch + "@sender.example" }, base],
-      MAIL_TO: [{ EMAIL: null, MAIL_FROM: "s@sender.example", MAIL_TO: "i" + ch + "@example.com" }, base],
+      subject: [{ MAIL_FROM: "s@sender.example" }, { ...base, subject: "a" + ch + "b" }],
+      replyTo: [{ MAIL_FROM: "s@sender.example" }, { ...base, replyTo: "a" + ch + "@example.com" }],
+      MAIL_FROM: [{ MAIL_FROM: "s" + ch + "@sender.example" }, base],
+      MAIL_TO: [{ MAIL_FROM: "s@sender.example", MAIL_TO: "i" + ch + "@example.com" }, base],
     };
     for (const [prop, [env, msg]] of Object.entries(cases)) {
-      const EMAIL = fakeBinding();
-      env.EMAIL = EMAIL;
+      const MAIL_WORKER = fakeBinding();
+      env.MAIL_WORKER = MAIL_WORKER;
       await assert.rejects(sendContactMail(env, msg), /invalid header value/, prop + " with " + label);
-      assert.equal(EMAIL.calls.length, 0, prop + " with " + label);
+      assert.equal(MAIL_WORKER.calls.length, 0, prop + " with " + label);
     }
   }
 });
 
 test("adapter: ordinary punctuation and a non-ASCII subject pass", async () => {
-  const EMAIL = fakeBinding();
+  const MAIL_WORKER = fakeBinding();
   await sendContactMail(
-    { EMAIL, MAIL_FROM: "site@sender.example" },
+    { MAIL_WORKER, MAIL_FROM: "site@sender.example" },
     { subject: "Contact form: Zoë O'Brien-Smith (R&D, Ltd.)", text: "T", replyTo: "z.o+brien@example.com" },
   );
-  assert.equal(EMAIL.calls.length, 1);
+  assert.equal(MAIL_WORKER.calls.length, 1);
 });
 
 test("a bad MAIL_FROM makes the real adapter throw, giving 502 and no mail", async () => {
-  const EMAIL = fakeBinding();
+  const MAIL_WORKER = fakeBinding();
   const logged = [];
   const orig = console.error;
   console.error = (...a) => logged.push(a);
@@ -533,18 +557,18 @@ test("a bad MAIL_FROM makes the real adapter throw, giving 502 and no mail", asy
   try {
     res = await handleContact(
       formRequest(GOOD),
-      { ...ENV, EMAIL, MAIL_FROM: "site\u0000@sender.example" },
+      { ...ENV, MAIL_WORKER, MAIL_FROM: "site\u0000@sender.example" },
       { fetch: fakeFetch(turnstileOk()) },
     );
   } finally {
     console.error = orig;
   }
   assert.equal(res.status, 502);
-  assert.equal(EMAIL.calls.length, 0);
+  assert.equal(MAIL_WORKER.calls.length, 0);
   assert.ok(!JSON.stringify(logged).includes("ada@example.com"));
 });
 
 test("adapter: a missing binding or sender throws", async () => {
   await assert.rejects(sendContactMail({ MAIL_FROM: "s@sender.example" }, { subject: "S", text: "T", replyTo: "a@example.com" }));
-  await assert.rejects(sendContactMail({ EMAIL: fakeBinding() }, { subject: "S", text: "T", replyTo: "a@example.com" }));
+  await assert.rejects(sendContactMail({ MAIL_WORKER: fakeBinding() }, { subject: "S", text: "T", replyTo: "a@example.com" }));
 });
