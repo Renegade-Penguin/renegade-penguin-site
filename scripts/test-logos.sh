@@ -31,6 +31,8 @@ import importlib.util
 import os
 import re
 import shutil
+import struct
+import subprocess
 import sys
 
 sys.dont_write_bytecode = True
@@ -103,6 +105,55 @@ r = tree()  # a bad svg with matching provenance would still fail the svg check
 p = r + "/static/brand/partners/call-theory.svg"
 open(p, "w").write('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 375 374.999991"><script>1</script></svg>')
 expect_fail("bad svg", r, "forbidden construct")
+
+# Malformed or truncated images must end in the checker's documented FAIL line, never a traceback.
+RIFF = b"RIFF\x1a\x00\x00\x00WEBP"
+malformed = (
+    ("gc-dental.webp", "truncated webp VP8", RIFF + b"VP8 \x0a\x00\x00\x00" + b"\x00" * 8),
+    ("gc-dental.webp", "truncated webp VP8L", RIFF + b"VP8L\x05\x00\x00\x00\x2f\x00"),
+    ("gc-dental.webp", "truncated webp VP8X", RIFF + b"VP8X\x0a\x00\x00\x00" + b"\x00" * 6),
+    ("gc-dental.webp", "webp with only the RIFF header", RIFF),
+    ("gc-dental.webp", "webp bad VP8 start code", RIFF + b"VP8 \x12\x00\x00\x00" + b"\x00" * 18),
+    ("gc-dental.webp", "empty webp", b""),
+    ("lorikeet-security.png", "truncated png header", cl.PNG_SIG + b"\x00\x00\x00\rIHDR\x00\x00"),
+    ("lorikeet-security.png", "png ending in IEND with no header", cl.PNG_SIG + b"IEND\xaeB`\x82"),
+    ("lorikeet-security.png", "empty png", b""),
+    ("henry-schein.jpg", "truncated jpeg without a frame header", b"\xff\xd8\xff\xe0\x00\x04ab\xff\xd9"),
+    ("henry-schein.jpg", "jpeg frame header cut short", b"\xff\xd8\xff\xc0\x00\x11\x08\x00\xff\xd9"),
+    ("henry-schein.jpg", "jpeg with a zero length segment", b"\xff\xd8\xff\xe0\x00\x00\xff\xd9"),
+    ("henry-schein.jpg", "empty jpeg", b""),
+    ("call-theory.svg", "svg with a broken viewBox", b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1.2.3 4"></svg>'),
+    ("call-theory.svg", "svg without a viewBox", b'<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
+    ("call-theory.svg", "empty svg", b""),
+)
+for fname, label, content in malformed:
+    try:
+        cl.image_size(fname, content)
+    except ValueError:
+        pass
+    except Exception as ex:  # a struct.error or IndexError here is the crash this test guards against
+        raise AssertionError("%s: image_size raised %r, not ValueError" % (label, ex))
+    else:
+        if label != "svg with a broken viewBox":
+            raise AssertionError("%s: image_size accepted it" % label)
+    r = tree()
+    with open(r + "/static/brand/partners/" + fname, "wb") as fh:
+        fh.write(content)
+    res = subprocess.run([sys.executable, "-I", "scripts/check-logos.py", r], capture_output=True, text=True)
+    assert res.returncode == 1, (label, res.returncode, res.stdout, res.stderr)
+    assert "Traceback" not in res.stdout + res.stderr, (label, res.stderr)
+    assert "FAIL: static/brand/partners/%s: " % fname in res.stdout, (label, res.stdout)
+# second layer: an unexpected parser exception is still a FAIL, never a success or a crash
+orig = cl.image_size
+for exc in (struct.error("short"), IndexError("short")):
+    def boom(name, data, exc=exc):
+        raise exc
+    cl.image_size = boom
+    r = tree()
+    fails = cl.check(r)
+    cl.image_size = orig
+    assert any("static/brand/partners/" in f and "unreadable image" in f for f in fails), (exc, fails)
+assert cl.check(tree()) == []
 
 assert cl.svg_problems('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h4v4z" clip-path="url(#a)"/></svg>') == []
 for bad in ('<svg><script>1</script></svg>', '<svg><foreignObject/></svg>', '<svg onload="x()"/>',

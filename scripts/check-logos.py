@@ -31,9 +31,19 @@ SVG_BAD = (r"<script", r"foreignobject", r"\bon[a-z]+\s*=", r"javascript:", r"da
            r"url\(\s*[\"']?(?!#)")
 
 
+def need(data, n, what):
+    """Raise ValueError unless data holds at least n bytes (the header is not truncated)."""
+    if len(data) < n:
+        raise ValueError("truncated %s (%d bytes, at least %d needed)" % (what, len(data), n))
+
+
 def image_size(name, data):
-    """Return the pixel size as 'WxH' (an SVG gives its viewBox size); raise ValueError when invalid."""
+    """Return the pixel size as 'WxH' (an SVG gives its viewBox size).
+
+    Raises ValueError, and only ValueError, for any invalid or truncated input: every header length is
+    checked before it is unpacked."""
     if name.endswith(".png"):
+        need(data, 33, "PNG header")  # signature 8 + IHDR chunk 25
         if not data.startswith(PNG_SIG) or data[12:16] != b"IHDR":
             raise ValueError("not a PNG")
         if not data.endswith(b"IEND\xaeB`\x82"):
@@ -41,30 +51,44 @@ def image_size(name, data):
         w, h = struct.unpack(">II", data[16:24])
         return "%dx%d" % (w, h)
     if name.endswith(".jpg"):
+        need(data, 4, "JPEG")
         if not data.startswith(b"\xff\xd8\xff") or not data.endswith(b"\xff\xd9"):
             raise ValueError("not a JPEG")
         i = 2
-        while i + 9 < len(data):
+        while i + 4 <= len(data):
             if data[i] != 0xFF:
                 raise ValueError("bad JPEG marker")
             marker = data[i + 1]
             (seg,) = struct.unpack(">H", data[i + 2:i + 4])
             if marker in (0xC0, 0xC1, 0xC2):
+                need(data, i + 9, "JPEG frame header")
+                if seg < 8:
+                    raise ValueError("bad JPEG frame header length")
                 h, w = struct.unpack(">HH", data[i + 5:i + 9])
                 return "%dx%d" % (w, h)
+            if seg < 2:
+                raise ValueError("bad JPEG segment length")
             i += 2 + seg
         raise ValueError("no JPEG frame header")
     if name.endswith(".webp"):
+        need(data, 16, "WebP header")
         if data[:4] != b"RIFF" or data[8:12] != b"WEBP":
             raise ValueError("not a WebP")
         kind = data[12:16]
         if kind == b"VP8X":
+            need(data, 30, "WebP VP8X header")
             w = int.from_bytes(data[24:27], "little") + 1
             h = int.from_bytes(data[27:30], "little") + 1
         elif kind == b"VP8L":
+            need(data, 25, "WebP VP8L header")
+            if data[20] != 0x2F:
+                raise ValueError("bad WebP VP8L signature")
             bits = int.from_bytes(data[21:25], "little")
             w, h = (bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1
         elif kind == b"VP8 ":
+            need(data, 30, "WebP VP8 header")
+            if data[23:26] != b"\x9d\x01\x2a":
+                raise ValueError("bad WebP VP8 start code")
             w, h = struct.unpack("<HH", data[26:30])
             w, h = w & 0x3FFF, h & 0x3FFF
         else:
@@ -74,6 +98,11 @@ def image_size(name, data):
         m = re.search(rb'viewBox="\s*[-0-9.]+[ ,]+[-0-9.]+[ ,]+([0-9.]+)[ ,]+([0-9.]+)\s*"', data)
         if not m:
             raise ValueError("svg without a viewBox")
+        try:
+            float(m.group(1))
+            float(m.group(2))
+        except ValueError:
+            raise ValueError("svg viewBox is not numeric")
         return "%sx%s" % (m.group(1).decode(), m.group(2).decode())
     raise ValueError("neither PNG, JPEG, WebP nor SVG")
 
@@ -146,10 +175,13 @@ def check(root):
             fails.append("%s is %d bytes, 150 KB or more" % (rel, len(data)))
         try:
             size = image_size(f, data)
+            w, h = (float(x) for x in size.split("x"))
         except ValueError as ex:
             fails.append("%s: %s" % (rel, ex))
             continue
-        w, h = (float(x) for x in size.split("x"))
+        except (struct.error, IndexError, OverflowError) as ex:  # second layer; image_size should not raise these
+            fails.append("%s: unreadable image (%s)" % (rel, ex))
+            continue
         if not (16 <= w <= 4000 and 16 <= h <= 4000):
             fails.append("%s has odd dimensions %s" % (rel, size))
         if e is not None and e.get("size") != size:
@@ -165,7 +197,10 @@ def check(root):
 
 def main(argv):
     root = argv[1] if len(argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-    fails = check(root)
+    try:
+        fails = check(root)
+    except Exception as ex:  # never a traceback: a checker crash is a failure with a message
+        fails = ["the checker could not read the tree (%s: %s)" % (type(ex).__name__, ex)]
     for f in fails:
         print("FAIL: " + f)
     if fails:
