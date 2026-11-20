@@ -55,3 +55,5 @@ You receive updated findings, supporting notes, and recommended next actions. Te
 Access is removed or returned, open work is documented, and client data is deleted at the end of the engagement on request. You receive handover notes, final deliverables, and a list of unresolved items.
 
 If the owner becomes unavailable, documented runbooks and current handover notes support continuity. A named backup contact from the owner’s expert network is identified for the engagement and may assist with coordination or handoff. No subcontractor performs client work without the client’s written consent.
+
+Next, explore [what a virtual CISO does](/guides/what-is-a-vciso/), review [ongoing advisory support](/services/advisory/) and a [sample retainer scope](/sample-scope-of-work/), or see [pricing and assessments](/pricing/).

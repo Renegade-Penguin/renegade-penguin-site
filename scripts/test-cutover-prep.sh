@@ -202,6 +202,94 @@ version_case() { # <name> <wrangler --version output>
 version_case "wrangler 3.44.0" "wrangler 3.44.0"
 version_case "wrangler 2.20.0" "wrangler 2.20.0"
 version_case "wrangler prints no version" "wrangler"
+
+# Controlled full --apply path. The real deploy-production.sh runs from a copy of a tiny repo tree in
+# $TMP, with fake hugo, wrangler and check-output that record every call (with its arguments) in one
+# log. Nothing real is built, checked or deployed; no network.
+APPLY_REPO="$TMP/applyrepo"
+APPLY_LOG="$TMP/apply.log"
+apply_case() { # <name> <wrangler version> <fake check-output exit code> <expected exit: zero|nonzero>
+  local name="$1" wver="$2" check_rc="$3" want="$4" st=0
+  rm -rf "$APPLY_REPO" "$TMP/fakebin"
+  mkdir -p "$APPLY_REPO/scripts" "$APPLY_REPO/functions/api" "$TMP/fakebin"
+  cp "$S" "$APPLY_REPO/scripts/deploy-production.sh"
+  cp wrangler.production.jsonc "$APPLY_REPO/wrangler.production.jsonc"
+  echo "export default {};" >"$APPLY_REPO/functions/api/fixture.js"
+  : >"$APPLY_LOG"
+  rm -f "$TMP/deploydir"
+  printf '%s\n' '#!/bin/sh' \
+    'echo "CHECK EXPECT_ENV=$EXPECT_ENV REQUIRE_NO_OWNER_TOKENS=$REQUIRE_NO_OWNER_TOKENS REQUIRE_OWNER_APPROVAL=$REQUIRE_OWNER_APPROVAL ARGS=$*" >>"$LOG"' \
+    'exit "$FAKE_CHECK_RC"' >"$APPLY_REPO/scripts/check-output.sh"
+  printf '%s\n' '#!/bin/sh' \
+    'echo "HUGO ARGS=$* HUGO_ENVIRONMENT=$HUGO_ENVIRONMENT HUGO_PARAMS_ENVIRONMENT=$HUGO_PARAMS_ENVIRONMENT SITEKEY=$HUGO_PARAMS_TURNSTILESITEKEY" >>"$LOG"' \
+    'dest=public; prev=""' \
+    'for a in "$@"; do' \
+    '  [ "$prev" = "--destination" ] && dest="$a"' \
+    '  prev="$a"' \
+    'done' \
+    'mkdir -p "$dest"' \
+    'echo ok >"$dest/index.html"' \
+    'printf "User-agent: *\nAllow: /\n" >"$dest/robots.txt"' \
+    'echo "<urlset/>" >"$dest/sitemap.xml"' >"$TMP/fakebin/hugo"
+  printf '%s\n' '#!/bin/sh' \
+    'if [ "$1" = "--version" ]; then' \
+    '  echo "W-VERSION ARGS=$*" >>"$LOG"' \
+    '  echo "wrangler $FAKE_WRANGLER_VERSION"' \
+    '  exit 0' \
+    'fi' \
+    'echo "DEPLOY ARGS=$*" >>"$LOG"' \
+    'echo "DETAIL files=$(ls "$PWD" | tr "\n" " ")" >>"$LOG"' \
+    'if cmp -s "$PWD/wrangler.jsonc" "$PROD_CONFIG"; then echo "DETAIL config=production" >>"$LOG"; else echo "DETAIL config=other" >>"$LOG"; fi' \
+    'if [ -f "$PWD/functions/api/fixture.js" ]; then echo "DETAIL functions=present" >>"$LOG"; fi' \
+    'if [ -f "$PWD/public/index.html" ]; then echo "DETAIL public=present" >>"$LOG"; fi' \
+    'echo "$PWD" >"$DEPLOYDIR_FILE"' >"$TMP/fakebin/wrangler"
+  chmod +x "$APPLY_REPO/scripts/check-output.sh" "$TMP/fakebin/hugo" "$TMP/fakebin/wrangler"
+  env -i PATH="$TMP/fakebin:/usr/bin:/bin" HOME="$HOME" LOG="$APPLY_LOG" FAKE_CHECK_RC="$check_rc" \
+    FAKE_WRANGLER_VERSION="$wver" PROD_CONFIG="$APPLY_REPO/wrangler.production.jsonc" \
+    DEPLOYDIR_FILE="$TMP/deploydir" OWNER_APPROVED_CUTOVER=yes HUGO_PARAMS_TURNSTILESITEKEY=fixturekey \
+    SCRUB_TERMS_FILE="$TMP/real.txt" CLOUDFLARE_API_TOKEN="$DUMMY_TOKEN" \
+    bash "$APPLY_REPO/scripts/deploy-production.sh" --apply >"$TMP/out" 2>&1 || st=$?
+  case "$want" in
+    zero) [ "$st" -eq 0 ] || fail "$name: expected exit 0, got $st: $(tail -n 3 "$TMP/out")" ;;
+    nonzero) [ "$st" -ne 0 ] || fail "$name: expected non-zero exit" ;;
+  esac
+  if grep -q "$DUMMY_TOKEN" "$APPLY_LOG" "$TMP/out"; then fail "$name: the token appears in a call or in the output"; fi
+}
+# Tags of the recorded calls, in order, as one string.
+apply_order() { grep -E '^(W-VERSION|HUGO|CHECK|DEPLOY) ' "$APPLY_LOG" | cut -d' ' -f1 | tr '\n' ' '; }
+
+apply_case "full apply" "3.45.0" 0 zero
+[ "$(apply_order)" = "W-VERSION HUGO CHECK DEPLOY " ] || fail "full apply: wrong call order: $(apply_order)"
+grep -qx 'W-VERSION ARGS=--version' "$APPLY_LOG" || fail "full apply: wrangler --version not called as expected"
+grep -qx 'HUGO ARGS=--minify --gc --destination public HUGO_ENVIRONMENT=production HUGO_PARAMS_ENVIRONMENT=production SITEKEY=fixturekey' "$APPLY_LOG" ||
+  fail "full apply: hugo was not the production variant: $(grep '^HUGO ' "$APPLY_LOG")"
+if grep -qi 'staging' "$APPLY_LOG"; then fail "full apply: a staging parameter reached a call"; fi
+grep -qx 'CHECK EXPECT_ENV=production REQUIRE_NO_OWNER_TOKENS=1 REQUIRE_OWNER_APPROVAL=1 ARGS=public' "$APPLY_LOG" ||
+  fail "full apply: check-output got the wrong environment or arguments: $(grep '^CHECK ' "$APPLY_LOG")"
+grep -qx 'DEPLOY ARGS=pages deploy public --project-name renegade-penguin-site-prod --branch main' "$APPLY_LOG" ||
+  fail "full apply: wrong deploy arguments: $(grep '^DEPLOY ' "$APPLY_LOG")"
+if grep -q -- '--config' "$APPLY_LOG"; then fail "full apply: --config was passed"; fi
+grep -qx 'DETAIL config=production' "$APPLY_LOG" || fail "full apply: wrangler.jsonc in the deploy directory is not the production config"
+grep -qx 'DETAIL functions=present' "$APPLY_LOG" || fail "full apply: functions/ missing from the deploy directory"
+grep -qx 'DETAIL public=present' "$APPLY_LOG" || fail "full apply: public/ missing from the deploy directory"
+grep -q 'DETAIL files=.*wrangler.jsonc' "$APPLY_LOG" || fail "full apply: no wrangler.jsonc in the deploy directory"
+deploy_dir="$(cat "$TMP/deploydir")"
+[ "$deploy_dir" != "$APPLY_REPO" ] || fail "full apply: deployed from the repository root, not a clean directory"
+[ ! -e "$deploy_dir" ] || fail "full apply: the staging directory was not removed"
+if grep -qE '[A-Za-z0-9_-]{32,}' "$APPLY_LOG"; then fail "full apply: a long secret-looking value is in a call log"; fi
+
+apply_case "full apply with a newer wrangler" "4.1.2" 0 zero
+[ "$(apply_order)" = "W-VERSION HUGO CHECK DEPLOY " ] || fail "newer wrangler: wrong call order: $(apply_order)"
+
+# Negative: a failing output check must stop before the deploy.
+apply_case "failing check-output" "3.45.0" 1 nonzero
+[ "$(apply_order)" = "W-VERSION HUGO CHECK " ] || fail "failing check-output: expected no deploy, calls were: $(apply_order)"
+if grep -q '^DEPLOY ' "$APPLY_LOG"; then fail "failing check-output: wrangler pages deploy was called"; fi
+
+# Negative: a failing version check must never reach hugo.
+apply_case "old wrangler" "3.44.0" 0 nonzero
+[ "$(apply_order)" = "W-VERSION " ] || fail "old wrangler: expected only the version call, calls were: $(apply_order)"
+echo "ok: deploy-production.sh full apply path (fakes)"
 echo "ok: deploy-production.sh refusals and dry run"
 
 # The script text pins the production flags and orders the checks before the deploy.

@@ -31,3 +31,5 @@ Community and non-corporate education is offered free, at cost, or through anoth
 Corporate and vendor events are paid engagements. To start the conversation, organizers should send the intended audience, session length, format, travel requirements, and budget range.
 
 Education and speaking do not replace a security assessment, legal advice, or hands-on engineering. If a session uncovers a larger issue, any follow-up work is scoped separately.
+
+Learn [about Renegade Penguin](/about/), review [relevant experience](/experience/), explore [pricing and assessments](/pricing/), or [schedule a free fit call](/contact/).

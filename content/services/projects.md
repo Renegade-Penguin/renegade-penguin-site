@@ -54,3 +54,5 @@ Each project has written boundaries, assumptions, client responsibilities, and a
 When specialist work is needed, trusted experts in areas such as penetration testing or telecom can be brought in as a coordinated team. That involvement is disclosed and agreed on before work begins.
 
 Projects have a minimum fee and are quoted after a scoping call.
+
+Read the [AI security review guide](/guides/ai-security-review-small-organizations/), see [how engagements run](/how-we-work/), review [pricing and assessments](/pricing/), or consider [ongoing advisory support](/services/advisory/).
