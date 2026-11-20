@@ -42,7 +42,7 @@ Renegade Penguin handles this work as a [fixed-scope security project](/services
 
 ## What the review does not promise
 
-An AI security review does not certify that a tool is safe, establish legal compliance, or guarantee that employees will follow policy. It gives the organization a defensible view of current use and a practical basis for deciding what to allow, restrict, change, or investigate further.
+An AI security review does not declare a tool safe, establish legal compliance, or control whether employees follow policy. It gives the organization a defensible view of current use and a practical basis for deciding what to allow, restrict, change, or investigate further.
 
 Organizations that need continued help after the review can consider [ongoing advisory](/services/advisory/). The firm does not resell AI products, accept referral fees, or steer findings toward a vendor.
 
