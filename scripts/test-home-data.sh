@@ -330,6 +330,24 @@ rc=0
 python3 -I scripts/check-claims.py "$S/out" >/dev/null 2>&1 || rc=$?
 [ "$rc" = "1" ] || soft "(d) banned word in data/home/hero.toml: check-claims expected exit 1, got $rc"
 
+# (g) a title with a fragment after the last terminator keeps every fragment (issue #99 review).
+S2="$TMP/scratch2"
+mkdir -p "$S2"
+cp -r hugo.toml content data layouts assets static "$S2/"
+sed -i 's/^title = .*/title = "First sentence. trailing words"/' "$S2/data/home/hero.toml"
+"$HUGO" --source "$S2" --destination "$S2/out" >/dev/null 2>&1 || soft "(g) scratch build failed"
+python3 -I - "$S2/out/index.html" <<'PY' || soft "(g) trailing fragment kept"
+import re
+import sys
+
+html = open(sys.argv[1], encoding="utf-8").read()
+h1 = re.search(r"<h1[^>]*>(.*?)</h1>", html, re.S).group(1)
+lines = re.findall(r'<span class="hero-line">([^<]*)</span>', h1)
+assert lines == ["First sentence.", "trailing words"], lines
+text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", h1)).strip()
+assert text == "First sentence. trailing words", text
+PY
+
 if [ "$FAILS" -gt 0 ]; then
   echo "FAILED: $FAILS case(s)" >&2
   exit 1

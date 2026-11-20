@@ -2,16 +2,17 @@
   <img src="/brand/penguin-color.png" alt="Renegade Penguin mascot: a penguin holding a rifle" width="512" height="512">
   <div class="hero-copy">
     <p class="eyebrow">{{ .eyebrow }}</p>
-    {{- $lines := findRE `[^.!?]+[.!?]` .title }}
+    {{- $lines := findRE `[^.!?]+[.!?]*` .title }}
     <h1 id="hero-title">
-      {{- if $lines -}}
-        {{- range $i, $l := $lines -}}
-          {{- if $i }} {{ end -}}
-          <span class="hero-line">{{ trim $l " " }}</span>
+      {{- $n := 0 -}}
+      {{- range $lines -}}
+        {{- with trim . " " -}}
+          {{- if $n }} {{ end -}}
+          <span class="hero-line">{{ . }}</span>
+          {{- $n = add $n 1 -}}
         {{- end -}}
-      {{- else -}}
-        {{ .title }}
       {{- end -}}
+      {{- if not $n }}{{ .title }}{{ end -}}
     </h1>
     <p class="sub">{{ .body }}</p>
     <p class="intro">{{ .intro }}</p>
