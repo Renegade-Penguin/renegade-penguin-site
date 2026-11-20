@@ -5,7 +5,7 @@
   {{- range .items }}
   <li class="partner-tile">
     {{- if .logo -}}
-    <img class="partner-logo zone-{{ .zone }}" src="{{ .logo }}" alt="{{ .title }}" width="{{ .width }}" height="{{ .height }}" decoding="async" loading="lazy">
+    <img class="partner-logo zone-{{ .zone }}{{ if eq .treatment "mono-light" }} partner-logo--mono{{ end }}" src="{{ .logo }}" alt="{{ .title }}" width="{{ .width }}" height="{{ .height }}" decoding="async" loading="lazy">
     {{- else -}}
     <span class="name">{{ .title }}</span>
     {{- end -}}

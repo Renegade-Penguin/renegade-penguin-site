@@ -7,6 +7,11 @@ label = "Past Professional History"
 
 [[groups.items]]
 title = "NetJets"
+logo = "/brand/partners/netjets.svg"
+width = 280
+height = 56
+zone = "default"
+treatment = "mono-light"
 
 [[groups.items]]
 title = "Cointelegraph"
@@ -14,12 +19,23 @@ logo = "/brand/partners/cointelegraph.png"
 width = 251
 height = 72
 zone = "half-icon"
+treatment = "unaltered"
 
 [[groups.items]]
 title = "Henry Schein"
+logo = "/brand/partners/henry-schein.jpg"
+width = 280
+height = 70
+zone = "default"
+treatment = "mono-light"
 
 [[groups.items]]
 title = "GC Dental"
+logo = "/brand/partners/gc-dental.webp"
+width = 280
+height = 35
+zone = "default"
+treatment = "unaltered"
 
 [[groups.items]]
 title = "SML Labs"
@@ -34,9 +50,20 @@ logo = "/brand/partners/lorikeet-security.png"
 width = 154
 height = 48
 zone = "shield"
+treatment = "unaltered"
 
 [[groups.items]]
 title = "Call Theory"
+logo = "/brand/partners/call-theory.svg"
+width = 72
+height = 72
+zone = "default"
+treatment = "unaltered"
 
 [[groups.items]]
 title = "Call Center Village"
+logo = "/brand/partners/call-center-village.png"
+width = 120
+height = 120
+zone = "default"
+treatment = "unaltered"
