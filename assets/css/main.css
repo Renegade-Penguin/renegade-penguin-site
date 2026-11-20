@@ -133,6 +133,17 @@ main.home { max-width: var(--shell); margin: 0 auto; padding: var(--space-5) var
   .grid[class] > :nth-child(n):last-child:nth-child(odd) { grid-column: span 12; }
 }
 @media (max-width: 560px) { .grid[class] > :nth-child(n) { grid-column: span 12; } }
+/* Partner tiles: one uniform dark tile per organization (home strip and Experience page). A logo is the
+   official file, shown unaltered: the size comes from the img width and height attributes, with no filter,
+   opacity, blend or transform. The 3rem margin is the clear space the organizations ask for (Lorikeet: the
+   shield height, 48 px, on all four sides). Text tiles use the display face and match the logo tiles. */
+.partner-tile { display: flex; align-items: center; justify-content: center; min-height: 10.5rem; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--rule); text-align: center; }
+.partner-tile .name { margin: 0; padding: 1rem; font-family: var(--font-display); font-size: 1.1rem; line-height: 1.3; font-weight: 600; color: var(--text); }
+.partner-logo { display: block; height: auto; }
+.partner-logo.zone-shield { max-width: calc(100% - 6rem); margin: 3rem; }
+/* Cointelegraph: free space is half the icon height (about 22 px at this size), 1.5rem all round. */
+.partner-logo.zone-half-icon { max-width: calc(100% - 3rem); margin: 1.5rem; }
+.grid.fill-last > :last-child:nth-child(odd) { grid-column: span 12; }
 .steps { margin: 0; }
 .step { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
 .exhibit h3 { margin-top: 0; }

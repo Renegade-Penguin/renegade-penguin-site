@@ -10,6 +10,10 @@ title = "NetJets"
 
 [[groups.items]]
 title = "Cointelegraph"
+logo = "/brand/partners/cointelegraph.png"
+width = 251
+height = 72
+zone = "half-icon"
 
 [[groups.items]]
 title = "Henry Schein"
@@ -26,6 +30,10 @@ note = "Any partner work is scoped with the client and proceeds only with the cl
 
 [[groups.items]]
 title = "Lorikeet Security"
+logo = "/brand/partners/lorikeet-security.png"
+width = 154
+height = 48
+zone = "shield"
 
 [[groups.items]]
 title = "Call Theory"

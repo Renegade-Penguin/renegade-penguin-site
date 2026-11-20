@@ -1,0 +1,14 @@
+{{- /* A uniform dark tile per organization: the official logo as an img, or the name as text.
+       Input: a dict with items (one data/home/worked-with.toml group) and an optional cols (the grid count class to use, with the last odd item stretched, for a narrow column). The grid-n<count> class is the site's
+       adaptive grid. The img alt is the only text in a logo tile, so a screen reader says the name once. */ -}}
+<ul class="grid partner-tiles grid-n{{ default (len .items) .cols }}{{ if .cols }} fill-last{{ end }}">
+  {{- range .items }}
+  <li class="partner-tile">
+    {{- if .logo -}}
+    <img class="partner-logo zone-{{ .zone }}" src="{{ .logo }}" alt="{{ .title }}" width="{{ .width }}" height="{{ .height }}" decoding="async" loading="lazy">
+    {{- else -}}
+    <span class="name">{{ .title }}</span>
+    {{- end -}}
+  </li>
+  {{- end }}
+</ul>
