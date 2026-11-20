@@ -32,11 +32,56 @@ if grep -qi '404' "$OUT/sitemap.xml"; then fail "the 404 page is in the sitemap"
 [ -f "$OUT/404.html" ] || fail "404.html missing"
 if grep -qi 'rel="\?canonical' "$OUT/404.html"; then fail "404.html must not carry a canonical link"; fi
 
-# JSON-LD: Organization everywhere, Person on About only, both valid JSON.
+# JSON-LD (issue #80 graph shape): one @graph per page with the Organization everywhere, the Person
+# on About and Home only, valid JSON, and no invented contact or commercial facts.
 python3 -I - "$OUT" <<'PY' || fail "JSON-LD check failed"
 import json, os, re, sys
 root = sys.argv[1]
 pat = re.compile(r'<script type="?application/ld\+json"?>(.*?)</script>', re.S)
+BANNED = ("address", "streetAddress", "telephone", "review", "aggregateRating", "price", "offers")
+
+
+def types(n):
+    t = n.get("@type", [])
+    return t if isinstance(t, list) else [t]
+
+
+def walk(node):
+    if isinstance(node, dict):
+        yield node
+        for v in node.values():
+            yield from walk(v)
+    elif isinstance(node, list):
+        for v in node:
+            yield from walk(v)
+
+
+def check(rel, body):
+    blocks = [json.loads(b) for b in pat.findall(body)]
+    if len(blocks) != 1 or not isinstance(blocks[0].get("@graph"), list):
+        return "%s: want one ld+json block with a @graph" % rel
+    graph = blocks[0]["@graph"]
+    orgs = [n for n in graph if "Organization" in types(n)]
+    if len(orgs) != 1:
+        return "%s: want one Organization, got %d" % (rel, len(orgs))
+    org = orgs[0]
+    if org.get("name") != "Renegade Penguin LLC" or org.get("sameAs") != ["https://github.com/Renegade-Penguin"]:
+        return "%s: unexpected Organization %s" % (rel, org)
+    persons = [n for n in graph if "Person" in types(n)]
+    if bool(persons) != (rel in ("about/index.html", "index.html")):
+        return "%s: Person present is %s" % (rel, bool(persons))
+    for p in persons:
+        if p.get("worksFor", {}).get("@id") != org["@id"]:
+            return "Person.worksFor does not point at the Organization"
+    for n in walk(graph):
+        for banned in BANNED:
+            if banned in n:
+                return "%s: JSON-LD carries an invented %s" % (rel, banned)
+        if "email" in n and n["email"] != "contact@renegadepenguinllc.com":
+            return "%s: JSON-LD email is not the published contact address" % rel
+    return None
+
+
 seen = 0
 for dp, _d, fs in os.walk(root):
     for f in fs:
@@ -44,23 +89,21 @@ for dp, _d, fs in os.walk(root):
             continue
         path = os.path.join(dp, f)
         rel = os.path.relpath(path, root)
-        blocks = [json.loads(b) for b in pat.findall(open(path, encoding="utf-8").read())]
-        types = sorted(b["@type"] for b in blocks)
-        want = ["Organization", "Person"] if rel == "about/index.html" else ["Organization"]
-        if types != want:
-            sys.exit("%s: JSON-LD types %s, want %s" % (rel, types, want))
-        org = [b for b in blocks if b["@type"] == "Organization"][0]
-        if org["name"] != "Renegade Penguin LLC" or org["sameAs"] != ["https://chiefgyk3d.com/"]:
-            sys.exit("%s: unexpected Organization %s" % (rel, org))
-        for b in blocks:
-            if b["@type"] == "Person" and b["worksFor"]["@id"] != org["@id"]:
-                sys.exit("Person.worksFor does not point at the Organization")
-        for banned in ("address", "telephone", "email"):
-            if banned in org:
-                sys.exit("Organization carries an invented %s" % banned)
+        problem = check(rel, open(path, encoding="utf-8").read())
+        if problem:
+            sys.exit(problem)
         seen += 1
 if seen < 5:
     sys.exit("only %d pages checked" % seen)
+# Negative case: the guard must reject an invented telephone and a stray email.
+def blk(g):
+    return '<script type="application/ld+json">' + json.dumps({"@graph": g}) + "</script>"
+
+
+good = {"@type": "Organization", "@id": "o", "name": "Renegade Penguin LLC", "sameAs": ["https://github.com/Renegade-Penguin"]}
+assert check("contact/index.html", blk([good])) is None, "negative case baseline"
+assert check("contact/index.html", blk([dict(good, telephone="1")])), "telephone not rejected"
+assert check("contact/index.html", blk([dict(good, email="x@example.com")])), "stray email not rejected"
 PY
 
 # security.txt per RFC 9116, and its Content-Type route in _headers.
