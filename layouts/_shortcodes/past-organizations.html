@@ -1,3 +1,3 @@
 {{- /* The past organizations as the same dark tiles the home page uses, from the one data file. */ -}}
 {{- $g := index (index hugo.Data.home "worked-with").groups 0 -}}
-{{ partial "partner-tiles.html" $g.items }}
+{{ partial "partner-tiles.html" (dict "items" $g.items "cols" 2) }}

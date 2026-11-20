@@ -6,6 +6,6 @@
   {{- with .note }}
   <p class="lede">{{ . }}</p>
   {{- end }}
-  {{ partial "partner-tiles.html" .items }}
+  {{ partial "partner-tiles.html" (dict "items" .items) }}
   {{- end }}
 </section>
