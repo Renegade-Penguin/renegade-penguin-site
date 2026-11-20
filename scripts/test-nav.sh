@@ -51,10 +51,28 @@ def check_header_no_script(doc):
 
 
 def check_footer(doc):
-    got = sorted(set(hrefs(region(doc, "footer"))))
+    got = sorted(hrefs(region(doc, "footer")))
     errs = []
     if got != sorted(TRUST):
         errs.append("footer links %s, wanted %s" % (got, sorted(TRUST)))
+    if len(got) != len(set(got)):
+        errs.append("footer repeats a link: %s" % got)
+    return errs
+
+
+def check_triggers(doc, n):
+    head = region(doc, "header")
+    tags = [t for t in re.findall(r"<a [^>]*>", head) if "aria-haspopup" in t]
+    errs = [] if len(tags) == n else ["%d dropdown triggers, wanted %d" % (len(tags), n)]
+    ids = re.findall(r'\sid="?([^" >]+)', head)
+    for t in tags:
+        c = re.search(r'aria-controls="?([^" >]+)', t)
+        if not re.search(r'aria-haspopup="?true', t):
+            errs.append("trigger lacks aria-haspopup true: %s" % t)
+        if "aria-expanded" in t:
+            errs.append("trigger must not carry aria-expanded: %s" % t)
+        if not c or c.group(1) not in ids:
+            errs.append("trigger aria-controls does not resolve to a panel id: %s" % t)
     return errs
 
 
@@ -95,6 +113,7 @@ for u in urls:
 home = read("/")
 errs += check_header_no_script(home)
 errs += check_footer(home)
+errs += check_triggers(home, len(groups))
 errs += check_header_links(home, urls + REMOVED)
 for p in (u for u in urls):
     doc = read(p)
@@ -110,10 +129,13 @@ bad_head = "<header><script>x</script></header>"
 assert check_header_no_script(bad_head), "script guard does not bite"
 bad_foot = "<footer>" + "".join('<a href="%s">x</a>' % u for u in TRUST + ["/ohio/"]) + "</footer>"
 assert check_footer(bad_foot), "extra footer link guard does not bite"
+assert check_footer("<footer>" + "".join('<a href="%s">x</a>' % u for u in TRUST + [TRUST[0]]) + "</footer>"), "duplicate footer link guard does not bite"
 assert check_footer("<footer>" + "".join('<a href="%s">x</a>' % u for u in TRUST[1:]) + "</footer>"), "missing footer link guard does not bite"
 assert check_header_links("<header></header>", ["/ohio/"]), "header link guard does not bite"
 assert check_ids('<p id="a"></p><p id="a"></p>'), "duplicate id guard does not bite"
 assert check_current('<header><a href="/x/">x</a></header>', "/about/"), "aria-current guard does not bite"
+assert check_triggers("<header><a href=/x/ aria-haspopup=true aria-controls=nope>x</a></header>", 1), "aria-controls guard does not bite"
+assert check_triggers("<header><a href=/x/>x</a></header>", 1), "missing trigger guard does not bite"
 print("test-nav: ok (%d nav urls)" % len(urls))
 PY
 echo "PASS: nav"
