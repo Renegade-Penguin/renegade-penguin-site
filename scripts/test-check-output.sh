@@ -651,6 +651,36 @@ HUGO_PARAMS_ENVIRONMENT=staging "$HUGO" --minify --destination "$HUGO_OUT/stg" >
 expect_pass "real production build" "$HUGO_OUT/prod" production SKIP_FRESH=0
 expect_pass "real staging build" "$HUGO_OUT/stg" staging SKIP_FRESH=0
 
+# Owner review on the real site (issue #129): the five guides were approved on 2026-11-20, so no real
+# content page carries owner_review, no built page carries the pending meta, and the real production
+# build passes the gate with REQUIRE_OWNER_APPROVAL=1.
+expect_pass "real production build with REQUIRE_OWNER_APPROVAL=1" "$HUGO_OUT/prod" production SKIP_FRESH=0 REQUIRE_OWNER_APPROVAL=1
+run_check "$HUGO_OUT/prod" production SKIP_FRESH=0 REQUIRE_OWNER_APPROVAL=1
+if grep -q '^check-output: clean (production)$' <<<"$OUT" && ! grep -q 'owner_review' <<<"$OUT"; then echo "ok: real production gate prints clean (production) with no owner_review line"; else soft "real production gate must be clean with approval required: rc=$RC $OUT"; fi
+if grep -rn 'owner_review' content | grep -q .; then soft "a real page under content/ still carries owner_review"; else echo "ok: no real content page carries owner_review"; fi
+if grep -rliE 'x-owner-review' "$HUGO_OUT/prod" "$HUGO_OUT/stg" | grep -q .; then soft "a real built page carries the x-owner-review meta"; else echo "ok: no real built page carries the x-owner-review meta"; fi
+
+# Mechanism, end to end through Hugo, with a FIXTURE page (not a real guide): a content copy plus one
+# page whose front matter has owner_review = "pending" must emit the meta, fail the production gate
+# naming the page, and stay green when the approval gate is off or on staging.
+fix_content="$WORK/fixture-content"
+mkdir -p "$fix_content"
+cp -R content/. "$fix_content/"
+printf '%s\n' '+++' 'title = "Review fixture"' 'description = "A fixture page that is pending owner review."' 'owner_review = "pending"' '+++' '' 'This fixture page is pending review.' >"$fix_content/zz-review-fixture.md"
+fix_prod="$WORK/fixture-prod"
+fix_stg="$WORK/fixture-stg"
+mkdir -p "$fix_prod" "$fix_stg"
+"$HUGO" --minify --contentDir "$fix_content" --destination "$fix_prod" >/dev/null || fail "fixture production hugo build failed"
+HUGO_PARAMS_ENVIRONMENT=staging "$HUGO" --minify --contentDir "$fix_content" --destination "$fix_stg" >/dev/null || fail "fixture staging hugo build failed"
+if grep -q 'x-owner-review' "$fix_prod/zz-review-fixture/index.html"; then echo "ok: a page with owner_review = pending emits the x-owner-review meta"; else soft "fixture page lacks the x-owner-review meta"; fi
+run_check "$fix_prod" production SKIP_FRESH=0 REQUIRE_OWNER_APPROVAL=1
+if [ "$RC" != "0" ] && grep -q '^FAIL owner_review: .*zz-review-fixture/index.html' <<<"$OUT" && [ "$(grep -c '^FAIL owner_review:' <<<"$OUT")" = "1" ]; then echo "ok: a built pending fixture page fails the production gate and only that page is named"; else soft "built pending fixture page must fail and be named alone: rc=$RC $OUT"; fi
+expect_pass "built pending fixture page, REQUIRE_OWNER_APPROVAL unset" "$fix_prod" production SKIP_FRESH=0
+expect_pass "built pending fixture page, REQUIRE_OWNER_APPROVAL=0" "$fix_prod" production SKIP_FRESH=0 REQUIRE_OWNER_APPROVAL=0
+expect_pass "built pending fixture page on staging with REQUIRE_OWNER_APPROVAL=1" "$fix_stg" staging SKIP_FRESH=0 REQUIRE_OWNER_APPROVAL=1
+run_check "$fix_prod" production SKIP_FRESH=0 REQUIRE_OWNER_APPROVAL=yes
+if [ "$RC" != "0" ] && grep -q '^FAIL owner_review:' <<<"$OUT"; then echo "ok: a bad REQUIRE_OWNER_APPROVAL value fails closed on the built fixture"; else soft "bad REQUIRE_OWNER_APPROVAL must fail closed on the built fixture: rc=$RC $OUT"; fi
+
 # Independent assertions on the real builds (not through check-output.sh).
 if grep -rliE 'noindex' "$HUGO_OUT/prod" --include='*.html' | grep -q .; then soft "production build contains noindex"; fi
 pages=$(find "$HUGO_OUT/stg" -name '*.html' | wc -l)

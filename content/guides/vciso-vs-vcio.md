@@ -4,7 +4,6 @@ seoTitle = "vCISO vs. vCIO: Which Do You Need? | Renegade Penguin"
 description = "Compare virtual CISO and virtual CIO responsibilities, where they overlap, and how a small organization can choose the right support."
 summary = "A virtual CISO leads security decisions, while a virtual CIO guides the broader use and management of technology."
 weight = 20
-owner_review = "pending"
 +++
 
 A virtual CISO leads security decisions, while a virtual chief information officer, or virtual CIO, guides the organization’s broader use of technology. A small organization needs the role that matches its unresolved decisions, and it may need a combination when technology planning and security risk cannot be separated cleanly.
