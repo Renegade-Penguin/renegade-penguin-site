@@ -161,7 +161,12 @@ main.home { max-width: var(--shell); margin: 0 auto; padding: var(--space-5) var
 .partner-tile .name { margin: 0; padding: 1rem; font-family: var(--font-display); font-size: 1.1rem; line-height: 1.3; font-weight: 600; color: var(--text); }
 .partner-logo { display: block; height: auto; }
 /* Forced colors (issue #91): the logo artwork is light-on-dark, so the tile that carries an image keeps its dark surface
-   (forced-color-adjust: none) with a system-color edge; every other element stays on the user's system colors. */
+   (forced-color-adjust: none) with a system-color edge; every other element stays on the user's system colors.
+   The .partner-caption inside that tile inherits forced-color-adjust: none on purpose and keeps its authored light
+   muted color: the tile stays dark, so a caption reverted to system colors would be CanvasText (black in a light
+   high contrast theme) on that dark tile. Measured in Chromium with forced colors on: the authored caption is
+   7.34:1 on the tile in both the light and the dark scheme; with forced-color-adjust: auto it was 1.29:1 in the
+   light scheme (readable only on the browser's white text backplate, a light plate on every caption). */
 @media (forced-colors: active) {
   .partner-tile:has(.partner-logo) { forced-color-adjust: none; background: var(--surface); border: 1px solid CanvasText; }
 }

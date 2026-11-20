@@ -445,6 +445,57 @@ assert size_problems(css.replace("calc(100% - 3rem)", "calc(100% - 20rem)"))
 assert size_problems(css.replace("calc(100% - 6rem)", "calc(100% - 9rem)"))
 assert size_problems(css.replace("margin:1.5rem", "margin:2rem"))
 assert size_problems(re.sub(r"\.partner-logo\.zone-half-icon", ".partner-logo.zone-gone", css))
+
+# Forced colors: the logo tile keeps its dark authored surface (forced-color-adjust: none) and the caption inside
+# it keeps an authored light color, never a system color (black CanvasText in a light high contrast theme would
+# sit on the still-dark tile; measured 1.29:1 against 7.34:1 for the authored color). The authored caption color
+# must also be readable on the tile (4.5:1).
+SYSTEM_COLORS = ("canvastext", "canvas", "buttontext", "buttonface", "linktext", "graytext", "highlight", "mark", "field")
+
+
+def hexrgb(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def luminance(c):
+    def ch(v):
+        v /= 255
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    return 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2])
+
+
+tokens = open("assets/css/tokens.css", encoding="utf-8").read()
+surface = hexrgb(re.search(r"--surface:\s*(#[0-9A-Fa-f]{6})", tokens).group(1))
+muted = hexrgb(re.search(r"--muted:\s*(#[0-9A-Fa-f]{6})", tokens).group(1))
+hi, lo = sorted((luminance(muted), luminance(surface)), reverse=True)
+assert (hi + 0.05) / (lo + 0.05) >= 4.5, "the caption color is below 4.5:1 on the tile surface"
+assert luminance(surface) < 0.05, "the tile surface is not dark"
+
+
+def forced_colors_problems(sheet):
+    bad = []
+    m = re.search(r"@media\s*\(forced-colors:\s*active\)\s*\{(.*?\})\s*\}", sheet, re.S)
+    if not m or not re.search(r"\.partner-tile:has\(\.partner-logo\)\{[^}]*forced-color-adjust:none[^}]*background:var\(--surface\)", m.group(1)):
+        bad.append("the logo tile does not keep forced-color-adjust: none with the dark surface in forced colors")
+    for sel, body in re.findall(r"([^{}@]+)\{([^{}]*)\}", sheet):
+        if "partner-caption" not in sel:
+            continue
+        if "forced-color-adjust" in body:
+            bad.append((sel.strip(), "the caption must inherit forced-color-adjust: none from the tile"))
+        c = re.search(r"(?:^|;)color:([^;]+)", body)
+        if c and (c.group(1).strip().lower() in SYSTEM_COLORS or not c.group(1).strip().startswith(("var(--muted)", "#"))):
+            bad.append((sel.strip(), "the caption color must be an authored color, not " + c.group(1)))
+    if not any("partner-caption" in sel for sel, _ in re.findall(r"([^{}@]+)\{([^{}]*)\}", sheet)):
+        bad.append("no caption rule collected")
+    return bad
+
+
+assert forced_colors_problems(css) == [], forced_colors_problems(css)
+assert forced_colors_problems(css + ".partner-caption{color:CanvasText}")
+assert forced_colors_problems(css + ".partner-caption{forced-color-adjust:auto}")
+assert forced_colors_problems(css.replace("forced-color-adjust:none", "forced-color-adjust:auto", 1))
+assert forced_colors_problems(css.replace(".partner-tile:has(.partner-logo){", ".partner-tile:has(.x){", 1))
 PY
 
 # (5) the light fill check, now with the new tiles in the CSS.
