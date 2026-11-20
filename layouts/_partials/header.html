@@ -1,16 +1,17 @@
-{{- /* Data-driven menu (data/nav.toml, issue #87). No JavaScript: desktop dropdowns open on :hover and
-       :focus-within; below 900px a checkbox-and-label "Menu" button opens the stacked list. */ -}}
+{{- /* Data-driven menu (data/nav.toml, issues #87 and #91). No JavaScript. Each dropdown trigger is a real
+       <button popovertarget> controlling a popover="auto" panel, so the browser provides click to open, light
+       dismiss, Escape (focus returns to the trigger) and the expanded state. Below 900px a "Menu" button controls
+       the whole menu panel the same way, and the three groups show expanded inside it. */ -}}
 {{- $nav := hugo.Data.nav -}}
 {{- $here := .RelPermalink -}}
 <header class="site-header">
   <div class="bar">
     <a class="brand" href="/">
-      <img src="/brand/penguin-color.png" alt="Renegade Penguin mascot: a penguin holding a rifle" width="40" height="40">
+      <img src="/brand/penguin-color.png" alt="" width="40" height="40">
       <span>Renegade Penguin LLC</span>
     </a>
-    <input class="menu-toggle" type="checkbox" id="menu-toggle">
-    <label class="menu-btn" for="menu-toggle">Menu</label>
-    <div class="menu-panel">
+    <button class="menu-btn" type="button" popovertarget="menu-panel">Menu</button>
+    <div class="menu-panel" id="menu-panel" popover="auto">
       <nav class="site-nav" aria-label="Main">
         <ul>
           {{- range $nav.top }}
@@ -19,9 +20,9 @@
           {{- $in := false }}
           {{- range $g.items }}{{ if eq .url $here }}{{ $in = true }}{{ end }}{{ end }}
           <li class="has-menu{{ if or $in (eq $g.url $here) }} is-section{{ end }}">
-            <a href="{{ $g.url }}" aria-haspopup="true" aria-controls="dd-{{ .group }}"{{ if eq $g.url $here }} aria-current="page"{{ end }}>{{ $g.label }}</a>
-            <div class="dropdown" id="dd-{{ .group }}" role="group" aria-label="{{ $g.heading }}">
-              <a class="dd-hub" href="{{ $g.url }}">{{ $g.heading }}</a>
+            <button class="dd-trigger" type="button" popovertarget="dd-{{ .group }}">{{ $g.label }}</button>
+            <div class="dropdown" id="dd-{{ .group }}" popover="auto">
+              <a class="dd-hub" href="{{ $g.url }}"{{ if eq $g.url $here }} aria-current="page"{{ end }}>{{ $g.heading }}</a>
               <p class="dd-blurb">{{ $g.blurb }}</p>
               <ul class="dd-items">
                 {{- range $g.items }}

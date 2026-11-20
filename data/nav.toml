@@ -1,4 +1,6 @@
 # Header menu (issue #87). layouts/_partials/header.html renders this; the order of [[top]] is the top-level order.
+# footer = true on a group or an item also links it from the footer, because a closed dropdown panel is not in
+# the accessibility tree and these pages have no other link outside it (issue #91, WCAG 2.4.5).
 
 [[top]]
 label = "Home"
@@ -57,6 +59,7 @@ label = "Who we help"
 heading = "Organizations Served"
 blurb = "Security and IT guidance for organizations with specific needs."
 url = "/who-we-help/"
+footer = true
 
 [[groups."who-we-help".items]]
 label = "Small Businesses"
@@ -118,3 +121,4 @@ url = "/when-not-to-hire/"
 label = "Case Studies"
 description = "Review anonymized examples of past advisory and assessment work."
 url = "/case-studies/"
+footer = true

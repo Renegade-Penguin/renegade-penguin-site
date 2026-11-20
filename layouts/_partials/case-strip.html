@@ -2,9 +2,9 @@
 {{- $status := "open for new engagements" -}}
 {{- with .Params.file }}{{ $file = . }}{{ end -}}
 {{- with .Params.status }}{{ $status = . }}{{ end -}}
-<div class="case-strip">
+<section class="case-strip" aria-label="Case file">
   <div class="bar">
     <span>File: {{ $file }}</span>
     <span>Status: {{ $status }}</span>
   </div>
-</div>
+</section>
