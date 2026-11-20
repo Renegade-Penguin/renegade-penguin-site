@@ -36,6 +36,7 @@ width = 480
 height = 60
 zone = "default"
 treatment = "unaltered"
+caption = true
 
 [[groups.items]]
 title = "SML Labs"
@@ -59,11 +60,13 @@ width = 72
 height = 72
 zone = "default"
 treatment = "unaltered"
+caption = true
 
 [[groups.items]]
 title = "Call Center Village"
 logo = "/brand/partners/call-center-village.png"
-width = 120
-height = 120
+width = 96
+height = 96
 zone = "default"
 treatment = "unaltered"
+caption = true
