@@ -55,3 +55,5 @@ For red team engagements, I may work with Lorikeet Security, and for call center
 ## Credentials
 
 I earned an associate degree in network system administration in 2016 and am working toward a bachelor’s degree. I earned the CISSP in 2024 and CompTIA Security+, Network+ and A+ in February 2026.
+
+For more context, read [about Renegade Penguin](/about/), explore work with [private aviation](/who-we-help/aviation/), review [education and speaking](/services/education-speaking/), or use the [AI security review guide for small organizations](/guides/ai-security-review-small-organizations/).

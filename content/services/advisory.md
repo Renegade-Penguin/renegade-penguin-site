@@ -42,3 +42,5 @@ An advisory retainer is not a managed security service, help desk, outsourced IT
 We begin with a scoping call to understand the organization, its decision-makers, and the problems that need attention first. From there, we agree on access, communication, priorities, and a working rhythm.
 
 The retainer is month to month with no lock-in. If it stops being useful, it should stop.
+
+Learn [what a virtual CISO does](/guides/what-is-a-vciso/), compare [virtual CISO and virtual CIO roles](/guides/vciso-vs-vcio/), review a [sample retainer scope](/sample-scope-of-work/), or consider [when not to hire](/when-not-to-hire/).

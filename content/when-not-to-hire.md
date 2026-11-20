@@ -31,3 +31,5 @@ Renegade Penguin does not accept commissions for recommendations and has no rese
 Sometimes a project needs expertise outside one person’s lane. A network of specialists, including experts in telecom for call centers and penetration testing, can be brought in when appropriate. Their role, cost, and relationship to the work are disclosed before they are engaged.
 
 Anything that could reasonably change the advice will be disclosed. If a conflict cannot be handled clearly, the work should go to someone else.
+
+You can also compare [virtual CISO and virtual CIO roles](/guides/vciso-vs-vcio/), explore [fixed-scope security projects](/services/projects/), see [support for small businesses](/who-we-help/small-business/), or review [pricing and assessments](/pricing/).
