@@ -36,7 +36,7 @@ for n in names:
             assert isinstance(g.get("label"), str) and g["label"].strip(), (n, "group label")
             assert isinstance(g.get("items"), list) and len(g["items"]) == want, (n, g.get("label"), "item count")
             for it in g["items"]:
-                assert set(it) == {"title"} and it["title"].strip(), (n, "item shape", it)
+                assert set(it) in ({"title"}, {"title", "logo", "width", "height"}) and it["title"].strip(), (n, "item shape", it)
         assert "note" not in gs[0], (n, "group 1 has no note")
         assert isinstance(gs[1].get("note"), str) and gs[1]["note"].strip(), (n, "group 2 note")
         assert [i["title"] for i in gs[0]["items"]] == ["NetJets", "Cointelegraph", "Henry Schein", "GC Dental", "SML Labs"], gs[0]

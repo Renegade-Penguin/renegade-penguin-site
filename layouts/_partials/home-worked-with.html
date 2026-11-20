@@ -6,10 +6,6 @@
   {{- with .note }}
   <p class="lede">{{ . }}</p>
   {{- end }}
-  <ul class="grid pills grid-n{{ len .items }}">
-    {{- range .items }}
-    <li class="card"><span class="name">{{ .title }}</span></li>
-    {{- end }}
-  </ul>
+  {{ partial "partner-tiles.html" .items }}
   {{- end }}
 </section>

@@ -16,11 +16,7 @@ That background shapes my advice. I look at how a system is built, operated and 
 
 I have worked with or for these companies in the past:
 
-- NetJets
-- Cointelegraph
-- Henry Schein
-- GC Dental
-- SML Labs
+{{< past-organizations >}}
 
 ## Experience Across Different Environments
 
