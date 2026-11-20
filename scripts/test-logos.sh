@@ -309,6 +309,53 @@ assert effects(".partner-logo--mono{filter:invert(1);mask:none}")
 assert effects(".partner-logo--mono .x{filter:invert(1)}")
 assert not effects(".partner-logo--mono{filter:invert(1);mix-blend-mode:screen;opacity:.8}")
 assert not effects(".partner-logo{max-width:100%;height:auto}")
+
+# Size guard: a zone rule may never squeeze a logo below its minimum size on the narrowest tile. At a 360 px
+# viewport the tile is about 326 px wide (viewport, 2 x 16 px shell padding, 2 x 1 px border), so the
+# resolved width of a logo is min(width attribute, 326 - the max-width reduction), and its height follows
+# the aspect ratio. Each zone's reduction must equal twice its margin (the clear space on both sides).
+NARROW = 326
+
+
+def zones(sheet):
+    found = {}
+    for sel, body in re.findall(r"([^{}@]+)\{([^{}]*)\}", sheet):
+        m = re.fullmatch(r"\.partner-logo\.zone-([a-z-]+)", sel.strip())
+        if not m:
+            continue
+        mw = re.search(r"max-width:calc\(100%\s*-\s*([0-9.]+)rem\)", body)
+        mg = re.search(r"(?:^|;)margin:([0-9.]+)rem(?:;|$)", body)
+        found[m.group(1)] = (float(mw.group(1)) if mw else None, float(mg.group(1)) if mg else None)
+    return found
+
+
+def size_problems(sheet):
+    z = zones(sheet)
+    bad = []
+    for name, it in logos.items():
+        if it["zone"] not in z:
+            bad.append((name, "no rule for zone " + it["zone"]))
+            continue
+        k, mg = z[it["zone"]]
+        if k is None or mg is None or abs(k - 2 * mg) > 0.001:
+            bad.append((name, "max-width reduction is not twice the margin", k, mg))
+            continue
+        w = min(it["width"], NARROW - k * 16)
+        h = w * it["height"] / it["width"]
+        key, floor = MIN.get(name, ("height", 24))
+        got = w if key == "width" else h
+        if got < floor:
+            bad.append((name, "resolves to %s %.0f px at 360 px, below %d" % (key, got, floor)))
+    return bad
+
+
+assert size_problems(css) == [], size_problems(css)
+assert {it["zone"] for it in logos.values()} <= set(zones(css)), zones(css)
+# negative: a zone rule that squeezes a logo to nothing, or whose margin and reduction disagree, is caught
+assert size_problems(css.replace("calc(100% - 3rem)", "calc(100% - 20rem)"))
+assert size_problems(css.replace("calc(100% - 6rem)", "calc(100% - 9rem)"))
+assert size_problems(css.replace("margin:1.5rem", "margin:2rem"))
+assert size_problems(re.sub(r"\.partner-logo\.zone-half-icon", ".partner-logo.zone-gone", css))
 PY
 
 # (5) the light fill check, now with the new tiles in the CSS.
