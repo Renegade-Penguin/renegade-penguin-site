@@ -1,0 +1,23 @@
+{{ define "main" }}
+{{ $d := index hugo.Data.hubs "who-we-help" }}
+<article class="page hub-page">
+<header class="hub-head">
+<h1>{{ .Title }}</h1>
+<p class="lede hub-lede">{{ $d.intro }}</p>
+</header>
+<div class="grid grid-n{{ len $d.cards }}">
+  {{- range $d.cards }}
+  <article class="card exhibit hub-card">
+    <h2>{{ .title }}</h2>
+    <p class="hub-quote">{{ .worry }}</p>
+    <p class="hub-outcome">{{ .body }}</p>
+    <a class="btn btn-primary" href="{{ .url }}">{{ .button }}</a>
+  </article>
+  {{- end }}
+</div>
+{{ partial "hub-fit.html" $d.fit }}
+<div class="hub-body">
+{{ .Content }}
+</div>
+</article>
+{{ end }}
