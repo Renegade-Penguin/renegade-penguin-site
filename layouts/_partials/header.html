@@ -1,17 +1,42 @@
+{{- /* Data-driven menu (data/nav.toml, issue #87). No JavaScript: desktop dropdowns open on :hover and
+       :focus-within; below 900px a checkbox-and-label "Menu" button opens the stacked list. */ -}}
+{{- $nav := hugo.Data.nav -}}
+{{- $here := .RelPermalink -}}
 <header class="site-header">
   <div class="bar">
     <a class="brand" href="/">
       <img src="/brand/penguin-color.png" alt="Renegade Penguin mascot: a penguin holding a rifle" width="40" height="40">
       <span>Renegade Penguin LLC</span>
     </a>
-    <nav class="site-nav" aria-label="Main">
-      <ul>
-        {{- $current := . -}}
-        {{ range site.Menus.main }}
-        <li><a href="{{ .URL }}"{{ if $current.IsMenuCurrent "main" . }} aria-current="page"{{ end }}>{{ .Name }}</a></li>
-        {{ end }}
-      </ul>
-    </nav>
-    <a class="btn btn-primary" href="/contact/">Book a fit call</a>
+    <input class="menu-toggle" type="checkbox" id="menu-toggle">
+    <label class="menu-btn" for="menu-toggle">Menu</label>
+    <div class="menu-panel">
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          {{- range $nav.top }}
+          {{- if .group }}
+          {{- $g := index $nav.groups .group }}
+          {{- $in := false }}
+          {{- range $g.items }}{{ if eq .url $here }}{{ $in = true }}{{ end }}{{ end }}
+          <li class="has-menu{{ if or $in (eq $g.url $here) }} is-section{{ end }}">
+            <a href="{{ $g.url }}" aria-haspopup="true" aria-controls="dd-{{ .group }}"{{ if eq $g.url $here }} aria-current="page"{{ end }}>{{ $g.label }}</a>
+            <div class="dropdown" id="dd-{{ .group }}" role="group" aria-label="{{ $g.heading }}">
+              <a class="dd-hub" href="{{ $g.url }}">{{ $g.heading }}</a>
+              <p class="dd-blurb">{{ $g.blurb }}</p>
+              <ul class="dd-items">
+                {{- range $g.items }}
+                <li><a href="{{ .url }}"{{ if eq .url $here }} aria-current="page"{{ end }}><span class="dd-label">{{ .label }}</span><span class="dd-desc">{{ .description }}</span></a></li>
+                {{- end }}
+              </ul>
+            </div>
+          </li>
+          {{- else }}
+          <li><a href="{{ .url }}"{{ if eq .url $here }} aria-current="page"{{ end }}>{{ .label }}</a></li>
+          {{- end }}
+          {{- end }}
+        </ul>
+      </nav>
+      <a class="btn btn-primary" href="/contact/">Book a fit call</a>
+    </div>
   </div>
 </header>

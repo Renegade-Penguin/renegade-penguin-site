@@ -67,13 +67,11 @@ n_built=$(find "$OUT" -name '*.html' | wc -l)
 [ "$n_built" -ge 10 ] || fail "shell loop saw only $n_built pages"
 # Case strip text comes from front matter file and status, with defaults.
 grep -q 'RP-0001' "$OUT/index.html" || fail "default case strip file text missing on home"
-# Header: one row at wide widths means a short main nav; the long tail lives in the footer nav.
+# Header: the long tail lives in the dropdowns
+# (data/nav.toml, checked by scripts/test-nav.sh) and every former footer page is reachable from them.
 hdr=$(sed -n '/<header class="\?site-header/,/<\/header>/p' "$OUT/index.html" | tr '\n' ' ')
-hcount=$(printf '%s' "$hdr" | grep -o '<li>' | wc -l)
-[ "$hcount" -le 6 ] || fail "header nav shows $hcount items; at most 6 keep it on one row at 1440"
 for t in /when-not-to-hire/ /how-we-work/ /who-we-help/ /experience/ /community/; do
-  foot=$(sed -n '/<footer/,/<\/footer>/p' "$OUT/index.html")
-  printf '%s' "$foot" | grep -Eq "href=\"?${t}[\" >]" || fail "footer nav must reach $t"
+  printf '%s' "$hdr" | grep -Eq "href=\"?${t}[\" >]" || fail "header menu must reach $t"
 done
 # Speaking page copy and About body.
 sp=$(sed 's/<[^>]*>/ /g' "$OUT/services/education-speaking/index.html" | tr -s ' \n' ' ')
@@ -94,7 +92,7 @@ for s in $segs; do
 done
 [ -f "$OUT/ohio/index.html" ] || fail "/ohio/ missing"
 grep -Eq 'href="?/who-we-help/[" >]' "$OUT/index.html" || fail "main nav must link /who-we-help/"
-grep -Eq 'href="?/ohio/[" >]' "$OUT/index.html" || fail "footer must link /ohio/"
+grep -Eq 'href="?/ohio/[" >]' "$OUT/index.html" || fail "header menu must link /ohio/"
 # The Ohio page keeps its substantive content (the owner placeholder was resolved and removed).
 oh=$(sed 's/<[^>]*>/ /g' "$OUT/ohio/index.html" | tr -s ' \n' ' ')
 printf '%s' "$oh" | grep -q '1354\.02' || fail "/ohio/ must cite section 1354.02"
