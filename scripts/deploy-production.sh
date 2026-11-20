@@ -8,7 +8,8 @@
 #   - OWNER_APPROVED_CUTOVER=yes (exactly that value)
 #   - SCRUB_TERMS_FILE names a readable file with at least one real pattern (blank lines and
 #     comment lines do not count) that is not the CI placeholder list
-#   - the production build passes scripts/check-output.sh with REQUIRE_NO_OWNER_TOKENS=1
+#   - the production build passes scripts/check-output.sh with REQUIRE_NO_OWNER_TOKENS=1 and
+#     REQUIRE_OWNER_APPROVAL=1 (no page may still be pending the owner's review of the guides)
 #     (checked after the build and before any deploy; a failure stops the script)
 # Also needed to apply: HUGO_PARAMS_TURNSTILESITEKEY (the public sitekey of the production widget)
 # and CLOUDFLARE_API_TOKEN, which wrangler reads from the environment. The token is never read,
@@ -54,7 +55,7 @@ if [ "$MODE" = "dry-run" ]; then
   echo "DRY RUN: nothing is built, checked or deployed. Re-run with --apply only after the owner approves."
   echo "step 1 preflight: require OWNER_APPROVED_CUTOVER=yes, a real SCRUB_TERMS_FILE (not the CI placeholder), HUGO_PARAMS_TURNSTILESITEKEY"
   echo "step 2 build production: HUGO_ENVIRONMENT=production HUGO_PARAMS_ENVIRONMENT=production $HUGO --minify --gc --destination public"
-  echo "step 3 check-output: EXPECT_ENV=production REQUIRE_NO_OWNER_TOKENS=1 SCRUB_TERMS_FILE=<real file> scripts/check-output.sh public"
+  echo "step 3 check-output: EXPECT_ENV=production REQUIRE_NO_OWNER_TOKENS=1 REQUIRE_OWNER_APPROVAL=1 SCRUB_TERMS_FILE=<real file> scripts/check-output.sh public"
   echo "step 4 artifact checks: public/robots.txt has no Disallow all, public/sitemap.xml exists, no noindex meta"
   echo "step 1b wrangler version: $WRANGLER --version must report $MIN_WRANGLER or newer (config-file Pages deploys need it)"
   echo "step 5 wrangler pages deploy: copy wrangler.production.jsonc as wrangler.jsonc, plus functions/ and public/, into a clean staging directory, then from there run $WRANGLER pages deploy public --project-name renegade-penguin-site-prod --branch main"
@@ -106,7 +107,7 @@ HUGO_ENVIRONMENT=production HUGO_PARAMS_ENVIRONMENT=production "$HUGO" --minify 
 
 # Steps 3 and 4: the production gate, before any deploy.
 echo "step 3: check-output"
-EXPECT_ENV=production REQUIRE_NO_OWNER_TOKENS=1 SCRUB_TERMS_FILE="$SCRUB_TERMS_FILE" scripts/check-output.sh public
+EXPECT_ENV=production REQUIRE_NO_OWNER_TOKENS=1 REQUIRE_OWNER_APPROVAL=1 SCRUB_TERMS_FILE="$SCRUB_TERMS_FILE" scripts/check-output.sh public
 
 echo "step 4: artifact checks"
 [ -f public/sitemap.xml ] || fail "public/sitemap.xml missing"

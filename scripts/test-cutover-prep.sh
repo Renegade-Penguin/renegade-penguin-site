@@ -178,7 +178,7 @@ run "apply with a stray argument" nonzero OWNER_APPROVED_CUTOVER=yes HUGO_PARAMS
 # The approval alone never makes a dry run apply anything.
 run "dry run with approval set" zero OWNER_APPROVED_CUTOVER=yes -- --dry-run
 run "dry run (version step)" zero --
-for step in "wrangler --version" "3.45.0" "clean staging directory"; do
+for step in "wrangler --version" "3.45.0" "clean staging directory" "REQUIRE_OWNER_APPROVAL=1"; do
   grep -q "$step" "$TMP/out" || fail "dry run does not print: $step"
 done
 
@@ -231,6 +231,14 @@ def check(text):
             errors.append("missing " + want)
     # The dry-run printout mentions every step first, so order is judged on the last occurrence
     # of the check and the deploy (the real commands) and on the real, quoted build call.
+    # The real output check (the last line naming check-output.sh) must set both opt-in gates.
+    check_lines = [ln for ln in code.splitlines() if "scripts/check-output.sh" in ln]
+    if not check_lines:
+        errors.append("no check-output invocation")
+    else:
+        for gate in ("REQUIRE_OWNER_APPROVAL=1", "REQUIRE_NO_OWNER_TOKENS=1"):
+            if gate not in check_lines[-1]:
+                errors.append("the output check must set " + gate)
     check_at = code.rfind("scripts/check-output.sh")
     deploy_at = code.rfind("pages deploy")
     if check_at < 0 or deploy_at < 0 or check_at > deploy_at:
@@ -253,8 +261,12 @@ with open(sys.argv[1], encoding="utf-8") as fh:
 errors = check(text)
 if errors:
     sys.exit("; ".join(errors))
+head_part, gate_sep, tail_part = text.rpartition("REQUIRE_OWNER_APPROVAL=1 ")
+last_gate_removed = head_part + tail_part
 mutants = {
     "no production env": text.replace("EXPECT_ENV=production", "EXPECT_ENV=staging"),
+    "owner approval off": text.replace("REQUIRE_OWNER_APPROVAL=1", "REQUIRE_OWNER_APPROVAL=0"),
+    "owner approval missing on the real call": last_gate_removed,
     "owner tokens off": text.replace("REQUIRE_NO_OWNER_TOKENS=1", "REQUIRE_NO_OWNER_TOKENS=0"),
     "no staged config": text.replace('cp wrangler.production.jsonc "$stage/wrangler.jsonc"', "true"),
     "config flag": text + "\nwrangler pages deploy --config x\n",
@@ -307,6 +319,8 @@ REQUIRED_STRINGS = [
     "must never be removed",
     "clean staging directory",
     "managed robots.txt",
+    "REQUIRE_OWNER_APPROVAL=1",
+    "removing owner_review from the four files under content/guides",
     "layouts/home.robots.txt",
     "Claude-SearchBot",
     "ChatGPT-User",

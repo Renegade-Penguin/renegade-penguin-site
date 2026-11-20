@@ -49,6 +49,7 @@ Every row must be checked off, with its evidence noted on #102, before step 1 of
 | 11 | The owner's single approval of the access plan below has been given in the owner's own words. | owner | Quote on #102. |
 | 12 | The zone renegadepenguinllc.com is active in the same Cloudflare account as the new Pages project. A custom domain must be a zone on the account that holds the project, and a CNAME to a different account is blocked with error 1014 (DOCS-VERIFIED 2026-11-19 [custom-domains], [cname-flat]). | owner | A GET on the zone shows `status` active and the same account id as the project. |
 | 13 | Issue #106 is merged: `static/_headers` carries the `X-Robots-Tag: noindex` rules for the pages.dev hosts (see step 3). That file change is a separate issue handled by another agent; this runbook only depends on it. | owner or lead | `grep -c 'X-Robots-Tag: noindex' static/_headers` is at least 2 on main, and the two pages.dev rules are present. |
+| 14 | The owner approves the guides by removing owner_review from the four files under content/guides (the production gate fails while any page is pending). The gate is `REQUIRE_OWNER_APPROVAL=1` on `scripts/check-output.sh`; it arrives with the guides pull request (#108) and is set by `scripts/deploy-production.sh`. | owner | `grep -rn owner_review content/guides` prints nothing; then `EXPECT_ENV=production REQUIRE_OWNER_APPROVAL=1 REQUIRE_NO_OWNER_TOKENS=1 SCRUB_TERMS_FILE="$SCRUB_TERMS_FILE" scripts/check-output.sh public` ends with `check-output: clean (production)`. A failure names every built page still carrying the pending review meta. |
 
 Open decisions for the owner (recommendation first): (a) project name `renegade-penguin-site-prod`
 or another; (b) www: redirect to the apex (recommended) or no www; (c) Turnstile: reuse the existing
@@ -202,8 +203,9 @@ repository.
 - Command: first the dry run, `scripts/deploy-production.sh`, then
   `OWNER_APPROVED_CUTOVER=yes SCRUB_TERMS_FILE=<real file> HUGO_PARAMS_TURNSTILESITEKEY=<public sitekey> scripts/deploy-production.sh --apply`
   with the token in the environment. It checks Wrangler is 3.45.0 or newer, builds the production
-  variant, runs `check-output.sh` with `EXPECT_ENV=production REQUIRE_NO_OWNER_TOKENS=1` and the
-  real terms, checks the artifact, then deploys from a clean staging directory: the script copies
+  variant, runs `check-output.sh` with `EXPECT_ENV=production REQUIRE_NO_OWNER_TOKENS=1 REQUIRE_OWNER_APPROVAL=1`
+  and the real terms (the last gate fails, naming each page, while any guide is still pending the
+  owner's review: precondition 14), checks the artifact, then deploys from a clean staging directory: the script copies
   `wrangler.production.jsonc` there as `wrangler.jsonc`, with `functions/` and `public/`, and runs
   `wrangler pages deploy public --project-name renegade-penguin-site-prod --branch main`.
 - Why a clean staging directory: whether `pages deploy` honors `--config` is UNDOCUMENTED (the flag
