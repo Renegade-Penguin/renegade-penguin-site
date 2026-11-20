@@ -306,6 +306,13 @@ REQUIRED_STRINGS = [
     "branch config",
     "must never be removed",
     "clean staging directory",
+    "managed robots.txt",
+    "layouts/home.robots.txt",
+    "Claude-SearchBot",
+    "ChatGPT-User",
+    "GPTBot",
+    "Google-Extended",
+    "CCBot",
 ]
 FORBIDDEN_STRINGS = [
     "leave it or remove only that record",

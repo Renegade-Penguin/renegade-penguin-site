@@ -98,7 +98,9 @@ secret header, so the production project needs the same `MAIL_SHARED_SECRET` val
 
 Other facts REPO-VERIFIED: the canonical link of every page uses the Hugo `baseURL`, which is the
 apex (hugo.toml), so staging pages already name the apex as canonical; the sitemap and its
-`Sitemap:` line in the production robots.txt use the same base (layouts/home.robots.txt); the
+`Sitemap:` line in the production robots.txt use the same base (layouts/home.robots.txt); main
+already ships the production robots.txt AI crawler policy (issue #94) and a sitemap `lastmod` on
+every page (hugo.toml, scripts/test-robots.sh), so the apex serves them with no further work; the
 rate-limit rule on `/api/contact` is zone wide and has no host clause
 (scripts/staging/ensure-rate-limit.sh), so it covers the apex with no change. This repository has no
 workflow that deploys to Pages (.github/workflows has only ci.yml), so how the staging project is
@@ -218,8 +220,11 @@ repository.
   attach the apex.
 - Expected: a deployment on `https://<subdomain>` from step 1 (DOCS-VERIFIED 2026-11-19
   [direct-upload]).
-- Verify on that URL: `curl -s https://<subdomain>/robots.txt` has no `Disallow: /` and has a
-  `Sitemap:` line; the home page HTML has no `noindex` meta; `/sitemap.xml` returns 200; response
+- Verify on that URL: `curl -s https://<subdomain>/robots.txt` shows the policy from
+  `layouts/home.robots.txt` (REPO-VERIFIED, scripts/test-robots.sh): `User-agent: *` allowed, no
+  `Disallow: /` under `*`, a `Sitemap:` line, Googlebot, Bingbot, OAI-SearchBot, ChatGPT-User,
+  PerplexityBot, Claude-SearchBot and Claude-User allowed, GPTBot, ClaudeBot, Google-Extended and
+  CCBot disallowed; `/sitemap.xml` entries each carry a `lastmod`; the home page HTML has no `noindex` meta; `/sitemap.xml` returns 200; response
   headers on `/` and `/contact/` match `static/_headers` (CSP, HSTS, nosniff);
   `/.well-known/security.txt` returns 200; no `email-protection` string in any page; a missing path
   returns the site's 404 page.
@@ -280,7 +285,10 @@ repository.
 - Verify: `curl -sI https://renegadepenguinllc.com/` returns 200 with the site's headers and no
   `X-Robots-Tag: noindex`; `dig +short MX renegadepenguinllc.com` and the SPF, DKIM and DMARC TXT
   answers are identical to the precondition 9 snapshot (an exact diff, expected empty); `dig CAA`
-  is unchanged. Also confirm no Cache Rule or Page Rule applies to the apex: zone settings apply to a
+  is unchanged. `curl -s https://renegadepenguinllc.com/robots.txt` shows the same policy and the
+  apex `Sitemap:` line, and Cloudflare's managed robots.txt feature is OFF (it would prepend or
+  replace content, so the site file must be the only source; where it is switched: UNVERIFIED-NEEDS-DOCS).
+  Also confirm no Cache Rule or Page Rule applies to the apex: zone settings apply to a
   proxied custom domain and a cache rule can serve stale content after a deploy (DOCS-VERIFIED
   2026-11-19 [custom-domains], [serving]).
 - Rollback: see the rollback section. Avoid flipping the record back and forth: a domain whose DNS
@@ -407,6 +415,11 @@ needs a new deploy. An API route for rollback is UNDOCUMENTED.
   test message and for real ones; `/api/contact` error rate in the Pages project logs.
 - Search: Search Console coverage and sitemap status after 2 days and again after a week; the
   apex robots.txt is still `Allow: /` (a regression to the staging variant would set `Disallow: /`).
+- Robots policy: `curl -s https://renegadepenguinllc.com/robots.txt` still shows the policy of
+  `layouts/home.robots.txt` (allow Googlebot, Bingbot, OAI-SearchBot, ChatGPT-User, PerplexityBot,
+  Claude-SearchBot, Claude-User; disallow GPTBot, ClaudeBot, Google-Extended, CCBot; the `Sitemap:`
+  line), weekly for a month, and Cloudflare's managed robots.txt feature stays OFF so the site file is
+  the only source.
 - Certificate and domain status of the apex on the project: `active`.
 - DNS: a weekly diff of the mail records against the snapshot for a month; `dig CAA` unchanged.
 - Cache: no Cache Rule or Page Rule on the apex that could serve stale content after a deploy.
