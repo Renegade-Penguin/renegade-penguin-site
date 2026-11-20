@@ -44,4 +44,6 @@ The site uses no cookies or analytics. When the spam check is enabled, the conta
 
 If the form does not work without JavaScript, email [contact@renegadepenguinllc.com](mailto:contact@renegadepenguinllc.com). Include the same information listed above, but do not email sensitive evidence until a secure exchange method is arranged.
 
-{{OWNER:PGP key block or fingerprint}}
+PGP fingerprint: <code>5AFF B5C1 C37A 63AB DB93 07C1 70EA A2B2 49A3 50E7</code>
+
+[PGP public key](https://keys.openpgp.org/vks/v1/by-fingerprint/5AFFB5C1C37A63ABDB9307C170EAA2B249A350E7)

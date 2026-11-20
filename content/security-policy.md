@@ -19,7 +19,9 @@ Please provide enough detail to reproduce and evaluate the issue:
 
 Do not include private keys, credentials, personal information, or data belonging to other people. Use encryption before sending sensitive technical details.
 
-PGP fingerprint: {{OWNER:PGP key fingerprint}}
+PGP fingerprint: 5AFF B5C1 C37A 63AB DB93 07C1 70EA A2B2 49A3 50E7
+
+[PGP public key](https://keys.openpgp.org/vks/v1/by-fingerprint/5AFFB5C1C37A63ABDB9307C170EAA2B249A350E7)
 
 ## Good-faith research
 
