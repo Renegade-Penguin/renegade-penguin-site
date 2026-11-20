@@ -1,0 +1,8 @@
+# Copy for the next-steps panel (issue #93). Related links come from data/nav.toml at build time.
+title = "What Comes Next"
+related_label = "Related Pages"
+cta_line = "Book a free 30-minute fit call to see whether I can help, with no sales pitch."
+cta_button = "Book a Fit Call"
+cta_url = "/contact/"
+toc_label = "On This Page"
+back_to_top = "Back to Top"

@@ -1,6 +1,13 @@
 {{ define "main" }}
+{{ $toc := ge (len (findRE `<h2[ >]` .Content)) 3 }}
+<div class="page-wrap{{ if $toc }} has-toc{{ end }}">
+<div class="page-col">
 <article class="page">
 <h1>{{ .Title }}</h1>
 {{ .Content }}
 </article>
+{{ partial "next-steps.html" . }}
+</div>
+{{ if $toc }}{{ partial "page-toc.html" . }}{{ end }}
+</div>
 {{ end }}
