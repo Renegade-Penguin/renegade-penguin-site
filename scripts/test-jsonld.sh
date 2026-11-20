@@ -10,8 +10,14 @@ BASE="${TEST_TMP_BASE:-$HOME/.local/share/renegade-penguin-site-dev}"
 mkdir -p "$BASE" || exit 1
 TMP="$(mktemp -d -p "$BASE" jsonld.XXXXXX)" || exit 1
 trap 'rm -rf "$TMP"' EXIT
-"$HUGO" --minify --destination "$TMP/prod" >/dev/null || { echo "FAIL: production build" >&2; exit 1; }
-HUGO_PARAMS_ENVIRONMENT=staging "$HUGO" --minify --destination "$TMP/stg" >/dev/null || { echo "FAIL: staging build" >&2; exit 1; }
+"$HUGO" --minify --destination "$TMP/prod" >/dev/null || {
+  echo "FAIL: production build" >&2
+  exit 1
+}
+HUGO_PARAMS_ENVIRONMENT=staging "$HUGO" --minify --destination "$TMP/stg" >/dev/null || {
+  echo "FAIL: staging build" >&2
+  exit 1
+}
 python3 -I - "$TMP/prod" "$TMP/stg" <<'PY'
 import html
 import json
