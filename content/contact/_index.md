@@ -37,6 +37,10 @@ The first step is a scoping call to understand the situation, the people involve
 
 Retainer work does not begin on the strength of a sales call. Renegade Penguin completes a one-time assessment before any advisory retainer so both sides have a clear starting point, a practical scope, and enough information to decide whether the relationship fits.
 
+## Looking for More?
+
+If you're here for my cybersecurity content, writing, or community rather than advisory work, you'll find it all at [chiefgyk3d.com](https://chiefgyk3d.com/).
+
 ## Privacy
 
 The site uses no cookies or analytics. When the spam check is enabled, the contact page loads one Cloudflare Turnstile script to block spam; otherwise, it loads nothing from Cloudflare. Form submissions are handled by a Cloudflare Pages Function and emailed to {{< email >}}. Renegade Penguin receives what you enter, and Cloudflare keeps ordinary server logs. See the [privacy policy](/privacy/) for details.

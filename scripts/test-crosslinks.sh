@@ -7,6 +7,9 @@
 #   B4/B5  the About credential sentence links https://chiefgyk3d.com/resume/ (one link per target in the
 #       body, none to the personal home there), the home block keeps its one link to the personal home;
 #   B8  every link to the personal home carries rel="me noopener", the resume link keeps noopener;
+#   B9  the approved Contact and Community sections (issue #139): the built /contact/ and /community/ carry
+#       the approved H2, paragraph text and exactly the approved links, each external with rel noopener and
+#       no target, and the pages gain no script;
 #   B7  /llms.txt exists in both builds, equals scripts/fixtures/llms-business.txt with BASE_URL replaced by
 #       the apex, starts with the H1, resolves every relative link to a built page, leaves no placeholder,
 #       is not in the sitemap and is not blocked by the production robots.txt.
@@ -133,7 +136,10 @@ def check_links(root):
             if href.startswith("https://chiefgyk3d.com"):
                 if "noopener" not in rels:
                     errs.append("%s: %s lacks noopener" % (rel, href))
-                if href == HOME and "me" not in rels:
+                # rel=me belongs to the footer and the home block; a link written in markdown (the Contact
+                # page body has no article element, so it counts as "other") goes through
+                # layouts/_markup/render-link.html, which only adds noopener (issue #139).
+                if href == HOME and region in ("footer", "behind-the-work") and "me" not in rels:
                     errs.append("%s: home link in %s lacks rel=me" % (rel, region))
                 if href == RESUME and "me" in rels:
                     errs.append("%s: resume link must not carry rel=me" % rel)
@@ -203,8 +209,107 @@ def check_policy(root, prod):
     return errs
 
 
+APPROVED = {
+    "contact/index.html": {
+        "h2": "Looking for More?",
+        "text": "If you're here for my cybersecurity content, writing, or community rather than advisory work, "
+        "you'll find it all at chiefgyk3d.com.",
+        "links": [(HOME, "chiefgyk3d.com")],
+    },
+    "community/index.html": {
+        "h2": "Join the Community",
+        "text": "I host free, open community spaces on Discord and Matrix. Join us wherever works best for you.",
+        "links": [
+            ("https://discord.chiefgyk3d.com", "Discord"),
+            ("https://matrix.to/#/#renegade-penguin:chiefgyk3d.com", "Matrix"),
+        ],
+    },
+}
+
+
+class Section(HTMLParser):
+    """H2 headings in main, the paragraph after each, its anchors and every script tag."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.in_article = False
+        self.mode = None
+        self.h2 = []
+        self.cur = None
+        self.scripts = 0
+        self.targets = 0
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "script":
+            self.scripts += 1
+        if tag == "main":
+            self.in_article = True
+        if not self.in_article:
+            return
+        if tag == "h2":
+            self.cur = {"h2": "", "text": "", "links": [], "p": 0}
+            self.h2.append(self.cur)
+            self.mode = "h2"
+        elif tag == "p" and self.cur is not None and self.cur["p"] == 0:
+            self.cur["p"] = 1
+            self.mode = "p"
+        elif tag == "a" and self.mode == "p":
+            if "target" in a:
+                self.targets += 1
+            self.cur["links"].append([a.get("href"), "", (a.get("rel") or "").split()])
+            self.mode = "a"
+
+    def handle_endtag(self, tag):
+        if tag == "main":
+            self.in_article = False
+        elif tag == "h2":
+            self.mode = None
+        elif tag == "a" and self.mode == "a":
+            self.mode = "p"
+        elif tag == "p" and self.mode == "p":
+            self.mode = None
+            self.cur["p"] = 2
+
+    def handle_data(self, data):
+        if self.mode == "h2":
+            self.cur["h2"] += data
+        elif self.mode in ("p", "a"):
+            self.cur["text"] += data
+            if self.mode == "a":
+                self.cur["links"][-1][1] += data
+
+
+def check_added(root):
+    errs = []
+    for rel, want in APPROVED.items():
+        p = Section()
+        with open(os.path.join(root, rel), encoding="utf-8") as f:
+            p.feed(f.read())
+        hits = [s for s in p.h2 if s["h2"].strip() == want["h2"]]
+        if len(hits) != 1:
+            errs.append("%s: want one H2 %r, got %d" % (rel, want["h2"], len(hits)))
+            continue
+        s = hits[0]
+        # The typographer turns the apostrophes into curly ones; the words are otherwise verbatim.
+        if s["text"].replace(chr(0x2019), "'").strip() != want["text"]:
+            errs.append("%s: paragraph differs from the approved copy: %r" % (rel, s["text"]))
+        got = [(h, t) for h, t, _x in s["links"]]
+        if got != want["links"]:
+            errs.append("%s: links differ from the approved set: %r" % (rel, got))
+        for h, _t, rels in s["links"]:
+            if "noopener" not in rels:
+                errs.append("%s: %s lacks noopener" % (rel, h))
+        if p.targets:
+            errs.append("%s: a link carries a target attribute" % rel)
+        # Only the JSON-LD block is a script on these pages.
+        if p.scripts != 1:
+            errs.append("%s: want one script (JSON-LD), got %d" % (rel, p.scripts))
+    return errs
+
+
 def run(root, prod, want, expected):
-    return check_jsonld(root, want) + check_links(root) + check_llms(root, expected) + check_policy(root, prod)
+    return check_jsonld(root, want) + check_links(root) + check_added(root) + check_llms(root, expected) + check_policy(root, prod)
 
 
 if __name__ == "__main__":
@@ -252,6 +357,17 @@ neg "llms without the H1" llms.txt '1s/^# /## /'
 neg "llms copy edited" llms.txt 's/about 16 years/about 17 years/'
 neg "llms in the sitemap" sitemap.xml 's#</urlset>#<url><loc>https://renegadepenguinllc.com/llms.txt</loc></url></urlset>#'
 neg "robots blocks llms" robots.txt 's#^Allow: /$#Disallow: /llms.txt#'
+neg "contact heading edited" contact/index.html 's#Looking for More\?#Looking for Less?#'
+neg "contact text edited" contact/index.html 's#rather than advisory work#rather than hiring work#'
+neg "contact link missing" contact/index.html 's#<a href=https://chiefgyk3d.com/ rel=noopener>chiefgyk3d.com</a>#chiefgyk3d.com#'
+neg "contact link without noopener" contact/index.html 's#<a href=https://chiefgyk3d.com/ rel=noopener>chiefgyk3d.com#<a href=https://chiefgyk3d.com/>chiefgyk3d.com#'
+neg "contact link target added" contact/index.html 's#<a href=https://chiefgyk3d.com/ rel=noopener>chiefgyk3d.com#<a href=https://chiefgyk3d.com/ target=_blank rel=noopener>chiefgyk3d.com#'
+neg "community heading edited" community/index.html 's#Join the Community#Join Us#'
+neg "community text edited" community/index.html 's#Join us wherever works best for you#Join us anywhere#'
+neg "community wrong discord url" community/index.html 's#https://discord.chiefgyk3d.com#https://discord.example.com#'
+neg "community wrong matrix url" community/index.html 's#renegade-penguin:chiefgyk3d.com#renegade-penguin:example.com#'
+neg "community matrix link missing" community/index.html 's#<a href=[^>]*matrix.to[^>]*>Matrix</a>#Matrix#'
+neg "community script added" community/index.html 's#</main>#<script>x()</script></main>#'
 # A second link to the same personal URL in one block: duplicate the home block link.
 rm -rf "$TMP/neg"
 cp -r "$TMP/prod" "$TMP/neg"
