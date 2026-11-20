@@ -31,6 +31,7 @@ cd "$(dirname "$0")/.."
 HUGO="${HUGO:-hugo}"
 WRANGLER="${WRANGLER:-wrangler}"
 PLACEHOLDER="zz-ci-placeholder-term-zz"
+MIN_WRANGLER="3.45.0"
 
 fail() {
   echo "refused: $*" >&2
@@ -55,7 +56,9 @@ if [ "$MODE" = "dry-run" ]; then
   echo "step 2 build production: HUGO_ENVIRONMENT=production HUGO_PARAMS_ENVIRONMENT=production $HUGO --minify --gc --destination public"
   echo "step 3 check-output: EXPECT_ENV=production REQUIRE_NO_OWNER_TOKENS=1 SCRUB_TERMS_FILE=<real file> scripts/check-output.sh public"
   echo "step 4 artifact checks: public/robots.txt has no Disallow all, public/sitemap.xml exists, no noindex meta"
-  echo "step 5 wrangler pages deploy: $WRANGLER pages deploy public --config wrangler.production.jsonc --project-name renegade-penguin-site-prod --branch main"
+  echo "step 1b wrangler version: $WRANGLER --version must report $MIN_WRANGLER or newer (config-file Pages deploys need it)"
+  echo "step 5 wrangler pages deploy: copy wrangler.production.jsonc as wrangler.jsonc, plus functions/ and public/, into a clean staging directory, then from there run $WRANGLER pages deploy public --project-name renegade-penguin-site-prod --branch main"
+  echo "step 6 reminder: after the deploy, read the project back and confirm EXPECTED_HOSTNAME, MAIL_FROM and the MAIL_WORKER binding (docs/cutover.md step 3)"
   echo "(the Cloudflare token is read by wrangler from the environment, never from argv)"
   exit 0
 fi
@@ -80,6 +83,21 @@ if [ -z "${HUGO_PARAMS_TURNSTILESITEKEY:-}" ]; then
   fail "--apply needs HUGO_PARAMS_TURNSTILESITEKEY (the public sitekey of the production widget); nothing was run"
 fi
 
+# Step 1b: wrangler must be 3.45.0 or newer (the docs require it for a Pages deploy driven by a
+# config file). Runs only with --apply, after the other refusals and before any build.
+if ! version_out="$("$WRANGLER" --version 2>&1)"; then
+  fail "cannot run $WRANGLER --version; wrangler >= $MIN_WRANGLER is required; nothing was built"
+fi
+if [[ "$version_out" =~ ([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+  have_wrangler="${BASH_REMATCH[1]}"
+else
+  fail "could not read a wrangler version from '$version_out'; wrangler >= $MIN_WRANGLER is required; nothing was built"
+fi
+lowest="$(printf '%s\n%s\n' "$MIN_WRANGLER" "$have_wrangler" | sort -V | sed -n 1p)"
+if [ "$lowest" != "$MIN_WRANGLER" ]; then
+  fail "wrangler $have_wrangler is older than $MIN_WRANGLER; upgrade it; nothing was built"
+fi
+
 # Step 2: build the production variant (no staging params). The destination is the project's
 # pages_build_output_dir.
 echo "step 2: build production"
@@ -100,7 +118,14 @@ if grep -rqiE '<meta[^>]*name="?robots"?[^>]*noindex' public --include='*.html';
   fail "a built page has a noindex meta"
 fi
 
-# Step 5: deploy to the production project with the explicit config.
+# Step 5: deploy from a clean staging directory that holds the production config as wrangler.jsonc, so
+# the staging wrangler.jsonc at the repo root can never be picked up and no --config flag is relied on
+# (the docs do not say that pages deploy reads settings from --config).
 echo "step 5: wrangler pages deploy"
-"$WRANGLER" pages deploy public --config wrangler.production.jsonc --project-name renegade-penguin-site-prod --branch main
-echo "deployed to the renegade-penguin-site-prod pages.dev URL. Run the post-deploy checks there before attaching the apex (docs/cutover.md)."
+stage="$(mktemp -d)"
+trap 'rm -rf "$stage"' EXIT
+cp wrangler.production.jsonc "$stage/wrangler.jsonc"
+cp -R functions "$stage/functions"
+cp -R public "$stage/public"
+(cd "$stage" && "$WRANGLER" pages deploy public --project-name renegade-penguin-site-prod --branch main)
+echo "deployed to renegade-penguin-site-prod. Step 6: read the project back and confirm EXPECTED_HOSTNAME, MAIL_FROM and the MAIL_WORKER binding, then run the post-deploy checks on its pages.dev URL before attaching the apex (docs/cutover.md step 3)."

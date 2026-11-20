@@ -177,6 +177,31 @@ run "unknown argument" nonzero -- --token abc
 run "apply with a stray argument" nonzero OWNER_APPROVED_CUTOVER=yes HUGO_PARAMS_TURNSTILESITEKEY=fixturekey SCRUB_TERMS_FILE="$TMP/real.txt" -- --apply extra
 # The approval alone never makes a dry run apply anything.
 run "dry run with approval set" zero OWNER_APPROVED_CUTOVER=yes -- --dry-run
+run "dry run (version step)" zero --
+for step in "wrangler --version" "3.45.0" "clean staging directory"; do
+  grep -q "$step" "$TMP/out" || fail "dry run does not print: $step"
+done
+
+# The Wrangler version pre-check runs only with --apply, after the other refusals, and stops before
+# any build or deploy when Wrangler is older than 3.45.0 or prints no version.
+version_case() { # <name> <wrangler --version output>
+  local name="$1" st=0
+  mkdir -p "$TMP/oldbin"
+  printf '#!/bin/sh\necho "wrangler $*" >> "%s/wcalls"\n[ "$1" = "--version" ] && echo "%s"\nexit 0\n' "$TMP" "$2" >"$TMP/oldbin/wrangler"
+  chmod +x "$TMP/oldbin/wrangler"
+  : >"$TMP/calls"
+  : >"$TMP/wcalls"
+  env -i PATH="$TMP/bin:/usr/bin:/bin" HOME="$HOME" HUGO="$TMP/bin/hugo" WRANGLER="$TMP/oldbin/wrangler" \
+    OWNER_APPROVED_CUTOVER=yes HUGO_PARAMS_TURNSTILESITEKEY=fixturekey SCRUB_TERMS_FILE="$TMP/real.txt" \
+    CLOUDFLARE_API_TOKEN="$DUMMY_TOKEN" bash "$S" --apply >"$TMP/out" 2>&1 || st=$?
+  [ "$st" -ne 0 ] || fail "$name: expected non-zero exit"
+  [ ! -s "$TMP/calls" ] || fail "$name: built or checked after a bad version: $(cat "$TMP/calls")"
+  [ "$(cat "$TMP/wcalls")" = "wrangler --version" ] || fail "$name: wrangler ran more than --version: $(cat "$TMP/wcalls")"
+  grep -q "3.45.0" "$TMP/out" || fail "$name: refusal does not name 3.45.0"
+}
+version_case "wrangler 3.44.0" "wrangler 3.44.0"
+version_case "wrangler 2.20.0" "wrangler 2.20.0"
+version_case "wrangler prints no version" "wrangler"
 echo "ok: deploy-production.sh refusals and dry run"
 
 # The script text pins the production flags and orders the checks before the deploy.
@@ -189,9 +214,10 @@ REQUIRED = [
     "HUGO_PARAMS_ENVIRONMENT=production",
     "EXPECT_ENV=production",
     "REQUIRE_NO_OWNER_TOKENS=1",
-    "--config wrangler.production.jsonc",
+    'cp wrangler.production.jsonc "$stage/wrangler.jsonc"',
     "--project-name renegade-penguin-site-prod",
     "--branch main",
+    "3.45.0",
 ]
 
 
@@ -203,10 +229,18 @@ def check(text):
     for want in REQUIRED:
         if want not in code:
             errors.append("missing " + want)
-    check_at = code.find("scripts/check-output.sh")
-    deploy_at = code.find("pages deploy")
+    # The dry-run printout mentions every step first, so order is judged on the last occurrence
+    # of the check and the deploy (the real commands) and on the real, quoted build call.
+    check_at = code.rfind("scripts/check-output.sh")
+    deploy_at = code.rfind("pages deploy")
     if check_at < 0 or deploy_at < 0 or check_at > deploy_at:
         errors.append("check-output must run before the deploy")
+    version_at = code.find("sort -V")
+    build_at = code.find('"$HUGO" --minify')
+    if version_at < 0 or build_at < 0 or version_at > build_at:
+        errors.append("the wrangler version check must run before the build")
+    if "--config" in code:
+        errors.append("deploy must not rely on --config (copy the file as wrangler.jsonc)")
     if re.search(r"\|\|\s*true", code):
         errors.append("|| true found")
     if re.search(r"--(api-)?token|CLOUDFLARE_API_TOKEN=", code):
@@ -222,7 +256,10 @@ if errors:
 mutants = {
     "no production env": text.replace("EXPECT_ENV=production", "EXPECT_ENV=staging"),
     "owner tokens off": text.replace("REQUIRE_NO_OWNER_TOKENS=1", "REQUIRE_NO_OWNER_TOKENS=0"),
-    "default config": text.replace("--config wrangler.production.jsonc", ""),
+    "no staged config": text.replace('cp wrangler.production.jsonc "$stage/wrangler.jsonc"', "true"),
+    "config flag": text + "\nwrangler pages deploy --config x\n",
+    "no version check": text.replace("sort -V", "sort"),
+    "old version floor": text.replace("3.45.0", "3.0.0"),
     "wrong project": text.replace("renegade-penguin-site-prod", "renegade-penguin-site"),
     "token in argv": text + "\nwrangler --token abc\n",
 }
@@ -248,6 +285,33 @@ HEADINGS = [
 ]
 COLUMNS = ["Action", "System", "Exact scope or permission", "Why", "Blast radius", "Rollback",
            "Read-only or write"]
+# Strings the docs-verified runbook must carry (report 2026-11-19, issue #102).
+REQUIRED_STRINGS = [
+    "DOCS-VERIFIED",
+    "UNDOCUMENTED",
+    "Cloudflare Pages Edit",
+    "DNS Write",
+    "DNS Read",
+    "Single Redirect Edit",
+    "Dynamic URL Redirects Write",
+    "Turnstile Read",
+    "permission_groups",
+    "3.45.0",
+    "subdomain",
+    "dig CAA",
+    "same Cloudflare account",
+    "static/_headers",
+    "#106",
+    "X-Robots-Tag",
+    "branch config",
+    "must never be removed",
+    "clean staging directory",
+]
+FORBIDDEN_STRINGS = [
+    "leave it or remove only that record",
+    "whether Cloudflare adds a noindex header on pages.dev",
+    "preview deployments share",
+]
 
 
 def check(text):
@@ -274,6 +338,19 @@ def check(text):
         errors.append("REPO-VERIFIED missing")
     if "UNVERIFIED-NEEDS-DOCS" not in text:
         errors.append("UNVERIFIED-NEEDS-DOCS missing")
+    for want in REQUIRED_STRINGS:
+        if want not in text:
+            errors.append("missing string: " + want)
+    for bad in FORBIDDEN_STRINGS:
+        if bad in text:
+            errors.append("stale text present: " + bad)
+    marker = "## Rollback"
+    if marker in text:
+        section = text.split(marker, 1)[1]
+        cname_at = section.find("Delete the apex CNAME")
+        domain_at = section.find("Remove the custom domain")
+        if cname_at < 0 or domain_at < 0 or cname_at > domain_at:
+            errors.append("rollback must delete the apex CNAME before removing the custom domain")
     if "NOT APPLIED" not in text:
         errors.append("NOT APPLIED status missing")
     if "renegade-penguin-site-prod" not in text:
@@ -291,6 +368,10 @@ mutants = {
     "table": text.replace("| Blast radius |", "| Radius |"),
     "marker": text.replace("UNVERIFIED-NEEDS-DOCS", "TBD"),
     "status": text.replace("NOT APPLIED", "APPLIED"),
+    "permission name": text.replace("Dynamic URL Redirects Write", "redirect edit"),
+    "stale removal text": text + "\nleave it or remove only that record\n",
+    "rollback order": text.replace("Delete the apex CNAME", "Zz", 1).replace("Remove the custom domain", "Delete the apex CNAME", 1),
+    "version floor": text.replace("3.45.0", "3.0.0"),
 }
 for label, mutant in mutants.items():
     if not check(mutant):

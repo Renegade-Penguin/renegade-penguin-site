@@ -6,8 +6,8 @@
 #                              Pages project, the same binding, exactly the allowed vars with the
 #                              apex hostname, holds no secrets.
 # The var values are pinned here on purpose: changing them requires editing this test, so it is a
-# deliberate change. wrangler reads wrangler.jsonc by default; the production file is used only with
-# an explicit --config (scripts/deploy-production.sh).
+# deliberate change. wrangler reads wrangler.jsonc by default; the production file is used only when
+# scripts/deploy-production.sh copies it as wrangler.jsonc into a clean staging directory.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -101,8 +101,8 @@ if stg_cfg["vars"]["EXPECTED_HOSTNAME"] == prod_cfg["vars"]["EXPECTED_HOSTNAME"]
 # The production file says in its header that it is a proposal and not the live config.
 prod_raw = loaded[PRODUCTION["file"]][0]
 head = "\n".join(prod_raw.splitlines()[:12]).lower()
-if "proposal" not in head or "--config" not in head:
-    sys.exit("FAIL: wrangler.production.jsonc header must say it is a proposal used only with --config")
+if "proposal" not in head or "clean staging directory" not in head:
+    sys.exit("FAIL: wrangler.production.jsonc header must say it is a proposal used only from a clean staging directory")
 
 # Negative cases: every check must bite, for both files.
 for spec, cfg in ((STAGING, stg_cfg), (PRODUCTION, prod_cfg)):
