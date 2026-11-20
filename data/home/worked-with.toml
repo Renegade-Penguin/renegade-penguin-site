@@ -32,8 +32,8 @@ treatment = "mono-light"
 [[groups.items]]
 title = "GC Dental"
 logo = "/brand/partners/gc-dental.webp"
-width = 280
-height = 35
+width = 480
+height = 60
 zone = "default"
 treatment = "unaltered"
 
