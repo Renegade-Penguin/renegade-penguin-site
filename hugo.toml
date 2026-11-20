@@ -43,8 +43,13 @@ enableGitInfo = false
   url = "/confidentiality-and-case-studies/"
   weight = 6
 
-# Sitemap and canonical links: Hugo's sitemap lists every page; the thank-you page opts out in
-# its own front matter and the 404 page is never listed (scripts/test-trust.sh checks both).
+# Sitemap and canonical links: Hugo's sitemap lists every page; the thank-you page and the
+# placeholder case studies index opt out in their own front matter and the 404 page is never
+# listed (scripts/test-trust.sh and scripts/test-robots.sh check this).
+# Every page gets a sitemap lastmod from this one cascade (no git history is needed, so shallow CI
+# checkouts and deploy builds behave the same). Bump the date when site content changes.
+[[cascade]]
+  lastmod = 2026-11-19
 
 # The on-this-page panel lists H2 headings only.
 [markup.tableOfContents]
