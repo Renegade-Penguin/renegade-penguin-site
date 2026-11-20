@@ -13,56 +13,16 @@ NFKC normalization and whitespace collapsing, in three forms:
   3. the text with every tag removed and replaced by nothing (so a term split across
      elements is still found), then decoded as in form 2.
 """
-import html
 import os
-import re
 import sys
-import unicodedata
-from html.parser import HTMLParser
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from textnorm import strip_ignorable  # noqa: E402  (path set just above; -I drops the script dir)
+from textnorm import forms, norm  # noqa: E402  (path set just above; -I drops the script dir)
 
 BINARY_EXT = {
     ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
     ".woff", ".woff2", ".ttf", ".otf",
 }
-
-
-def norm(s):
-    # One strip, before NFKC: no code point outside the table normalizes into it (checked
-    # over all of Unicode for this table), so a second strip after NFKC would be dead code.
-    s = unicodedata.normalize("NFKC", strip_ignorable(s)).casefold()
-    return re.sub(r"\s+", " ", s).strip()
-
-
-def unescape_stable(s):
-    for _ in range(5):
-        n = html.unescape(s)
-        if n == s:
-            break
-        s = n
-    return s
-
-
-class TextOnly(HTMLParser):
-    def __init__(self):
-        super().__init__(convert_charrefs=True)
-        self.parts = []
-
-    def handle_data(self, data):
-        self.parts.append(data)
-
-
-def forms(text):
-    stripped = TextOnly()
-    stripped.feed(text)
-    stripped.close()
-    return [
-        norm(text),
-        norm(unescape_stable(text)),
-        norm(unescape_stable("".join(stripped.parts))),
-    ]
 
 
 def main():

@@ -11,7 +11,12 @@
 # SKIP_NO_SCRIPT, SKIP_INLINE_HANDLER, SKIP_EXTERNAL_HOST, SKIP_NOINDEX, SKIP_SCRUB_TERMS,
 # SKIP_ROBOTS, SKIP_CSP, SKIP_ABOUT_LINK, SKIP_DASHES, SKIP_UNSAFE_SCHEME, SKIP_META_REFRESH,
 # SKIP_ACTIVE_EMBED, SKIP_BASE_ELEMENT, SKIP_DUPLICATE_ATTR, SKIP_CLAIMS, SKIP_OWNER_TOKENS,
-# SKIP_FRESH, SKIP_OWNER_REVIEW.
+# SKIP_FRESH, SKIP_OWNER_REVIEW, SKIP_SCRUB_SHAPES.
+# scrub_shapes (check-shapes.py, issue #9): needs no terms. Fails on an amateur radio callsign shape, a
+# Maidenhead grid locator shape, a private IPv4 address (10/8, 172.16/12, 192.168/16) or a name ending
+# .local, .lan, .internal or .home.arpa, after the same normalization as scrub_terms (case kept). It
+# prints the file and a count, never the matched text. Like scrub_terms it runs in staging AND production
+# (the staging site is public too); exact false positives go in scripts/scrub-shapes-allow.txt with a reason.
 # Opt-in check: owner_review runs only when REQUIRE_OWNER_APPROVAL=1 and EXPECT_ENV=production (the real
 # cutover sets it; CI and staging do not) and fails on any page carrying the x-owner-review pending meta.
 # Opt-in check: owner_tokens (check-owner-tokens.py) runs only when REQUIRE_NO_OWNER_TOKENS=1 and
@@ -123,6 +128,17 @@ scrub_terms() {
   run_helper scrub_terms "$HERE/check-scrub.py" "$DIR" "$PATTERNS"
   while IFS=$'\t' read -r c file detail; do
     [ -n "$c" ] && report scrub_terms "$detail ($file)"
+  done <<<"$HELPER_OUT"
+  return 0
+}
+
+scrub_shapes() {
+  # check-shapes.py prints "scrub_shapes<TAB><file><TAB><detail>" lines (never the matched text); a
+  # crash or a bad allowlist is a non-zero exit, which run_helper reports as a violation.
+  local c file detail
+  run_helper scrub_shapes "$HERE/check-shapes.py" "$DIR"
+  while IFS=$'\t' read -r c file detail; do
+    [ -n "$c" ] && report scrub_shapes "$detail ($file)"
   done <<<"$HELPER_OUT"
   return 0
 }
@@ -268,7 +284,7 @@ fresh() {
   return 0
 }
 
-for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms noindex robots csp about_link dashes claims owner_tokens owner_review fresh; do
+for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms scrub_shapes noindex robots csp about_link dashes claims owner_tokens owner_review fresh; do
   if enabled "$c"; then "$c"; fi
 done
 

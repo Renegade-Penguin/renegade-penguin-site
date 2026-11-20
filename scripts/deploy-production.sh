@@ -6,8 +6,15 @@
 # Dry run is the default: every step is printed and nothing is built, checked or deployed.
 # --apply is refused unless ALL of these hold:
 #   - OWNER_APPROVED_CUTOVER=yes (exactly that value)
-#   - SCRUB_TERMS_FILE names a readable file with at least one real pattern (blank lines and
-#     comment lines do not count) that is not the CI placeholder list
+#   - the scrub terms are real: SCRUB_TERMS_FILE, when set, names a readable file with at least one
+#     real pattern (blank lines and comment lines do not count) that is not the CI placeholder list.
+#     When SCRUB_TERMS_FILE is NOT set, the script derives it (issue #9): one read-only
+#     `doppler secrets get SCRUB_TERMS --project no-php-no-cry --config stg_scrub --plain` (no other
+#     doppler subcommand, never `run` or `set`), piped through scripts/derive-scrub-terms.sh into a mode
+#     600 file in a private temp directory under SCRUB_TMP_BASE (default
+#     ~/.local/share/renegade-penguin-site-dev), removed on exit, on failure and on INT or TERM. The
+#     secret text is never in argv, in a log or in any output, and no error names a term. The derive
+#     fails closed when employer, hostname or serial has no real term.
 #   - the production build passes scripts/check-output.sh with REQUIRE_NO_OWNER_TOKENS=1 and
 #     REQUIRE_OWNER_APPROVAL=1 (no page may still be pending the owner's review of the guides)
 #     (checked after the build and before any deploy; a failure stops the script)
@@ -33,6 +40,19 @@ HUGO="${HUGO:-hugo}"
 WRANGLER="${WRANGLER:-wrangler}"
 PLACEHOLDER="zz-ci-placeholder-term-zz"
 MIN_WRANGLER="3.45.0"
+SCRUB_TMP_BASE="${SCRUB_TMP_BASE:-$HOME/.local/share/renegade-penguin-site-dev}"
+
+# One cleanup for every exit path: the derived terms directory and the deploy staging directory.
+# INT and TERM turn into an exit, so the EXIT trap runs for them too.
+TERMS_DIR=""
+stage=""
+cleanup() {
+  [ -z "$TERMS_DIR" ] || rm -rf "$TERMS_DIR"
+  [ -z "$stage" ] || rm -rf "$stage"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 fail() {
   echo "refused: $*" >&2
@@ -53,7 +73,12 @@ fi
 
 if [ "$MODE" = "dry-run" ]; then
   echo "DRY RUN: nothing is built, checked or deployed. Re-run with --apply only after the owner approves."
-  echo "step 1 preflight: require OWNER_APPROVED_CUTOVER=yes, a real SCRUB_TERMS_FILE (not the CI placeholder), HUGO_PARAMS_TURNSTILESITEKEY"
+  echo "step 1 preflight: require OWNER_APPROVED_CUTOVER=yes, HUGO_PARAMS_TURNSTILESITEKEY, and real scrub terms (a SCRUB_TERMS_FILE that is not the CI placeholder, or the derivation below)"
+  if [ -n "${SCRUB_TERMS_FILE:-}" ]; then
+    echo "step 1c scrub terms: SCRUB_TERMS_FILE is set, so --apply would use that file as is (nothing is derived)"
+  else
+    echo "step 1c scrub terms: SCRUB_TERMS_FILE is not set, so --apply WOULD derive them from stg_scrub (read-only: one secrets get of SCRUB_TERMS in project no-php-no-cry, config stg_scrub, through the secret manager CLI) into a mode 600 temp file removed on exit; this dry run does not touch Doppler"
+  fi
   echo "step 2 build production: HUGO_ENVIRONMENT=production HUGO_PARAMS_ENVIRONMENT=production $HUGO --minify --gc --destination public"
   echo "step 3 check-output: EXPECT_ENV=production REQUIRE_NO_OWNER_TOKENS=1 REQUIRE_OWNER_APPROVAL=1 SCRUB_TERMS_FILE=<real file> scripts/check-output.sh public"
   echo "step 4 artifact checks: public/robots.txt has no Disallow all, public/sitemap.xml exists, no noindex meta"
@@ -68,17 +93,22 @@ fi
 if [ "${OWNER_APPROVED_CUTOVER:-}" != "yes" ]; then
   fail "--apply needs OWNER_APPROVED_CUTOVER=yes (the owner's approval); nothing was run"
 fi
+validate_terms_file() {
+  if [ ! -f "$SCRUB_TERMS_FILE" ] || [ ! -r "$SCRUB_TERMS_FILE" ]; then
+    fail "SCRUB_TERMS_FILE is not a readable file; nothing was built"
+  fi
+  if ! grep -qvE '^[[:space:]]*(#|$)' "$SCRUB_TERMS_FILE"; then
+    fail "SCRUB_TERMS_FILE has no patterns (only blanks and comments); nothing was built"
+  fi
+  if grep -qF "$PLACEHOLDER" "$SCRUB_TERMS_FILE"; then
+    fail "SCRUB_TERMS_FILE is the CI placeholder list, not the real terms; nothing was built"
+  fi
+}
+DERIVE_TERMS=0
 if [ -z "${SCRUB_TERMS_FILE:-}" ]; then
-  fail "--apply needs SCRUB_TERMS_FILE set to the real scrub terms file; nothing was run"
-fi
-if [ ! -f "$SCRUB_TERMS_FILE" ] || [ ! -r "$SCRUB_TERMS_FILE" ]; then
-  fail "SCRUB_TERMS_FILE is not a readable file; nothing was run"
-fi
-if ! grep -qvE '^[[:space:]]*(#|$)' "$SCRUB_TERMS_FILE"; then
-  fail "SCRUB_TERMS_FILE has no patterns (only blanks and comments); nothing was run"
-fi
-if grep -qF "$PLACEHOLDER" "$SCRUB_TERMS_FILE"; then
-  fail "SCRUB_TERMS_FILE is the CI placeholder list, not the real terms; nothing was run"
+  DERIVE_TERMS=1 # derived after the cheap refusals below, just before the build
+else
+  validate_terms_file
 fi
 if [ -z "${HUGO_PARAMS_TURNSTILESITEKEY:-}" ]; then
   fail "--apply needs HUGO_PARAMS_TURNSTILESITEKEY (the public sitekey of the production widget); nothing was run"
@@ -97,6 +127,29 @@ fi
 lowest="$(printf '%s\n%s\n' "$MIN_WRANGLER" "$have_wrangler" | sort -V | sed -n 1p)"
 if [ "$lowest" != "$MIN_WRANGLER" ]; then
   fail "wrangler $have_wrangler is older than $MIN_WRANGLER; upgrade it; nothing was built"
+fi
+
+# Step 1c: derive the scrub terms from the owner's stg_scrub list when SCRUB_TERMS_FILE was not given.
+# One read-only get; the secret text only ever flows through a pipe into a mode 600 file in a private
+# directory. Doppler's own stderr goes to a file in that directory and is never shown, so no message can
+# carry a term. Any failure stops here, before the build.
+if [ "$DERIVE_TERMS" = 1 ]; then
+  echo "step 1c: derive the scrub terms from stg_scrub (read-only)"
+  old_umask="$(umask)"
+  umask 077
+  mkdir -p "$SCRUB_TMP_BASE" # umask 077 makes any directory created here mode 700
+  TERMS_DIR="$(mktemp -d "$SCRUB_TMP_BASE/scrub-terms.XXXXXX")"
+  chmod 700 "$TERMS_DIR"
+  doppler_status=0
+  doppler secrets get SCRUB_TERMS --project no-php-no-cry --config stg_scrub --plain 2>"$TERMS_DIR/read.err" |
+    bash scripts/derive-scrub-terms.sh >"$TERMS_DIR/terms.txt" || doppler_status=$?
+  umask "$old_umask"
+  if [ "$doppler_status" -ne 0 ]; then
+    fail "could not derive the scrub terms from stg_scrub (status $doppler_status; see the category or line named above, if any); nothing was built"
+  fi
+  chmod 600 "$TERMS_DIR/terms.txt"
+  SCRUB_TERMS_FILE="$TERMS_DIR/terms.txt"
+  validate_terms_file
 fi
 
 # Step 2: build the production variant (no staging params). The destination is the project's
@@ -124,7 +177,6 @@ fi
 # (the docs do not say that pages deploy reads settings from --config).
 echo "step 5: wrangler pages deploy"
 stage="$(mktemp -d)"
-trap 'rm -rf "$stage"' EXIT
 cp wrangler.production.jsonc "$stage/wrangler.jsonc"
 cp -R functions "$stage/functions"
 cp -R public "$stage/public"
