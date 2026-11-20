@@ -250,7 +250,7 @@ apply_case() { # <name> <wrangler version> <fake check-output exit code> <expect
     'done' \
     'mkdir -p "$dest"' \
     'echo ok >"$dest/index.html"' \
-    'printf "User-agent: *\nAllow: /\n" >"$dest/robots.txt"' \
+    'if [ -n "$FAKE_ROBOTS_FILE" ]; then cp "$FAKE_ROBOTS_FILE" "$dest/robots.txt"; else printf "User-agent: *\nAllow: /\n" >"$dest/robots.txt"; fi' \
     'echo "<urlset/>" >"$dest/sitemap.xml"' >"$TMP/fakebin/hugo"
   printf '%s\n' '#!/bin/sh' \
     'if [ "$1" = "--version" ]; then' \
@@ -272,7 +272,7 @@ apply_case() { # <name> <wrangler version> <fake check-output exit code> <expect
   mkdir -p "$TMP/scrubbase"
   env -i PATH="$TMP/fakebin:/usr/bin:/bin" HOME="$HOME" LOG="$APPLY_LOG" FAKE_CHECK_RC="$check_rc" \
     FAKE_WRANGLER_VERSION="$wver" PROD_CONFIG="$APPLY_REPO/wrangler.production.jsonc" \
-    DEPLOYDIR_FILE="$TMP/deploydir" OWNER_APPROVED_CUTOVER=yes HUGO_PARAMS_TURNSTILESITEKEY=fixturekey \
+    FAKE_ROBOTS_FILE="${APPLY_ROBOTS:-}" DEPLOYDIR_FILE="$TMP/deploydir" OWNER_APPROVED_CUTOVER=yes HUGO_PARAMS_TURNSTILESITEKEY=fixturekey \
     FAKE_DOPPLER_RC="$APPLY_DOPPLER_RC" FAKE_SECRET_FILE="$APPLY_SECRET" SCRUB_TMP_BASE="$TMP/scrubbase" \
     TERMS_COPY="$TMP/termscopy" TERMS_PATH="$TMP/termspath" "${scrub_env[@]}" \
     CLOUDFLARE_API_TOKEN="$DUMMY_TOKEN" \
@@ -318,6 +318,69 @@ if grep -q '^DEPLOY ' "$APPLY_LOG"; then fail "failing check-output: wrangler pa
 apply_case "old wrangler" "3.44.0" 0 nonzero
 [ "$(apply_order)" = "W-VERSION " ] || fail "old wrangler: expected only the version call, calls were: $(apply_order)"
 echo "ok: deploy-production.sh full apply path (fakes)"
+
+# Step 4 robots.txt rule (issue #135): the check fails only when the group that applies to all crawlers
+# (any User-agent line of the record is "*") holds an exact "Disallow: /". A root disallow under named
+# bots only passes. Each case runs the real deploy script with the fake hugo emitting that robots.txt.
+robots_case() { # <name> <expected: pass|fail> <robots.txt file>
+  local name="$1" want="$2" file="$3"
+  APPLY_ROBOTS="$file"
+  if [ "$want" = pass ]; then
+    apply_case "robots: $name" "3.45.0" 0 zero
+    [ "$(apply_order)" = "W-VERSION HUGO CHECK DEPLOY " ] || fail "robots: $name: expected a full run, calls were: $(apply_order)"
+  else
+    apply_case "robots: $name" "3.45.0" 0 nonzero
+    [ "$(apply_order)" = "W-VERSION HUGO CHECK " ] || fail "robots: $name: expected a stop before the deploy, calls were: $(apply_order)"
+    grep -q 'public/robots.txt disallows everything' "$TMP/out" || fail "robots: $name: the refusal wording changed: $(tail -n 3 "$TMP/out")"
+  fi
+  APPLY_ROBOTS=""
+}
+RB="$TMP/robots-cases"
+mkdir -p "$RB"
+# (a) the real production policy file, exactly as the production build emitted it above.
+[ -s "$TMP/prod/robots.txt" ] || fail "robots: the production build emitted no robots.txt"
+grep -q '^User-agent: GPTBot' "$TMP/prod/robots.txt" || fail "robots: the production file lost the training bot groups"
+robots_case "real production policy" pass "$TMP/prod/robots.txt"
+# (b) and (c): everything blocked, and the staging file as the staging build emitted it.
+printf 'User-agent: *\nDisallow: /\n' >"$RB/b.txt"
+robots_case "star disallow root" fail "$RB/b.txt"
+[ -s "$TMP/staging/robots.txt" ] || fail "robots: the staging build emitted no robots.txt"
+robots_case "staging file" fail "$TMP/staging/robots.txt"
+# (d) a root disallow under a named bot only.
+printf 'User-agent: *\nAllow: /\n\nUser-agent: GPTBot\nDisallow: /\n' >"$RB/d.txt"
+robots_case "named bot only" pass "$RB/d.txt"
+printf 'User-agent: GPTBot\nDisallow: /\n' >"$RB/d2.txt"
+robots_case "named bot only, no star group" pass "$RB/d2.txt"
+# (e) one record shared by several User-agent lines, one of them "*".
+printf 'User-agent: GPTBot\nUser-agent: *\nDisallow: /\n' >"$RB/e.txt"
+robots_case "shared record with star" fail "$RB/e.txt"
+printf 'User-agent: *\nUser-agent: GPTBot\nDisallow: /\n' >"$RB/e2.txt"
+robots_case "shared record, star first" fail "$RB/e2.txt"
+printf 'User-agent: GPTBot\n# note\n\nUser-agent: CCBot\n\n\nUser-agent: *\n# more\n\nDisallow: /\n' >"$RB/e3.txt"
+robots_case "shared record across blank lines and comments" fail "$RB/e3.txt"
+printf 'User-agent: GPTBot\nUser-agent: CCBot\nDisallow: /\n\nUser-agent: *\nAllow: /\n' >"$RB/e4.txt"
+robots_case "shared named record then star allow" pass "$RB/e4.txt"
+# A Disallow after the star record has ended belongs to the next record.
+printf 'User-agent: *\nAllow: /\nUser-agent: GPTBot\nDisallow: /\n' >"$RB/e5.txt"
+robots_case "star record ended by a new User-agent line" pass "$RB/e5.txt"
+# (f) not an exact root disallow.
+printf 'User-agent: *\nDisallow: /private/\n' >"$RB/f.txt"
+robots_case "star disallow subpath" pass "$RB/f.txt"
+printf 'User-agent: *\nDisallow:\n' >"$RB/f2.txt"
+robots_case "star empty disallow" pass "$RB/f2.txt"
+printf 'User-agent: *\nDisallow: /a\nDisallow: /b/\n' >"$RB/f3.txt"
+robots_case "star several subpaths" pass "$RB/f3.txt"
+# (g) CRLF, extra spaces, tabs, case, inline comments.
+printf 'User-agent: *\r\nDisallow: /\r\n' >"$RB/g.txt"
+robots_case "CRLF star disallow root" fail "$RB/g.txt"
+printf '  USER-AGENT :   *  \r\n\r\n   disallow  :   /   \r\n' >"$RB/g2.txt"
+robots_case "spaces and case star disallow root" fail "$RB/g2.txt"
+printf 'User-agent:\t*\nDisallow:\t/\t# all\n' >"$RB/g3.txt"
+robots_case "tab and inline comment" fail "$RB/g3.txt"
+printf 'User-agent: *\r\nAllow: /\r\n\r\nUser-agent: GPTBot\r\nDisallow: /\r\n' >"$RB/g4.txt"
+robots_case "CRLF named bot only" pass "$RB/g4.txt"
+printf '# comment only\nSitemap: https://example.com/sitemap.xml\n' >"$RB/h.txt"
+robots_case "no groups" pass "$RB/h.txt"
 
 # Deriving the scrub terms (issue #9). With SCRUB_TERMS_FILE unset, --apply makes one read-only
 # `doppler secrets get` of the owner's stg_scrub list, derives plain terms into a private temp file, hands
