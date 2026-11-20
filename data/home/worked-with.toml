@@ -1,0 +1,34 @@
+eyebrow = "Professional Context"
+title = "History, Partners, and Community"
+intro = "This is the owner's past professional history, not a Renegade Penguin LLC client list; client names remain confidential."
+
+[[groups]]
+label = "Past Professional History"
+
+[[groups.items]]
+title = "NetJets"
+
+[[groups.items]]
+title = "Cointelegraph"
+
+[[groups.items]]
+title = "Henry Schein"
+
+[[groups.items]]
+title = "GC Dental"
+
+[[groups.items]]
+title = "SML Labs"
+
+[[groups]]
+label = "Partners and Community"
+note = "Any partner work is scoped with the client and proceeds only with the client's written consent."
+
+[[groups.items]]
+title = "Lorikeet Security"
+
+[[groups.items]]
+title = "Call Theory"
+
+[[groups.items]]
+title = "Call Center Village"

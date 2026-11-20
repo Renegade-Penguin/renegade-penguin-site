@@ -1,0 +1,15 @@
+<section class="home-sec" id="worked-with" aria-labelledby="worked-with-h">
+  {{ partial "section-head.html" (dict "n" "03" "title" .title "tag" .eyebrow "id" "worked-with-h") }}
+  <p class="lede">{{ .intro }}</p>
+  {{- range .groups }}
+  <h3>{{ .label }}</h3>
+  {{- with .note }}
+  <p class="lede">{{ . }}</p>
+  {{- end }}
+  <ul class="grid pills grid-n{{ len .items }}">
+    {{- range .items }}
+    <li class="card"><span class="name">{{ .title }}</span></li>
+    {{- end }}
+  </ul>
+  {{- end }}
+</section>

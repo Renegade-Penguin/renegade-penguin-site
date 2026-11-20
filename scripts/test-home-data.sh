@@ -2,7 +2,7 @@
 # Targeted test for the data-driven home page (issue #43, Task 2).
 # (a) every data/home section file exists and parses as TOML with the documented schema;
 # (b) the home templates hold no literal sentence of 40 or more characters;
-# (c) the built home page has one h1, one hero primary button, the sector chips, nine numbered
+# (c) the built home page has one h1, one hero primary button, the sector chips, ten numbered
 #     sections and six external repo links, with no owner placeholder, inside "Built in the open";
 # (d) a banned claim word placed in a home data file reaches the page and check-claims fails it.
 set -uo pipefail
@@ -21,13 +21,26 @@ soft() {
 python3 -I - <<'PY' || soft "(a) data/home files missing or malformed"
 import tomllib
 
-names = ["hero", "what-we-do", "not-typical", "engagement", "no-vendor-pitches", "built-in-the-open",
+names = ["hero", "what-we-do", "not-typical", "worked-with", "engagement", "no-vendor-pitches", "built-in-the-open",
          "speaking", "pricing-teaser", "behind", "faq"]
 for n in names:
     with open("data/home/%s.toml" % n, "rb") as f:
         d = tomllib.load(f)
     for k in ("eyebrow", "title"):
         assert isinstance(d.get(k), str) and d[k].strip(), (n, k)
+    if n == "worked-with":
+        assert d.get("intro", "").strip(), (n, "intro")
+        gs = d.get("groups")
+        assert isinstance(gs, list) and len(gs) == 2, (n, "groups")
+        for g, want in zip(gs, (5, 3)):
+            assert isinstance(g.get("label"), str) and g["label"].strip(), (n, "group label")
+            assert isinstance(g.get("items"), list) and len(g["items"]) == want, (n, g.get("label"), "item count")
+            for it in g["items"]:
+                assert set(it) == {"title"} and it["title"].strip(), (n, "item shape", it)
+        assert "note" not in gs[0], (n, "group 1 has no note")
+        assert isinstance(gs[1].get("note"), str) and gs[1]["note"].strip(), (n, "group 2 note")
+        assert [i["title"] for i in gs[0]["items"]] == ["NetJets", "Cointelegraph", "Henry Schein", "GC Dental", "SML Labs"], gs[0]
+        assert [i["title"] for i in gs[1]["items"]] == ["Lorikeet Security", "Call Theory", "Call Center Village"], gs[1]
     if n in ("what-we-do", "not-typical", "engagement", "no-vendor-pitches", "built-in-the-open", "pricing-teaser", "faq"):
         assert isinstance(d.get("items"), list) and d["items"], (n, "items")
         for it in d["items"]:
@@ -89,6 +102,7 @@ class P(HTMLParser):
         self.primary_main = 0
         self.chips = []
         self.secs = []
+        self.order = []
         self.in_main = False
         self.cur = None
         self.sec_text = {}
@@ -96,6 +110,7 @@ class P(HTMLParser):
         self.details = 0
         self.text_for = None
         self.repo_links = []
+        self.ww_h3 = 0
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -112,7 +127,10 @@ class P(HTMLParser):
             self.text_for = "no"
         if tag == "section" and "home-sec" in c:
             self.sec_idx = a.get("id")
+            self.order.append(self.sec_idx)
             self.sec_text[self.sec_idx] = ""
+        if tag == "h3" and self.sec_idx == "worked-with":
+            self.ww_h3 += 1
         if tag == "details":
             self.details += 1
         if tag == "a" and self.sec_idx == "built-in-the-open":
@@ -140,11 +158,13 @@ hero = tomllib.load(open("data/home/hero.toml", "rb"))
 assert p.h1 == 1, "h1 count %d" % p.h1
 assert p.primary_main == 1, "hero primary buttons %d" % p.primary_main
 assert p.chips == hero["chips"], p.chips
-assert len(p.secs) == 9, p.secs
-assert [s.lstrip("§") for s in p.secs] == ["01", "02", "03", "04", "05", "06", "07", "08", "09"], p.secs
+assert len(p.secs) == 10, p.secs
+assert [s.lstrip("§") for s in p.secs] == ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"], p.secs
+assert p.order == ["what-we-do", "not-typical", "worked-with", "how-it-works", "no-vendor-pitches", "built-in-the-open", "speaking", "engagement-models", "behind-the-work", "faq"], p.order
 assert "{{OWNER:" not in p.sec_text.get("built-in-the-open", ""), "owner placeholder remains"
 assert len(p.repo_links) == 6, p.repo_links
 assert all(h.startswith("https://github.com/ChiefGyk3D/") and r == "noopener" for h, r in p.repo_links), p.repo_links
+assert p.ww_h3 == 2, "worked-with h3 count %d (group labels only)" % p.ww_h3
 assert p.details == 5, "faq details %d" % p.details
 PY
 
@@ -171,7 +191,7 @@ assert re.search(r"@media[^{]*900px[^{]*\{[^@]*span 6", css), "medium two column
 assert re.search(r"@media[^{]*900px[^{]*\{[^@]*:last-child:nth-child\(odd\)[^}]*span 12", css), "medium odd last item rule missing"
 assert "grid-six" not in css, "dead grid-six css remains"
 
-sections = {"what-we-do": "what-we-do", "not-typical": "not-typical", "how-it-works": "engagement",
+sections = {"what-we-do": "what-we-do", "not-typical": "not-typical", "worked-with": "worked-with", "how-it-works": "engagement",
             "no-vendor-pitches": "no-vendor-pitches", "built-in-the-open": "built-in-the-open",
             "engagement-models": "pricing-teaser"}
 
@@ -191,12 +211,12 @@ class G(HTMLParser):
             self.sec = a.get("id")
         if self.sec and self.cur is None and "grid" in c:
             self.cur = self.sec
-            self.found[self.cur] = {"classes": c, "children": 0}
+            self.found.setdefault(self.cur, []).append({"classes": c, "children": 0})
             self.depth = 0
             return
         if self.cur is not None:
             if self.depth == 0:
-                self.found[self.cur]["children"] += 1
+                self.found[self.cur][-1]["children"] += 1
             if tag not in ("br", "img", "input", "hr", "meta", "link"):
                 self.depth += 1
 
@@ -213,19 +233,23 @@ def check(html):
     g = G()
     g.feed(html)
     assert set(g.found) == set(sections), sorted(g.found)
-    for sid, data in g.found.items():
-        want = len(tomllib.load(open("data/home/%s.toml" % sections[sid], "rb"))["items"])
-        assert data["children"] == want, (sid, data, want)
-        assert "grid-n%d" % want in data["classes"], ("count class missing or wrong", sid, data["classes"], want)
-    return {s: d["children"] for s, d in g.found.items()}
+    for sid, grids in g.found.items():
+        d = tomllib.load(open("data/home/%s.toml" % sections[sid], "rb"))
+        wants = [len(x["items"]) for x in d["groups"]] if "groups" in d else [len(d["items"])]
+        assert len(grids) == len(wants), (sid, len(grids), wants)
+        for data, want in zip(grids, wants):
+            assert data["children"] == want, (sid, data, want)
+            assert "grid-n%d" % want in data["classes"], ("count class missing or wrong", sid, data["classes"], want)
+    return {s: d[0]["children"] for s, d in g.found.items()}
 
 html = open(out + "/index.html", encoding="utf-8").read()
 counts = check(html)
 assert {3, 4, 6, 11} <= set(counts.values()), counts
 assert counts["not-typical"] == 11, counts
+assert counts["worked-with"] == 5, counts
 assert "grid-six" not in html
 # negative case: the guard bites when a grid loses its count class
-for bad in (re.sub(r"grid-n11", "grid-x", html), re.sub(r"grid-n3", "", html, count=1)):
+for bad in (re.sub(r"grid-n11", "grid-x", html), re.sub(r"grid-n3", "", html, count=1), re.sub(r"grid-n5", "grid-x", html, count=1)):
     try:
         check(bad)
     except AssertionError:
