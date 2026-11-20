@@ -95,9 +95,12 @@ done
 [ -f "$OUT/ohio/index.html" ] || fail "/ohio/ missing"
 grep -Eq 'href="?/who-we-help/[" >]' "$OUT/index.html" || fail "main nav must link /who-we-help/"
 grep -Eq 'href="?/ohio/[" >]' "$OUT/index.html" || fail "footer must link /ohio/"
-# The Ohio page must carry the owner verification placeholder until the owner resolves it.
-grep -q '{{OWNER:verify wording against the statute text' "$OUT/ohio/index.html" ||
-  fail "/ohio/ must contain the owner verification placeholder"
+# The Ohio page keeps its substantive content (the owner placeholder was resolved and removed).
+oh=$(sed 's/<[^>]*>/ /g' "$OUT/ohio/index.html" | tr -s ' \n' ' ')
+printf '%s' "$oh" | grep -q '1354\.02' || fail "/ohio/ must cite section 1354.02"
+printf '%s' "$oh" | grep -q '1354\.03' || fail "/ohio/ must cite section 1354.03"
+printf '%s' "$oh" | grep -q 'An affirmative defense is not immunity' || fail "/ohio/ must say an affirmative defense is not immunity"
+printf '%s' "$oh" | grep -qi 'legal advice' || fail "/ohio/ must say it is not legal advice"
 # Built CSS keeps the contact form rules and a global .lede rule; contact markup still uses them.
 css=$(cat "$OUT"/css/site*.css 2>/dev/null || true)
 [ -n "$css" ] || fail "built site.css not found"

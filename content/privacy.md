@@ -41,5 +41,3 @@ Renegade Penguin does not sell personal information or share it with advertisers
 Contact information is kept only as long as reasonably needed to respond, evaluate or perform work, maintain business records, resolve disputes, or meet legal obligations. Cloudflare controls retention of its ordinary server logs under its own practices.
 
 To ask what contact information Renegade Penguin has about you, correct it, or request deletion, email [contact@renegadepenguinllc.com](mailto:contact@renegadepenguinllc.com). Some records may need to be retained for legal, security, or legitimate business reasons.
-
-{{OWNER:counsel review of privacy policy}}

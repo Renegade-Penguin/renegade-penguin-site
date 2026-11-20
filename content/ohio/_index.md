@@ -13,5 +13,3 @@ An affirmative defense is not immunity. It does not prevent a breach, stop a law
 The practical work is familiar: choose an appropriate framework, document the program, assign responsibility, implement safeguards, retain evidence, review changes, and keep the program current. Renegade Penguin can help an organization assess its existing controls and build a program aligned to an applicable recognized framework. That technical work does not replace legal advice.
 
 Businesses considering the Ohio provisions should speak with qualified counsel about whether the law applies to them and what evidence they should maintain. Review the available [services](/services/) or [contact Renegade Penguin](/contact/) to discuss the security work.
-
-{{OWNER:verify wording against the statute text and counsel before publishing}}
