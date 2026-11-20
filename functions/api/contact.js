@@ -18,11 +18,29 @@ const TIMELINES = new Set(["urgent", "1-2-months", "3-6-months", "no-date"]);
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function text(status, message, extra = {}) {
-  return new Response(message, {
-    status,
-    headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", ...extra },
+// The static _headers file does not apply to Pages Function responses, so every response built here
+// goes through reply(), the one place that sets the header set. Nothing returns a bare Response.
+const STYLE_HASH = "sha256-lhWzZNzDu0ylXnjClhIFyIt6ZCDTRFIluNuiFyylikw=";
+// An HTML response loads nothing: no script, no image, no font, no frame. Its one inline style is
+// allowed by hash, never by 'unsafe-inline'.
+const HTML_CSP =
+  "default-src 'none'; style-src '" + STYLE_HASH + "'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
+function reply(body, status, extra = {}) {
+  const headers = new Headers({
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "same-origin",
+    "cache-control": "no-store",
   });
+  for (const [k, v] of Object.entries(extra)) headers.set(k, v);
+  if ((headers.get("content-type") ?? "").startsWith("text/html")) {
+    headers.set("content-security-policy", HTML_CSP);
+  }
+  return new Response(body, { status, headers });
+}
+
+function text(status, message, extra = {}) {
+  return reply(message, status, { "content-type": "text/plain; charset=utf-8", ...extra });
 }
 
 // Cloudflare replaces any 5xx response with its own error page, so the visitor would never see
@@ -41,14 +59,11 @@ const FAILURE_PAGE =
   '<p><a href="/contact/">Go back to the contact form</a></p></main></body></html>';
 
 function failurePage() {
-  return new Response(FAILURE_PAGE, {
-    status: 424,
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
-  });
+  return reply(FAILURE_PAGE, 424, { "content-type": "text/html; charset=utf-8" });
 }
 
 function thanks() {
-  return new Response(null, { status: 303, headers: { location: THANKS, "cache-control": "no-store" } });
+  return reply(null, 303, { location: THANKS });
 }
 
 // Read the body as text, giving up as soon as it passes the limit.
