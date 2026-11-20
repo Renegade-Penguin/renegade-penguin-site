@@ -1,13 +1,16 @@
 {{ define "main" }}
-{{ $toc := ge (len (findRE `<h2[ >]` .Content)) 3 }}
+{{ $h2s := len (findRE `<h2[ >]` .Content) }}
+{{ if .Params.faq }}{{ $h2s = add $h2s 1 }}{{ end }}
+{{ $toc := ge $h2s 3 }}
 <div class="page-wrap{{ if $toc }} has-toc{{ end }}">
 <div class="page-col">
 <article class="page">
 <h1>{{ .Title }}</h1>
-{{ with .Description }}<p class="lede">{{ . }}</p>{{ end }}
+{{ if .Params.lede }}<p class="answer">{{ .Params.lede }}</p>{{ else }}{{ with .Description }}<p class="lede">{{ . }}</p>{{ end }}{{ end }}
 {{ .Content }}
 {{ $linked := where .Pages "RelPermalink" "ne" "" }}
 {{ with $linked }}<ul class="page-list">{{ range . }}<li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>{{ end }}</ul>{{ end }}
+{{ partial "page-faq.html" . }}
 </article>
 {{ partial "next-steps.html" . }}
 </div>

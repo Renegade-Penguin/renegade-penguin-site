@@ -28,6 +28,9 @@ import sys
 PERSON = "https://chiefgyk3d.com/#person"
 BANNED = {"review", "aggregateRating", "reviewRating", "rating", "ratingValue", "price", "priceRange",
           "offers", "address", "streetAddress", "telephone", "faxNumber"}
+# FAQPage is allowed on exactly these pages (issue #95): the home page and the five answer-first pages.
+FAQ_PAGES = {"/", "/services/advisory/", "/services/projects/", "/pricing/", "/ohio/",
+             "/who-we-help/healthcare-dental/"}
 fails = []
 
 
@@ -140,20 +143,21 @@ def check(root, staging):
                 if items[0]["name"] != "Home" or items[-1]["item"] != "https://renegadepenguinllc.com" + rel:
                     fail("%s: breadcrumb ends: %s" % (rel, items))
         faqs = [n for n in g if "FAQPage" in types(n)]
-        if rel == "/":
+        if rel in FAQ_PAGES:
             if len(faqs) != 1:
-                fail("/: want one FAQPage")
+                fail("%s: want one FAQPage" % rel)
             else:
                 got = [(q["name"], q["acceptedAnswer"]["text"]) for q in faqs[0]["mainEntity"]]
                 vis = [(html.unescape(re.sub(r"<[^>]+>", "", a)).strip(), html.unescape(re.sub(r"<[^>]+>", "", b)).strip())
                        for a, b in re.findall(r'<details class="?faq"?>\s*<summary>(.*?)</summary>\s*<p>(.*?)</p>', body, re.S)]
                 if not vis or got != vis:
-                    fail("/: FAQPage text differs from the visible FAQ: %r vs %r" % (got, vis))
+                    fail("%s: FAQPage text differs from the visible FAQ: %r vs %r" % (rel, got, vis))
         elif faqs:
             fail("%s: FAQPage on a page without a visible FAQ" % rel)
         seen[rel] = True
     for must in ("/", "/about/", "/services/", "/services/advisory/", "/services/projects/",
-                 "/services/education-speaking/", "/contact/", "/pricing/"):
+                 "/services/education-speaking/", "/contact/", "/pricing/", "/ohio/",
+                 "/who-we-help/healthcare-dental/"):
         if must not in seen:
             fail("%s: page not checked in %s" % (must, root))
     if len(seen) < 10:
