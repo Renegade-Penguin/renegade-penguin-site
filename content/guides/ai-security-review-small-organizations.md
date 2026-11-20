@@ -4,7 +4,6 @@ seoTitle = "AI Security Review Guide | Renegade Penguin"
 description = "Learn how an AI security review finds actual AI use, traces sensitive data exposure, checks vendors, and defines practical controls."
 summary = "An AI security review examines actual AI use, exposed data, vendor terms, access, retention, and practical controls."
 weight = 30
-owner_review = "pending"
 +++
 
 An AI security review is a fixed-scope examination of how an organization actually uses AI, including use that never went through formal approval. A small organization may need one because employees can adopt AI services quickly, while sensitive-data exposure, access, retention, and vendor questions remain unresolved.
