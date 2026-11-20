@@ -12,6 +12,16 @@ I started in networking, Linux and system administration before moving into cybe
 
 That background shapes my advice. I look at how a system is built, operated and maintained before recommending how to secure it, because a control that ignores day-to-day operations will not hold up for long.
 
+## Experience
+
+I have worked with or for these companies in the past:
+
+- NetJets
+- Cointelegraph
+- Henry Schein
+- GC Dental
+- SML Labs
+
 ## Experience Across Different Environments
 
 I have worked across medical, dental, private aviation, critical infrastructure, and managed service provider settings supporting small businesses. Each environment has different constraints, but the basic requirement remains the same: understand what matters, identify credible risks, and improve defenses without losing sight of operations.
@@ -45,13 +55,3 @@ For red team engagements, I may work with Lorikeet Security, and for call center
 ## Credentials
 
 I earned an associate degree in network system administration in 2016 and am working toward a bachelor’s degree. I earned the CISSP in 2024 and CompTIA Security+, Network+ and A+ in February 2026.
-
-## Experience
-
-I have worked with or for these companies in the past:
-
-- NetJets
-- Cointelegraph
-- Henry Schein
-- GC Dental
-- SML Labs
