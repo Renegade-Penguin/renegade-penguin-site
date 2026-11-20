@@ -40,7 +40,7 @@ Every row must be checked off, with its evidence noted on #102, before step 1 of
 | 2 | Real scrub terms exist (#9). The CI list is a placeholder (REPO-VERIFIED .github/workflows/ci.yml). The owner decided (2026-11-20) to reuse the existing real list instead of a second secret: Doppler project `no-php-no-cry`, config `stg_scrub`, secret `SCRUB_TERMS`, format `category:term` (REPO-VERIFIED scripts/derive-scrub-terms.sh). `scripts/deploy-production.sh --apply` derives the plain terms from it when `SCRUB_TERMS_FILE` is not set. The list must hold at least one real (non-PLACEHOLDER) term in each of `employer`, `hostname` and `serial`; the derive fails closed otherwise, so a placeholder-only category blocks the deploy until the owner replaces it. | owner | `doppler secrets get SCRUB_TERMS --project no-php-no-cry --config stg_scrub --plain \| bash scripts/derive-scrub-terms.sh > /dev/null` prints only `derive-scrub-terms: employer=N hostname=N serial=N placeholders=N` with every count at least 1 (no term is printed), or names the category that has no real term. An explicit `SCRUB_TERMS_FILE` still works and is checked as before. |
 | 3 | Production build gate green with the real terms and the owner-placeholder check on (REPO-VERIFIED scripts/check-output.sh). The `scrub_shapes` rule (callsign, grid locator and private-network shapes, no terms needed) runs in the same gate. | owner or lead | `HUGO_PARAMS_TURNSTILESITEKEY=<public sitekey> hugo --minify --gc --destination public && EXPECT_ENV=production REQUIRE_NO_OWNER_TOKENS=1 SCRUB_TERMS_FILE="$SCRUB_TERMS_FILE" scripts/check-output.sh public` ends with `check-output: clean (production)`. `scripts/deploy-production.sh --apply` runs this gate itself with the derived terms file. |
 | 4 | Accessibility pass decision (#91) made and recorded. | owner | `gh issue view 91 --repo Renegade-Penguin/renegade-penguin-site --comments` shows the decision (accept as is, or fix first). |
-| 5 | Cross-links ready on chiefgyk3d.com: the text in `docs/cross-link-draft.md` and a pull request in the personal site repository that sets the business URL param to the apex, approved but not merged or deployed. | owner | `gh pr view <number> --repo <personal-site-repo>` shows approved, open. The draft itself says to publish only after cutover (REPO-VERIFIED docs/cross-link-draft.md). |
+| 5 | Cross-links ready on chiefgyk3d.com: the text in `docs/cross-link-draft.md` and the private production pipeline change that sets `HUGO_PARAMS_BUSINESSSITEURL` to the apex for the production build only, ready but not applied. The personal repository's `hugo.toml` keeps `params.businessSiteURL` empty. | owner | The owner confirms the pipeline change is staged and unapplied. The draft itself says to publish only after cutover (REPO-VERIFIED docs/cross-link-draft.md). |
 | 6 | Turnstile widget hostnames include the apex. | owner | The widget is created for the staging and apex hostnames (REPO-VERIFIED docs/staging.md, scripts/staging/lib.sh `CF_APEX_HOST`). Confirm with a dry run of `scripts/staging/ensure-turnstile.sh` (reads only); it reports the existing widget, or fails closed when the hostnames or mode differ. Needs the Turnstile read token row of the access plan. |
 | 7 | Email Sending verified for the sender domain (#35), including a real send. | owner | A staging form submission arrives at the contact address with Reply-To set to the visitor (REPO-VERIFIED docs/mail-worker.md lists this as pending). |
 | 8 | Counsel decision recorded. | owner | `gh issue view 102 --repo Renegade-Penguin/renegade-penguin-site --comments` shows the decision. |
@@ -145,7 +145,7 @@ whether production belongs in it or in a dedicated project is the owner's call.
 | Set `MAIL_SHARED_SECRET` and `TURNSTILE_SECRET` on the new Pages project | Cloudflare Pages secrets | Uses the Cloudflare Pages Edit permission above; values piped from Doppler on stdin, never in argv | The Function needs both to run | The new project only | Delete the two secrets | write |
 | Service binding `MAIL_WORKER` to the existing Worker | Cloudflare Pages deploy | Declared in `wrangler.production.jsonc` (a `services` key, DOCS-VERIFIED 2026-11-19 [wr-config]); no Workers edit scope is needed because the Worker is not changed (REPO-VERIFIED above); any extra permission to bind a service is UNDOCUMENTED, so step 3 reads the binding back after deploy | The form mail path | None to the Worker | Redeploy without the binding, or delete the project | write |
 | Search Console and Bing verification and sitemap submit | Owner's own search accounts, dashboard | The owner's login; a DNS TXT record at the apex is used and then falls under the DNS Write row | Step 9 | None beyond one TXT record | The TXT record must stay (step 9); remove the sitemap only | write |
-| Cross-link change in the personal site repository and the pin change in its private pipeline | GitHub, owner action | The owner's own access; no token from this plan | Step 10 | The personal site only | Revert the commit | write |
+| Production build variable `HUGO_PARAMS_BUSINESSSITEURL` in the personal site's private pipeline | GitHub, owner action | The owner's own access; no token from this plan | Step 10 | The personal site only | Unset the variable and rebuild, or move the pin back | write |
 | Post-deploy and smoke checks | Public HTTP | No credentials, plain GET requests and one form submission | Steps 3 and 8 | One test message in the contact inbox | none needed | read-only |
 
 Token handling: wrangler and curl read the token from the environment only; no script in this change
@@ -370,14 +370,16 @@ repository.
 ### 10. chiefgyk3d.com cross-link switch
 
 - Who: owner (personal site repository and its private pipeline).
-- Steps: merge the personal repository pull request that sets the business URL param
-  (`businessSiteURL`, name as given in the cutover brief, not visible in this repository) to
-  `https://renegadepenguinllc.com/`; then change the pin in that site's private pipeline so the new
-  build is deployed (owner action). Use the text in `docs/cross-link-draft.md`.
+- Steps: in the owner's private production pipeline, set the environment variable
+  `HUGO_PARAMS_BUSINESSSITEURL=https://renegadepenguinllc.com` for the production build only, then
+  rebuild and deploy (owner action). The personal repository's `hugo.toml` ships
+  `params.businessSiteURL` empty (a test there requires it) and its `deploy.yml` sets the staging
+  host for the dev build, so no personal repository change is needed. Use the text in
+  `docs/cross-link-draft.md`.
 - Verify: `curl -s https://chiefgyk3d.com/ | grep -c renegadepenguinllc.com` is above 0 and the link
   returns 200. The business site already links back to `https://chiefgyk3d.com/` (REPO-VERIFIED
   scripts/check-output.sh `about_link` check).
-- Rollback: revert the personal site commit.
+- Rollback: unset `HUGO_PARAMS_BUSINESSSITEURL` and rebuild, or move the pin back.
 
 ### 11. Announce
 
@@ -398,7 +400,7 @@ documented procedure: the DNS record goes first, then the domain (DOCS-VERIFIED 
 3. Mail records are never touched: MX, SPF, DKIM and DMARC were not edited in any step, and the final
    diff of step 5 proves it. The Search Console TXT record, if added, stays: it must never be removed
    after verification.
-4. Revert the personal site cross-link if step 10 was done, and remove the sitemap from the search
+4. Roll back the personal site cross-link if step 10 was done (unset `HUGO_PARAMS_BUSINESSSITEURL` and rebuild, or move the pin back), and remove the sitemap from the search
    tools.
 
 How long: a proxied record has an automatic TTL of 300 seconds, so cached answers last about five
