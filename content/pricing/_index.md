@@ -59,3 +59,5 @@ Common factors include the size and complexity of the environment, the number of
 Quotes exclude software licenses, hardware, travel expenses, taxes, legal services, penetration testing, continuous monitoring, managed services, emergency response, and outside specialists unless they are listed in the scope.
 
 Quotes assume timely access, accurate information, an authorized decision-maker, and staff who can answer questions.
+
+For more context, read [what a virtual CISO does](/guides/what-is-a-vciso/), review a [sample retainer scope](/sample-scope-of-work/), see [how engagements run](/how-we-work/), and consider [when not to hire](/when-not-to-hire/).

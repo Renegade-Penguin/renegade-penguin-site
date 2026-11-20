@@ -35,3 +35,5 @@ EHR and imaging systems need particular care because availability matters and ch
 Training should match the actual work. Front-desk staff, clinicians, billing personnel, administrators, and outside support providers do not face identical decisions. Clear reporting procedures and short, relevant exercises are more useful than generic annual slides alone.
 
 A one-time assessment can establish the current picture and priorities. An advisory retainer provides ongoing help with vendors, policy decisions, exercises, and follow-through. Review the [services](/services/) or [contact Renegade Penguin](/contact/) to discuss the practice’s needs.
+
+Healthcare and dental teams can read the [AI security review guide](/guides/ai-security-review-small-organizations/), explore [fixed-scope security projects](/services/projects/), review [Ohio cybersecurity framework guidance](/ohio/), and see [pricing and assessments](/pricing/).

@@ -24,3 +24,5 @@ Scheduling, maintenance, avionics, connectivity, payment, and support vendors ma
 The applicable regulatory scope depends on the organization and its operations. Applicable requirements depend on the operator and its regulators; no specific rule is named here, and Renegade Penguin makes no claim of compliance.
 
 A one-time assessment establishes priorities, while an advisory retainer supports vendor reviews and ongoing decisions. See the [services](/services/) or [contact Renegade Penguin](/contact/) to discuss your operation.
+
+Aviation organizations can explore [ongoing advisory support](/services/advisory/), review [fixed-scope security projects](/services/projects/) and [relevant experience](/experience/), or [schedule a free fit call](/contact/).
