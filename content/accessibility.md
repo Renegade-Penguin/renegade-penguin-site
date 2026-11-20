@@ -1,6 +1,6 @@
 +++
 title = "Accessibility"
-description = "Renegade Penguin aims to make this website usable by people with a wide range of access needs."
+description = "This site aims to work for people with a wide range of access needs and explains how to report an accessibility barrier for review."
 weight = 70
 +++
 

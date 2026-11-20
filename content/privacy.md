@@ -1,6 +1,6 @@
 +++
 title = "Privacy Policy"
-description = "This policy explains what the Renegade Penguin website collects, why it is collected, and how to request deletion."
+description = "No cookies or analytics are used. Contact form data is used only to reply, and the privacy page explains how to request its deletion."
 weight = 80
 +++
 

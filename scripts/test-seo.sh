@@ -21,11 +21,6 @@ import sys
 from urllib.parse import urlparse
 
 out = sys.argv[1]
-# Known exceptions: trust and legal pages that have no approved SEO copy yet (their descriptions are
-# under 120 characters). Description length only; titles and uniqueness are still checked.
-DESC_LENGTH_EXCEPTIONS = {"/privacy/", "/terms/", "/accessibility/", "/security-policy/",
-                          "/security-and-handling/", "/confidentiality-and-case-studies/"}
-
 def pages():
     sm = open(out + "/sitemap.xml", encoding="utf-8").read()
     paths = [urlparse(u).path for u in re.findall(r"<loc>([^<]+)</loc>", sm)]
@@ -52,7 +47,7 @@ def check(items):
             errs.append((path, "title %d chars: %s" % (len(t), t)))
         if not d:
             errs.append((path, "no description"))
-        elif path not in DESC_LENGTH_EXCEPTIONS and not 120 <= len(d) <= 160:
+        elif not 120 <= len(d) <= 160:
             errs.append((path, "description %d chars: %s" % (len(d), d)))
         if t:
             if t in seen_t:
