@@ -17,6 +17,8 @@ fail() {
 }
 "$HUGO" --minify --destination "$TMP/prod" >/dev/null 2>"$TMP/build.err" || fail "production build: $(cat "$TMP/build.err")"
 HUGO_PARAMS_ENVIRONMENT=staging "$HUGO" --minify --destination "$TMP/stg" >/dev/null 2>"$TMP/build.err" || fail "staging build: $(cat "$TMP/build.err")"
+[[ -s assets-src/og-card/RENDERER.txt ]] || fail "assets-src/og-card/RENDERER.txt is missing or empty"
+[[ -x scripts/render-og-card.sh ]] || fail "scripts/render-og-card.sh is missing or not executable"
 python3 -I - "$TMP/prod" "$TMP/stg" <<'PY' || fail "social tags"
 import re
 import struct
@@ -39,9 +41,21 @@ class Head(HTMLParser):
         self.meta = []
         self.canon = []
         self.robots = []
+        self.title = ""
+        self._in_title = False
+
+    def handle_endtag(self, tag):
+        if tag == "title":
+            self._in_title = False
+
+    def handle_data(self, data):
+        if self._in_title:
+            self.title += data
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        if tag == "title":
+            self._in_title = True
         if tag == "meta":
             key = a.get("property") or a.get("name")
             if key and (key.startswith("og:") or key.startswith("twitter:")):
@@ -89,6 +103,12 @@ def check(path, doc, out):
     t = (tags.get("og:title") or [""])[0] or ""
     if len(t) > 70:
         errs.append((path, "og:title %d chars" % len(t)))
+    for k in ("og:title", "twitter:title"):
+        v = (tags.get(k) or [""])[0] or ""
+        if "<nil>" in v or "&lt;nil&gt;" in v:
+            errs.append((path, "%s contains <nil>" % k))
+        elif v != h.title:
+            errs.append((path, "%s %r does not equal the page <title> %r" % (k, v, h.title)))
     if tags.get("twitter:image") != tags.get("og:image"):
         errs.append((path, "twitter:image differs from og:image"))
     img = (tags.get("og:image") or [""])[0] or ""
@@ -131,8 +151,19 @@ assert parse(sdoc).robots == ["noindex, nofollow"], "staging lost noindex"
 assert not check("/", sdoc, stg), check("/", sdoc, stg)
 assert not parse(items[0][1]).robots, "production must not carry noindex"
 
+# real values on pages without a seoTitle
+by_path = dict(items)
+for path, want in (("/privacy/", "Privacy Policy | Renegade Penguin LLC"), ("/terms/", "Terms of Use | Renegade Penguin LLC")):
+    t = parse(by_path[path])
+    got = {k: v for k, v in t.meta if k in ("og:title", "twitter:title")}
+    assert got == {"og:title": want, "twitter:title": want}, (path, got)
+
 # negative cases: each guard bites
 base = items[0][1]
+nil_doc = re.sub(r'(<meta (?:property|name)="?og:title"? content=)"?[^">]*"?', r'\1"<nil>"', base)
+assert nil_doc != base and check("/", nil_doc, prod), "guard missed a <nil> og:title"
+tw_doc = re.sub(r'(<meta (?:property|name)="?twitter:title"? content=)"?[^">]*"?', r'\1"&lt;nil&gt;"', base)
+assert tw_doc != base and check("/", tw_doc, prod), "guard missed a <nil> twitter:title"
 assert base.count('og:title') >= 1
 
 

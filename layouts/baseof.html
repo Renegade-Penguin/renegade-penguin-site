@@ -16,7 +16,9 @@
 <link rel="icon" type="image/png" href="/brand/penguin-color.png">
 {{ if ne .Kind "404" }}<link rel="canonical" href="{{ .Permalink }}">{{ end }}
 {{- /* Open Graph and Twitter: the card is served by the site itself (img-src 'self'); absURL follows baseURL like the canonical and the sitemap. */ -}}
-{{- $ogTitle := cond (ne (printf "%v" .Params.seoTitle) "") (printf "%v" .Params.seoTitle) (cond .IsHome site.Title (printf "%s | %s" .Title site.Title)) -}}
+{{- $ogTitle := printf "%s | %s" .Title site.Title -}}
+{{- if .IsHome }}{{ $ogTitle = site.Title }}{{ end -}}
+{{- with .Params.seoTitle }}{{ $ogTitle = . }}{{ end -}}
 {{- $ogImage := "brand/og-card.png" | absURL -}}
 {{- $ogAlt := "Renegade Penguin LLC: the penguin mascot beside the line IT is not expensive. IT disasters are." }}
 <meta property="og:site_name" content="{{ site.Title }}">
