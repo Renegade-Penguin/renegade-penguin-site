@@ -38,7 +38,7 @@
   "givenName" $behind.first_name
   "jobTitle" "Founder, Renegade Penguin LLC"
   "url" $behind.link_url
-  "sameAs" (slice $behind.link_url)
+  "sameAs" hugo.Data.person.same_as
   "worksFor" (dict "@id" $orgID)
 -}}
 {{- $graph = $graph | append $person }}

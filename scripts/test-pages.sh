@@ -51,9 +51,9 @@ grep -Eq '<div [^>]*class="?cf-turnstile"?' "$c2" || fail "/contact/ with a site
 grep -Eq 'data-sitekey="?fixturekey' "$c2" || fail "/contact/ widget must carry the sitekey param"
 grep -Eq 'data-action="?contact' "$c2" || fail "/contact/ widget must carry data-action contact"
 if grep -rHo '<script[^>]*>' "$OUT2" --include='*.html' | grep -v 'application/ld+json' | grep -v '/contact/index.html:' | grep -q .; then fail "script outside /contact/ in the sitekey build"; fi
-grep -Eq '<a [^>]*href="?https://chiefgyk3d\.com/"?[^>]*rel="?noopener' "$OUT/about/index.html" ||
-  grep -Eq '<a [^>]*rel="?noopener"?[^>]*href="?https://chiefgyk3d\.com/' "$OUT/about/index.html" ||
-  fail "/about/ must link https://chiefgyk3d.com/ with rel=noopener"
+grep -Eq '<a [^>]*href="?https://chiefgyk3d\.com/resume/"?[^>]*rel="?noopener' "$OUT/about/index.html" ||
+  grep -Eq '<a [^>]*rel="?noopener"?[^>]*href="?https://chiefgyk3d\.com/resume/' "$OUT/about/index.html" ||
+  fail "/about/ must link https://chiefgyk3d.com/resume/ with rel=noopener"
 
 # Task 3: every built page inherits the Dossier shell.
 while IFS= read -r f; do

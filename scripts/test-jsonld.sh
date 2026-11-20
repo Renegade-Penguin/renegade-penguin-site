@@ -24,8 +24,11 @@ import json
 import pathlib
 import re
 import sys
+import tomllib
 
 PERSON = "https://chiefgyk3d.com/#person"
+with open("data/person.toml", "rb") as f:
+    PERSON_SAMEAS = tomllib.load(f)["same_as"]  # issue #134: the Person sameAs comes from this data file
 BANNED = {"review", "aggregateRating", "reviewRating", "rating", "ratingValue", "price", "priceRange",
           "offers", "address", "streetAddress", "telephone", "faxNumber"}
 # FAQPage is allowed on exactly these pages (issue #95): the home page and the five answer-first pages.
@@ -118,7 +121,7 @@ def check(root, staging):
         for n in persons:
             if n["@id"] != PERSON or n.get("worksFor") != {"@id": org["@id"]}:
                 fail("%s: Person id or worksFor" % rel)
-            if n.get("jobTitle") != "Founder, Renegade Penguin LLC" or n.get("sameAs") != ["https://chiefgyk3d.com/"]:
+            if n.get("jobTitle") != "Founder, Renegade Penguin LLC" or n.get("sameAs") != PERSON_SAMEAS:
                 fail("%s: Person jobTitle or sameAs" % rel)
         if want_person and org.get("founder") != {"@id": PERSON}:
             fail("%s: founder must reference the Person" % rel)

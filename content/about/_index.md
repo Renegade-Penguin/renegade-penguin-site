@@ -11,7 +11,7 @@ I architect security best practices, help developers shift left, build secure pr
 
 I use open source and proprietary technology, then recommend based on results. Renegade Penguin does not resell products or accept referral fees. I also build in the open on GitHub.
 
-My credentials and more of my work are available on [my personal site, chiefgyk3d.com](https://chiefgyk3d.com/).
+My credentials and more of my work are available on [my personal site, chiefgyk3d.com](https://chiefgyk3d.com/resume/).
 
 I have spent about 16 years working in the field, learning security by building, testing, breaking, and understanding the systems involved. My networking background reaches down to the radio layer, and my experience in emergency communications taught me to treat continuity and disaster recovery as operational work that must survive real failure.
 

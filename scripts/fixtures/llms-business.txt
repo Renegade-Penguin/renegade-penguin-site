@@ -1,0 +1,31 @@
+# Renegade Penguin LLC
+
+> Renegade Penguin LLC provides practical security and technology advisory services to organizations in Ohio and nationwide.
+
+The firm provides virtual CISO and CIO style advisory, security assessments, AI security reviews, and education. It is run by one hands-on practitioner with about 16 years of experience across varied technical and operational settings.
+
+## Services
+
+- [Advisory](BASE_URL/services/advisory/): Month to month virtual CISO and CIO style guidance.
+- [Projects](BASE_URL/services/projects/): Focused security assessments and AI security reviews.
+- [Education and speaking](BASE_URL/services/education-speaking/): Practical cybersecurity education and speaking.
+- [Pricing](BASE_URL/pricing/): Free 30 minute fit calls and paid assessments credited toward retainers.
+- [Sample scope of work](BASE_URL/sample-scope-of-work/): An example of how an assessment can be structured.
+
+## Guides
+
+- [What is a vCISO?](BASE_URL/guides/what-is-a-vciso/): A plain explanation of virtual CISO advisory.
+- [vCISO vs. vCIO](BASE_URL/guides/vciso-vs-vcio/): How security and technology advisory roles differ.
+- [AI security review for small organizations](BASE_URL/guides/ai-security-review-small-organizations/): What smaller organizations should examine when adopting AI.
+- [Why hands-on advice holds up](BASE_URL/guides/why-hands-on-advice-holds-up/): The value of advice grounded in practical work.
+
+## About
+
+- [About](BASE_URL/about/): An overview of the firm and its approach.
+- [Experience](BASE_URL/experience/): About 16 years of hands-on work across several fields.
+- [How we work](BASE_URL/how-we-work/): Fit calls, assessments, retainers, and month to month advisory.
+- [Contact](BASE_URL/contact/): Start with a free 30 minute fit call.
+
+## The founder
+
+- [ChiefGyk3D resume](https://chiefgyk3d.com/resume/): Background and experience of the practitioner behind the firm.
