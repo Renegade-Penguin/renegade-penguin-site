@@ -1,14 +1,25 @@
+{{- /* Entries flagged footer = true in data/nav.toml (issue #91) are linked here too, with their nav label: a closed
+       dropdown panel is not in the accessibility tree, and these pages have no other link outside it (WCAG 2.4.5). */ -}}
+{{- $links := slice -}}
+{{- range site.Menus.footer }}{{ $links = $links | append (dict "url" .URL "label" .Name) }}{{ end -}}
+{{- range hugo.Data.nav.top }}
+  {{- with .group }}
+    {{- $g := index hugo.Data.nav.groups . }}
+    {{- if $g.footer }}{{ $links = $links | append (dict "url" $g.url "label" $g.label) }}{{ end }}
+    {{- range $g.items }}{{ if .footer }}{{ $links = $links | append (dict "url" .url "label" .label) }}{{ end }}{{ end }}
+  {{- end }}
+{{- end -}}
 <footer class="site-footer">
   <div class="bar">
     <span>&copy; {{ now.Year }} Renegade Penguin LLC</span>
     <a href="https://chiefgyk3d.com/" rel="noopener">chiefgyk3d.com</a>
     <span class="end">End of file</span>
   </div>
-  {{- with site.Menus.footer }}
+  {{- with $links }}
   <nav class="footer-nav" aria-label="Footer">
     <ul>
       {{- range . }}
-      <li><a href="{{ .URL }}">{{ .Name }}</a></li>
+      <li><a href="{{ .url }}">{{ .label }}</a></li>
       {{- end }}
     </ul>
   </nav>

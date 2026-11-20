@@ -102,6 +102,8 @@ class T(HTMLParser):
             self.tiles.append(self.cur)
             self.list_ok.append(any(t == "ul" and "partner-tiles" in cc for t, cc in self.stack[:-1]))
         if tag == "img":
+            # The header brand image sits beside the visible name, so it is decorative (issue #91).
+            a["_brand"] = any(t == "a" and "brand" in cc for t, cc in self.stack[:-1])
             self.imgs.append(a)
             if self.cur is not None:
                 self.cur["img"] = a
@@ -150,7 +152,11 @@ def check(t, want):
     for img in t.imgs:
         src = img.get("src", "")
         assert src.startswith("/") and not src.startswith("//"), ("external or relative img src", src)
-        assert img.get("alt", "").strip(), ("img without alt", src)
+        if img["_brand"]:
+            # minify writes alt="" as a bare alt attribute, which parses as None
+            assert "alt" in img and (img["alt"] or "").strip() == "", ("brand img must be decorative (empty alt)", src, img.get("alt"))
+        else:
+            assert (img.get("alt") or "").strip(), ("img without alt", src)
     return seen
 
 
@@ -167,6 +173,8 @@ html = open(out + "/index.html", encoding="utf-8").read()
 for label, bad in (
     ("no alt", re.sub(r'alt="?Lorikeet Security"?', 'alt=""', html)),
     ("external src", re.sub(r'src=("?)/brand/partners/', r'src=\1https://x.example/brand/partners/', html, count=1)),
+    ("brand img with a name", re.sub(r"(<a class=brand href=/><img src=/brand/penguin-color.png )alt ", r'\1alt="Renegade Penguin LLC" ', html, count=1)),
+    ("hero img without alt", re.sub(r'alt="Renegade Penguin mascot"', "alt", html, count=1)),
     ("missing tile", re.sub(r"<li[^>]*partner-tile[^>]*>", "<li>", html, count=1)),
 ):
     t = T()

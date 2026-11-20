@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Targeted test for the data-driven header menu and the slim footer (issue #87). Builds the site and
 # asserts: every URL in data/nav.toml resolves in the built site, the header carries no script, every
-# dropdown link is in the header HTML, the footer holds exactly the trust links plus chiefgyk3d.com,
-# every page that used to be footer-only is linked from the header, ids are unique per page and
-# aria-current marks the active page. Negative cases prove each guard bites.
+# dropdown link is in the header HTML, the footer holds exactly the trust links, the nav entries
+# flagged footer = true (issue #91) and chiefgyk3d.com, every page that used to be footer-only is
+# linked from the header, ids are unique per page and aria-current marks the active page. Negative
+# cases prove each guard bites. The popover markup itself is checked by scripts/test-a11y.sh.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 HUGO="${HUGO:-hugo}"
@@ -28,6 +29,8 @@ import tomllib
 out, navfile = sys.argv[1], sys.argv[2]
 TRUST = ["/privacy/", "/terms/", "/accessibility/", "/security-policy/", "/security-and-handling/",
          "/confidentiality-and-case-studies/", "https://chiefgyk3d.com/"]
+# Issue #91: pages that were reachable only through a closed (display:none) panel are linked from the footer.
+FOOTER_NAV = ["/who-we-help/", "/case-studies/"]
 REMOVED = ["/when-not-to-hire/", "/how-we-work/", "/who-we-help/", "/experience/", "/community/",
            "/sample-scope-of-work/", "/case-studies/", "/ohio/"]
 
@@ -53,8 +56,9 @@ def check_header_no_script(doc):
 def check_footer(doc):
     got = sorted(hrefs(region(doc, "footer")))
     errs = []
-    if got != sorted(TRUST):
-        errs.append("footer links %s, wanted %s" % (got, sorted(TRUST)))
+    want = sorted(TRUST + FOOTER_NAV)
+    if got != want:
+        errs.append("footer links %s, wanted %s" % (got, want))
     if len(got) != len(set(got)):
         errs.append("footer repeats a link: %s" % got)
     return errs
@@ -62,17 +66,17 @@ def check_footer(doc):
 
 def check_triggers(doc, n):
     head = region(doc, "header")
-    tags = [t for t in re.findall(r"<a [^>]*>", head) if "aria-haspopup" in t]
+    tags = [t for t in re.findall(r"<button [^>]*>", head) if re.search(r"popovertarget=\"?dd-", t)]
     errs = [] if len(tags) == n else ["%d dropdown triggers, wanted %d" % (len(tags), n)]
     ids = re.findall(r'\sid="?([^" >]+)', head)
     for t in tags:
-        c = re.search(r'aria-controls="?([^" >]+)', t)
-        if not re.search(r'aria-haspopup="?true', t):
-            errs.append("trigger lacks aria-haspopup true: %s" % t)
+        c = re.search(r'popovertarget="?([^" >]+)', t)
+        if "aria-haspopup" in t:
+            errs.append("trigger must not carry aria-haspopup (there is no menu): %s" % t)
         if "aria-expanded" in t:
             errs.append("trigger must not carry aria-expanded: %s" % t)
         if not c or c.group(1) not in ids:
-            errs.append("trigger aria-controls does not resolve to a panel id: %s" % t)
+            errs.append("trigger popovertarget does not resolve to a panel id: %s" % t)
     return errs
 
 
@@ -134,8 +138,10 @@ assert check_footer("<footer>" + "".join('<a href="%s">x</a>' % u for u in TRUST
 assert check_header_links("<header></header>", ["/ohio/"]), "header link guard does not bite"
 assert check_ids('<p id="a"></p><p id="a"></p>'), "duplicate id guard does not bite"
 assert check_current('<header><a href="/x/">x</a></header>', "/about/"), "aria-current guard does not bite"
-assert check_triggers("<header><a href=/x/ aria-haspopup=true aria-controls=nope>x</a></header>", 1), "aria-controls guard does not bite"
+assert check_triggers("<header><button popovertarget=nope>x</button></header>", 1), "dangling popovertarget guard does not bite"
+assert check_triggers("<header><button popovertarget=dd-x aria-haspopup=true>x</button><div id=dd-x></div></header>", 1), "aria-haspopup guard does not bite"
 assert check_triggers("<header><a href=/x/>x</a></header>", 1), "missing trigger guard does not bite"
+assert not check_triggers("<header><button type=button popovertarget=dd-x>x</button><div id=dd-x popover></div></header>", 1), "good trigger fixture should pass"
 print("test-nav: ok (%d nav urls)" % len(urls))
 PY
 echo "PASS: nav"

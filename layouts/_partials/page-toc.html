@@ -1,5 +1,5 @@
 {{- /* On-this-page panel (issue #93): wide screens only (CSS), built from the page's own H2 ids. Issue #95: a page with a faq front matter also gets a link to its Questions section (id=questions in page-faq.html). */ -}}
-{{- $toc := .TableOfContents -}}
+{{- $toc := .TableOfContents | replaceRE `<nav id="TableOfContents">` (printf `<nav id="TableOfContents" aria-label="%s">` hugo.Data.nextsteps.toc_label) -}}
 {{- if .Params.faq }}{{ $toc = replaceRE `</ul>\s*</nav>` `<li><a href="#questions">Questions</a></li></ul></nav>` $toc }}{{ end -}}
 <aside class="page-toc" aria-labelledby="toc-h">
   <p class="toc-label" id="toc-h">{{ hugo.Data.nextsteps.toc_label }}</p>
