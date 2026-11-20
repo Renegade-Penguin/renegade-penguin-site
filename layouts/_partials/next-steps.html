@@ -1,0 +1,44 @@
+{{- /* Next-steps panel (issue #93). Shown on pages listed as an item in a data/nav.toml group; related links are the
+   siblings in that group (not the page itself), with /pricing/ kept in the list when it is not the current page. */ -}}
+{{- $d := hugo.Data.nextsteps -}}
+{{- $here := .RelPermalink -}}
+{{- $group := false -}}
+{{- range $name, $g := hugo.Data.nav.groups -}}
+  {{- range $g.items -}}
+    {{- if and (eq .url $here) (not $group) }}{{ $group = $g }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+{{- with $group -}}
+  {{- $pricing := dict -}}
+  {{- $others := slice -}}
+  {{- range .items -}}
+    {{- if eq .url "/pricing/" }}{{ $pricing = . }}
+    {{- else if ne .url $here }}{{ $others = $others | append . }}{{ end -}}
+  {{- end -}}
+  {{- if not $pricing -}}
+    {{- range hugo.Data.nav.groups -}}
+      {{- range .items }}{{ if eq .url "/pricing/" }}{{ $pricing = . }}{{ end }}{{ end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $keepPricing := ne $here "/pricing/" -}}
+  {{- $limit := cond $keepPricing 3 4 -}}
+  {{- $links := first $limit $others -}}
+  {{- if $keepPricing }}{{ $links = $links | append $pricing }}{{ end }}
+<section class="next-steps" aria-labelledby="next-steps-h">
+  <h2 id="next-steps-h">{{ $d.title }}</h2>
+  <div class="next-grid">
+    <div class="next-related">
+      <p class="next-label" id="next-related-h">{{ $d.related_label }}</p>
+      <ul class="next-list" aria-labelledby="next-related-h">
+        {{- range $links }}
+        <li><a href="{{ .url }}">{{ .label }}</a></li>
+        {{- end }}
+      </ul>
+    </div>
+    <div class="next-cta">
+      <p>{{ $d.cta_line }}</p>
+      <a class="btn btn-primary" href="{{ $d.cta_url }}">{{ $d.cta_button }}</a>
+    </div>
+  </div>
+</section>
+{{- end -}}

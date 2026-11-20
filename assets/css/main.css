@@ -213,3 +213,30 @@ main.hub { max-width: var(--shell); margin: 0 auto; padding: var(--space-5) var(
 .fit-strip h2 { margin: 0 0 var(--space-2); font-size: 1.35rem; }
 .fit-strip p { margin: 0; color: var(--muted); max-width: 44rem; }
 .hub-body { max-width: var(--measure); }
+
+/* Inner pages (issue #93): the article keeps the reading measure; on 1200px and wider the on-this-page panel
+   sits in the otherwise empty right column and the pair is centered in the shell. Below that the panel is hidden. */
+main:has(> .page-wrap) { max-width: var(--shell); }
+.page-wrap { max-width: var(--measure); margin: 0 auto; }
+.page-col { min-width: 0; }
+.page-toc { display: none; }
+@media (min-width: 75em) {
+  .page-wrap.has-toc { max-width: none; display: grid; grid-template-columns: minmax(0, var(--measure)) 15rem; gap: var(--space-6); justify-content: center; align-items: start; }
+  .page-toc { display: block; position: sticky; top: var(--space-5); z-index: 1; padding: var(--space-4) var(--space-4) var(--space-4) var(--space-4); background: var(--surface); border: 1px solid var(--rule); border-top: 3px solid var(--accent); font-size: var(--text-sm); }
+  .page-toc nav ul { list-style: none; margin: 0; padding: 0; }
+  .page-toc nav li { margin: 0; }
+  .page-toc nav a { display: block; padding: var(--space-2) 0 var(--space-2) var(--space-3); border-left: 3px solid transparent; color: var(--muted); text-decoration: none; line-height: 1.35; }
+  .page-toc nav a:hover, .page-toc nav a:focus-visible { border-left-color: var(--accent); color: var(--text); }
+  .toc-top { display: inline-flex; align-items: center; min-height: var(--tap); margin-top: var(--space-3); font: 700 0.8rem var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; }
+}
+.toc-label, .next-label { margin: 0 0 var(--space-2); font: 700 0.8rem var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+
+.next-steps { margin: var(--space-6) 0 0; padding: var(--space-5) clamp(1.25rem, 3vw, 2rem); background: var(--surface); border: 1px solid var(--rule); border-top: 3px solid var(--accent); }
+.next-steps h2 { margin: 0 0 var(--space-4); font-size: 1.35rem; }
+.next-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); align-items: start; }
+.next-list { list-style: none; margin: 0; padding: 0; }
+.next-list li { margin: 0; border-top: 1px dashed var(--rule); }
+.next-list a { display: flex; align-items: center; min-height: var(--tap); }
+.next-cta { display: flex; flex-direction: column; gap: var(--space-4); align-items: flex-start; }
+.next-cta p { margin: 0; color: var(--muted); }
+@media (max-width: 40em) { .next-grid { grid-template-columns: 1fr; } }

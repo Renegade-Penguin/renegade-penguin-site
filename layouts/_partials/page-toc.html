@@ -1,0 +1,6 @@
+{{- /* On-this-page panel (issue #93): wide screens only (CSS), built from the page's own H2 ids. */ -}}
+<aside class="page-toc" aria-labelledby="toc-h">
+  <p class="toc-label" id="toc-h">{{ hugo.Data.nextsteps.toc_label }}</p>
+  {{ .TableOfContents }}
+  <a class="toc-top" href="#main">{{ hugo.Data.nextsteps.back_to_top }}</a>
+</aside>
