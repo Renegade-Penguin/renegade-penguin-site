@@ -1,0 +1,61 @@
+<!doctype html>
+<!--
+  The PNG is a committed artifact. Regenerate it only with scripts/render-og-card.sh, which renders
+  this file with headless chromium and records the renderer version in RENDERER.txt beside this file.
+  Source for static/brand/og-card.png (1200x630). Not served: assets-src/ is outside Hugo's content paths.
+  Render (from the repo root):
+    /usr/bin/chromium --headless --disable-gpu --hide-scrollbars --window-size=1200,630 \
+      --screenshot=static/brand/og-card.png file://$PWD/assets-src/og-card/og-card.html
+  The PNG is about 70 KB, so no further optimization is needed.
+  Uses only the approved mascot and the bundled Orbitron and Jost fonts.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Renegade Penguin share card</title>
+<style>
+@font-face {
+  font-family: Jost;
+  font-weight: 100 900;
+  src: url("../../static/fonts/jost-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: Orbitron;
+  font-weight: 400 900;
+  src: url("../../static/fonts/orbitron-latin-wght-normal.woff2") format("woff2");
+}
+html, body { margin: 0; padding: 0; width: 1200px; height: 630px; overflow: hidden; }
+body {
+  position: relative;
+  background-color: #0F0F0F;
+  background-image:
+    linear-gradient(rgba(58, 53, 48, 0.38) 1px, transparent 1px), linear-gradient(90deg, rgba(58, 53, 48, 0.38) 1px, transparent 1px),
+    linear-gradient(rgba(58, 53, 48, 0.7) 1px, transparent 1px), linear-gradient(90deg, rgba(58, 53, 48, 0.7) 1px, transparent 1px);
+  background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+  color: #F0F0F0;
+  font-family: Jost, system-ui, sans-serif;
+}
+.rule { position: absolute; left: 0; top: 0; width: 16px; height: 630px; background: #FBB03B; }
+.panel {
+  position: absolute; left: 72px; top: 72px; width: 1056px; height: 486px;
+  background: #202020; border: 2px solid #3A3530; box-sizing: border-box;
+}
+.mascot { position: absolute; left: 48px; top: 87px; width: 312px; height: 312px; }
+.text { position: absolute; left: 424px; top: 0; width: 620px; height: 486px; display: flex; flex-direction: column; justify-content: center; }
+.eyebrow { font-family: Jost, sans-serif; font-weight: 600; font-size: 24px; letter-spacing: 4px; text-transform: uppercase; color: #FBB03B; margin: 0 0 24px; }
+.name { font-family: Orbitron, Jost, sans-serif; font-weight: 800; font-size: 44px; line-height: 1.1; white-space: nowrap; margin: 0 0 28px; color: #F0F0F0; }
+.tag { font-family: Jost, sans-serif; font-weight: 500; font-size: 38px; line-height: 1.25; text-wrap: balance; margin: 0; color: #F0F0F0; }
+</style>
+</head>
+<body>
+<div class="rule"></div>
+<div class="panel">
+  <img class="mascot" src="../../static/brand/penguin-color.png" alt="">
+  <div class="text">
+    <p class="eyebrow">Independent security advisory</p>
+    <p class="name">Renegade Penguin LLC</p>
+    <p class="tag">IT is not expensive. IT disasters are.</p>
+  </div>
+</div>
+</body>
+</html>
