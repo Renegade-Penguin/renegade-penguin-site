@@ -27,6 +27,10 @@ title = "Darknet Perspective"
 body = "I use practical darknet knowledge to see what attackers can see about a person or organization."
 
 [[items]]
+title = "Every Angle Tested"
+body = "I use authorized, scoped physical penetration testing, lock-picking knowledge, OSINT research, and impersonation scenarios to assess how someone might enter a building or organization."
+
+[[items]]
 title = "Emerging Technology Tracked"
 body = "Active research covers developing systems and threats, including Veilid and post-quantum cryptography, with substantial work performed in the open source community."
 
