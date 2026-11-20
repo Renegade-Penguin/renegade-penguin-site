@@ -20,6 +20,7 @@ Intended behavior, pinned by fixtures:
   - an unbalanced price span (never closed, or closed by an outer tag) is itself a finding.
 """
 import os
+import re
 import sys
 import unicodedata
 from html.parser import HTMLParser
@@ -36,6 +37,11 @@ BANNED = (
     "never failed",
     "battle-tested",
 )
+# The standalone word "crypto" is banned (owner rule: write cryptocurrency or cryptography).
+# Whole word only (underscore counts as a word character), so cryptography, cryptographic,
+# cryptocurrency and identifiers like crypto_token pass. Hyphenated or spaced use such as
+# crypto-agility is still flagged, because dashes normalize to spaces.
+CRYPTO_WORD = re.compile(r"(?<!\w)crypto(?!\w)")
 # Phrases removed before the banned list is applied.
 ALLOWED = ("not certified",)
 
@@ -155,6 +161,8 @@ def findings(path):
     for ok in ALLOWED:
         banned_text = banned_text.replace(norm(ok), " ")
     out = ["banned phrase: %s" % p for p in BANNED if norm(p) in banned_text]
+    if CRYPTO_WORD.search(banned_text):
+        out.append('banned word: crypto (write cryptocurrency or cryptography)')
     if has_dollar_figure(norm("".join(parser.dollar_parts))):
         out.append("dollar figure outside <span data-price>")
     if parser.unbalanced:
