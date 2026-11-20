@@ -29,20 +29,57 @@ a:hover { color: var(--text); }
 .site-header .bar { max-width: var(--shell); margin: 0 auto; padding: var(--space-3) var(--space-4); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-5); }
 .brand { display: inline-flex; align-items: center; gap: var(--space-3); color: var(--text); text-decoration: none; font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.14em; text-transform: uppercase; min-height: var(--tap); }
 .brand img { width: 2.5rem; height: 2.5rem; }
+.site-header .bar { position: relative; }
 .site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
 .site-nav a { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--space-2); color: var(--text); text-decoration: none; font: 500 0.85rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
 .site-nav a:hover { color: var(--accent); }
-.site-header .btn { margin-left: auto; }
+.menu-panel { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-left: auto; }
+.menu-toggle, .menu-btn { display: none; }
+/* Dropdowns: CSS only. Open on hover and on keyboard focus anywhere inside; moving focus away closes them. */
+.has-menu { position: static; }
+.dropdown { display: none; position: absolute; z-index: 20; top: 100%; left: var(--space-4); right: var(--space-4); max-width: 54rem; margin: 0 auto; padding: var(--space-5); background: var(--surface); border: 1px solid var(--rule); border-top: 3px solid var(--accent); }
+.dropdown::before { content: ""; position: absolute; left: 0; right: 0; top: -1.25rem; height: 1.25rem; }
+.has-menu:hover > .dropdown, .has-menu:focus-within > .dropdown { display: block; }
+.has-menu > a::after { content: ""; margin-left: var(--space-2); border: 0.3rem solid transparent; border-top-color: currentColor; border-bottom-width: 0; }
+.site-nav .dd-hub { display: flex; padding: 0; min-height: var(--tap); font: 700 1.05rem var(--font-display); letter-spacing: 0.12em; color: var(--accent); }
+.site-nav .dd-hub:hover { color: var(--text); }
+.dd-blurb { margin: 0 0 var(--space-4); color: var(--muted); font-size: var(--text-sm); }
+.site-nav .dd-items { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-5); }
+.site-nav .dd-items a { display: block; min-height: var(--tap); padding: var(--space-2) var(--space-3); border-left: 3px solid transparent; text-transform: none; letter-spacing: normal; font: 400 var(--text-sm) var(--font-body); color: var(--muted); }
+.site-nav .dd-items a:hover, .site-nav .dd-items a:focus-visible { border-left-color: var(--accent); color: var(--muted); }
+.dd-label { display: block; font: 700 0.8rem var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text); }
+.dd-desc { display: block; margin-top: var(--space-1); }
+.site-nav .has-menu > a:hover, .site-nav .is-section > a { color: var(--accent); }
+.site-header .btn { white-space: nowrap; }
 /* Wide screens: brand, short nav and button stay on one row. Below that the bar may wrap but never overflows. */
 @media (min-width: 64em) {
   .site-header .bar { flex-wrap: nowrap; gap: var(--space-4); }
   .site-nav ul { flex-wrap: nowrap; gap: 0 var(--space-2); }
-  .site-nav a, .site-header .btn { white-space: nowrap; }
+  .site-nav a { white-space: nowrap; }
+  .site-nav .dd-items a { white-space: normal; }
 }
-@media (max-width: 40em) {
-  .site-header .bar { gap: var(--space-2) var(--space-3); }
+/* Phone and narrow tablet: the menu collapses behind a CSS-only checkbox button and opens as a stacked list. */
+@media (max-width: 900px) {
+  .site-header .bar { flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
   .brand { letter-spacing: 0.08em; font-size: 0.85rem; min-width: 0; }
-  .site-nav ul { gap: 0 var(--space-1); }
+  .menu-btn { display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap); min-width: 4.5rem; padding: 0 var(--space-3); margin-left: auto; border: 2px solid var(--muted); color: var(--text); font: 700 0.85rem var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+  .menu-btn:hover, .menu-toggle:checked + .menu-btn { border-color: var(--accent); color: var(--accent); }
+  .menu-toggle { display: block; position: absolute; right: var(--space-4); top: var(--space-3); width: 4.5rem; height: var(--tap); margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+  .menu-toggle:focus-visible + .menu-btn { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .menu-panel { display: none; flex: 0 0 100%; flex-direction: column; align-items: stretch; flex-wrap: nowrap; margin: 0; gap: var(--space-3); }
+  .menu-toggle:checked ~ .menu-panel { display: flex; }
+  .menu-panel .btn { order: -1; }
+  .site-nav ul { flex-direction: column; flex-wrap: nowrap; gap: 0; }
+  .site-nav a { display: flex; white-space: normal; border-top: 1px solid var(--rule); }
+  .has-menu > a::after { display: none; }
+  .dropdown { display: block; position: static; max-width: none; margin: 0; padding: 0 0 var(--space-3) var(--space-3); background: transparent; border: 0; border-left: 3px solid var(--accent); }
+  .dropdown::before { display: none; }
+  .site-nav .dd-items { grid-template-columns: 1fr; gap: 0; padding: 0; }
+  .site-nav .dd-items a { border-top: 0; }
+  .site-nav .dd-hub { border-top: 0; }
+}
+@media (max-width: 30em) {
+  .brand { font-size: 0.75rem; letter-spacing: 0.04em; gap: var(--space-2); }
 }
 .page { min-width: 0; }
 .lede { color: var(--muted); font-size: var(--text-lg); }

@@ -1,0 +1,120 @@
+# Header menu (issue #87). layouts/_partials/header.html renders this; the order of [[top]] is the top-level order.
+
+[[top]]
+label = "Home"
+url = "/"
+
+[[top]]
+group = "services"
+
+[[top]]
+group = "who-we-help"
+
+[[top]]
+label = "Pricing"
+url = "/pricing/"
+
+[[top]]
+group = "about"
+
+[[top]]
+label = "Contact"
+url = "/contact/"
+
+[groups.services]
+label = "Services"
+heading = "Security Services"
+blurb = "Advisory, project, education, scope, and pricing details."
+url = "/services/"
+
+[[groups.services.items]]
+label = "Security and IT Advisory"
+description = "Get ongoing virtual CISO and CIO guidance through a retainer."
+url = "/services/advisory/"
+
+[[groups.services.items]]
+label = "Security Projects"
+description = "Explore fixed-scope assessments, hardening, and AI security reviews."
+url = "/services/projects/"
+
+[[groups.services.items]]
+label = "Education and Speaking"
+description = "Book talks, workshops, or tabletop exercises for your organization."
+url = "/services/education-speaking/"
+
+[[groups.services.items]]
+label = "Sample Scope"
+description = "Review a sample advisory retainer, responsibilities, and deliverables."
+url = "/sample-scope-of-work/"
+
+[[groups.services.items]]
+label = "Pricing"
+description = "See starting prices for assessments, projects, and advisory retainers."
+url = "/pricing/"
+
+[groups."who-we-help"]
+label = "Who we help"
+heading = "Organizations Served"
+blurb = "Security and IT guidance for organizations with specific needs."
+url = "/who-we-help/"
+
+[[groups."who-we-help".items]]
+label = "Small Businesses"
+description = "Get practical security and IT guidance for a small business."
+url = "/who-we-help/small-business/"
+
+[[groups."who-we-help".items]]
+label = "Medical Practices"
+description = "Find HIPAA security risk work for medical and dental practices."
+url = "/who-we-help/healthcare-dental/"
+
+[[groups."who-we-help".items]]
+label = "Private Aviation"
+description = "Get security guidance for aircraft owners, operators, and aviation businesses."
+url = "/who-we-help/aviation/"
+
+[[groups."who-we-help".items]]
+label = "Critical Infrastructure"
+description = "Find security advisory work for critical infrastructure organizations."
+url = "/who-we-help/critical-infrastructure/"
+
+[[groups."who-we-help".items]]
+label = "Ohio Organizations"
+description = "Get guidance on applying Ohio's cybersecurity framework."
+url = "/ohio/"
+
+[groups.about]
+label = "About"
+heading = "About Renegade Penguin"
+blurb = "Learn who runs the firm, how engagements work, and what fits."
+url = "/about/"
+
+[[groups.about.items]]
+label = "About"
+description = "Learn who runs Renegade Penguin and how the firm operates."
+url = "/about/"
+
+[[groups.about.items]]
+label = "Experience"
+description = "Review professional background, tools, credentials, and past work."
+url = "/experience/"
+
+[[groups.about.items]]
+label = "Community"
+description = "See open source work, free education, and volunteer service."
+url = "/community/"
+
+[[groups.about.items]]
+label = "How We Work"
+description = "Follow the engagement process from fit call through final handoff."
+url = "/how-we-work/"
+
+[[groups.about.items]]
+label = "When Not to Hire"
+description = "Check whether another provider or approach would fit better."
+url = "/when-not-to-hire/"
+
+[[groups.about.items]]
+label = "Case Studies"
+description = "Review anonymized examples of past advisory and assessment work."
+url = "/case-studies/"
