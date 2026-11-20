@@ -88,6 +88,11 @@ def check(rel, doc, want):
     details = re.findall(r"<details class=\"?faq\"?>\s*<summary>(.*?)</summary>\s*<p>(.*?)</p>\s*</details>", art, re.S)
     qh = re.findall(r"<h2[^>]*>\s*Questions\s*</h2>", art)
     if want is None:
+        # Exemption (issue #98): pages under /guides/ keep their verbatim hand-written Questions H2 with H3
+        # questions and inline links; scripts/test-guides.sh asserts the 4 H3 questions on each. Only that
+        # H2 is allowed there: p.answer and details.faq stay barred, and every other page keeps the full rule.
+        if rel.startswith("/guides/"):
+            qh = []
         if answers or details or qh:
             errs.append("%s: has answer/faq/Questions but should not" % rel)
         return errs
@@ -151,6 +156,16 @@ if not fails:
     for name, doc in cases.items():
         assert check(rel, doc, w), "guard does not bite: " + name
     assert check("/contact/", good, None), "no-faq guard does not bite"
+    # The /guides/ exemption covers only a hand-written Questions H2; everything else stays barred there.
+    gpath = "/guides/what-is-a-vciso/"
+    guide = (root / "guides/what-is-a-vciso/index.html").read_text(encoding="utf-8")
+    assert re.search(r"<h2[^>]*>\s*Questions\s*</h2>", guide), "guide fixture lost its Questions H2"
+    assert not check(gpath, guide, None), "guide with a hand-written Questions H2 must pass"
+    assert check(gpath, guide.replace("</article>", "<p class=answer>y</p></article>", 1), None), "guide p.answer not barred"
+    assert check(gpath, guide.replace("</article>", "<details class=faq><summary>q</summary><p>a</p></details></article>", 1), None), "guide details.faq not barred"
+    assert check("/contact/", guide, None), "Questions H2 on a non-guide page not barred"
+    assert check("/other/", guide, None), "Questions H2 outside /guides/ not barred"
+    assert check("/guidesx/a/", guide, None), "prefix lookalike of /guides/ not barred"
     dashed = ("A" + chr(0x2014) + "B", w[1])
     assert any("dash" in e for e in check(rel, good, dashed)), "dash guard does not bite"
     crypto = (w[0] + " crypto", w[1])

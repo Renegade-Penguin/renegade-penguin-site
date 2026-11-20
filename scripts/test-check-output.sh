@@ -507,6 +507,32 @@ printf '%s' '<p>{{OWNED}} the OWNER: field, {OWNER:x} and {{ONER:x}}</p>' >"$nea
 run_check "$near" production REQUIRE_NO_OWNER_TOKENS=1
 if [ "$RC" = "0" ]; then echo "ok: near-miss text passes with REQUIRE_NO_OWNER_TOKENS=1"; else soft "near-miss text must pass: rc=$RC $OUT"; fi
 
+# Owner-review marker (issue #98): a page with <meta name="x-owner-review" content="pending"> blocks only the
+# real cutover (REQUIRE_OWNER_APPROVAL=1 with EXPECT_ENV=production); CI and staging builds stay green.
+rev_html='<meta name="x-owner-review" content="pending"><p>guide</p>'
+rev_prod="$(stage clean)"
+printf '%s' "$rev_html" >"$rev_prod/pending.html"
+rev_stg="$(stage clean-staging)"
+printf '%s' '<meta name="robots" content="noindex, nofollow">'"$rev_html" >"$rev_stg/pending.html"
+rev_min="$(stage clean)"
+printf '%s' '<meta name=x-owner-review content=pending><p>guide</p>' >"$rev_min/pending.html"
+run_check "$rev_prod" production REQUIRE_OWNER_APPROVAL=1
+if [ "$RC" != "0" ] && grep -q '^FAIL owner_review: .*pending.html' <<<"$OUT"; then echo "ok: pending page fails the production gate and is named"; else soft "pending page must fail the production gate: rc=$RC $OUT"; fi
+run_check "$rev_min" production REQUIRE_OWNER_APPROVAL=1
+if [ "$RC" != "0" ] && grep -q '^FAIL owner_review:' <<<"$OUT"; then echo "ok: minified (unquoted) pending marker fails the production gate"; else soft "minified pending marker must fail: rc=$RC $OUT"; fi
+run_check "$rev_prod" production REQUIRE_OWNER_APPROVAL=1 SKIP_OWNER_REVIEW=1
+if [ "$RC" = "0" ]; then echo "ok: SKIP_OWNER_REVIEW=1 disables the owner review check"; else soft "SKIP_OWNER_REVIEW=1 must pass: $OUT"; fi
+run_check "$rev_stg" staging REQUIRE_OWNER_APPROVAL=1
+if [ "$RC" = "0" ]; then echo "ok: pending page passes staging even with REQUIRE_OWNER_APPROVAL=1"; else soft "staging must not fail for the pending marker: $OUT"; fi
+run_check "$rev_prod" production
+if [ "$RC" = "0" ]; then echo "ok: pending page passes production when REQUIRE_OWNER_APPROVAL is unset (CI)"; else soft "CI invocation must stay green: $OUT"; fi
+run_check "$rev_prod" production REQUIRE_OWNER_APPROVAL=0
+if [ "$RC" = "0" ]; then echo "ok: REQUIRE_OWNER_APPROVAL=0 skips the check"; else soft "REQUIRE_OWNER_APPROVAL=0 must skip: $OUT"; fi
+run_check "$rev_prod" production REQUIRE_OWNER_APPROVAL=yes
+if [ "$RC" != "0" ] && grep -q '^FAIL owner_review:' <<<"$OUT"; then echo "ok: an unexpected REQUIRE_OWNER_APPROVAL value fails closed"; else soft "bad REQUIRE_OWNER_APPROVAL must fail: rc=$RC $OUT"; fi
+run_check "$(stage clean)" production REQUIRE_OWNER_APPROVAL=1
+if [ "$RC" = "0" ]; then echo "ok: page without the marker passes the production gate"; else soft "clean tree must pass with approval required: $OUT"; fi
+
 # REQUIRE_NO_OWNER_TOKENS: unset, empty and 0 skip; 1 runs; anything else fails closed.
 tok_tree="$(stage clean)"
 printf '%s' '<p>{{OWNER:x}}</p>' >"$tok_tree/owner.html"
