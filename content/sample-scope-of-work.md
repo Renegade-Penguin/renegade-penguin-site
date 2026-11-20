@@ -53,7 +53,7 @@ The client will:
 
 Work begins with {{< pricing tier="assessment" field="price" >}}. Ongoing advisory work is available at three retainer levels: {{< pricing tier="advisory" field="retainer_small" >}}, {{< pricing tier="advisory" field="retainer_standard" >}}, or {{< pricing tier="advisory" field="retainer_plus" >}}. A signed retainer includes {{< pricing tier="assessment" field="credit" >}}.
 
-Work outside the agreed scope is billed at {{< pricing tier="advisory" field="hourly" >}} only after written approval. Retainers are {{< pricing tier="advisory" field="retainer_terms" >}}.
+Work outside the agreed scope is billed at {{< pricing tier="advisory" field="extra_hours" >}} only after written approval. Retainers are {{< pricing tier="advisory" field="retainer_terms" >}}.
 
 ## Term and Ending the Engagement
 
