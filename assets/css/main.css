@@ -25,22 +25,28 @@ a:hover { color: var(--text); }
 .skip { position: absolute; left: var(--space-2); top: -4rem; background: var(--accent); color: var(--on-accent); padding: var(--space-2) var(--space-4); border-radius: var(--radius); z-index: 10; }
 .skip:focus { top: var(--space-2); }
 
-.site-header { border-bottom: 2px solid var(--rule); background: var(--bg); }
+/* --header-h is the one-row header height: bar padding, the 44px row and the 2px rule. The popover panels below sit in
+   the top layer, so they are placed from the page origin; where anchor positioning exists they follow the real header. */
+.site-header { --header-h: calc(2 * var(--space-3) + var(--tap) + 2px); anchor-name: --site-header; border-bottom: 2px solid var(--rule); background: var(--bg); }
 .site-header .bar { max-width: var(--shell); margin: 0 auto; padding: var(--space-3) var(--space-4); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-5); }
 .brand { display: inline-flex; align-items: center; gap: var(--space-3); color: var(--text); text-decoration: none; font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.14em; text-transform: uppercase; min-height: var(--tap); }
 .brand img { width: 2.5rem; height: 2.5rem; }
 .site-header .bar { position: relative; }
 .site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
-.site-nav a { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--space-2); color: var(--text); text-decoration: none; font: 500 0.85rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
-.site-nav a:hover { color: var(--accent); }
-.menu-panel { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-left: auto; }
-.menu-toggle, .menu-btn { display: none; }
-/* Dropdowns: CSS only. Open on hover and on keyboard focus anywhere inside; moving focus away closes them. */
+.site-nav a, .site-nav .dd-trigger { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--space-2); color: var(--text); text-decoration: none; font: 500 0.85rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.site-nav .dd-trigger { margin: 0; background: none; border: 0; border-radius: 0; cursor: pointer; }
+.site-nav a:hover, .site-nav .dd-trigger:hover { color: var(--accent); }
+/* The menu panel is a popover so the phone Menu button gets the browser-managed expanded state and Escape. On wide
+   screens it is always shown inline; the reset below undoes the popover user-agent box (fixed, centered, bordered). */
+.menu-panel { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: 0 0 0 auto; position: static; inset: auto; width: auto; height: auto; padding: 0; border: 0; overflow: visible; color: inherit; background: transparent; }
+.menu-btn { display: none; }
+/* Dropdowns (issue #91): click or Enter on the trigger button opens its popover panel; Escape, a click elsewhere or
+   opening another panel closes it and Escape returns focus to the trigger. There is no hover-open: CSS cannot open a
+   popover on hover without giving up the browser's Escape handling, so click-to-open is the accessible choice. */
 .has-menu { position: static; }
-.dropdown { display: none; position: absolute; z-index: 20; top: 100%; left: var(--space-4); right: var(--space-4); max-width: 54rem; margin: 0 auto; padding: var(--space-5); background: var(--surface); border: 1px solid var(--rule); border-top: 3px solid var(--accent); }
-.dropdown::before { content: ""; position: absolute; left: 0; right: 0; top: -1.25rem; height: 1.25rem; }
-.has-menu:hover > .dropdown, .has-menu:focus-within > .dropdown { display: block; }
-.has-menu > a::after { content: ""; margin-left: var(--space-2); border: 0.3rem solid transparent; border-top-color: currentColor; border-bottom-width: 0; }
+.dropdown { position: absolute; z-index: 20; inset: auto; top: calc(var(--header-h) - 2px); left: var(--space-4); right: var(--space-4); width: auto; height: auto; max-width: 54rem; margin: 0 auto; padding: var(--space-5); overflow: visible; color: inherit; background: var(--surface); border: 1px solid var(--rule); border-top: 3px solid var(--accent); }
+.dd-trigger:has(+ .dropdown:popover-open) { color: var(--accent); }
+.has-menu > .dd-trigger::after { content: ""; margin-left: var(--space-2); border: 0.3rem solid transparent; border-top-color: currentColor; border-bottom-width: 0; }
 .site-nav .dd-hub { display: flex; padding: 0; min-height: var(--tap); font: 700 1.05rem var(--font-display); letter-spacing: 0.12em; color: var(--accent); }
 .site-nav .dd-hub:hover { color: var(--text); }
 .dd-blurb { margin: 0 0 var(--space-4); color: var(--muted); font-size: var(--text-sm); }
@@ -49,7 +55,7 @@ a:hover { color: var(--text); }
 .site-nav .dd-items a:hover, .site-nav .dd-items a:focus-visible { border-left-color: var(--accent); color: var(--muted); }
 .dd-label { display: block; font: 700 0.8rem var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text); }
 .dd-desc { display: block; margin-top: var(--space-1); }
-.site-nav .has-menu > a:hover, .site-nav .is-section > a { color: var(--accent); }
+.site-nav .has-menu > .dd-trigger:hover, .site-nav .is-section > .dd-trigger { color: var(--accent); }
 .site-header .btn { white-space: nowrap; }
 /* Wide screens: brand, short nav and button stay on one row. Below that the bar may wrap but never overflows. */
 @media (min-width: 64em) {
@@ -58,22 +64,20 @@ a:hover { color: var(--text); }
   .site-nav a { white-space: nowrap; }
   .site-nav .dd-items a { white-space: normal; }
 }
-/* Phone and narrow tablet: the menu collapses behind a CSS-only checkbox button and opens as a stacked list. */
+/* Phone and narrow tablet: the menu collapses behind the Menu popover button and opens as a stacked list laid over the page. */
 @media (max-width: 900px) {
   .site-header .bar { flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
   .brand { letter-spacing: 0.08em; font-size: 0.85rem; min-width: 0; }
-  .menu-btn { display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap); min-width: 4.5rem; padding: 0 var(--space-3); margin-left: auto; border: 2px solid var(--muted); color: var(--text); font: 700 0.85rem var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
-  .menu-btn:hover, .menu-toggle:checked + .menu-btn { border-color: var(--accent); color: var(--accent); }
-  .menu-toggle { display: block; position: absolute; right: var(--space-4); top: var(--space-3); width: 4.5rem; height: var(--tap); margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
-  .menu-toggle:focus-visible + .menu-btn { outline: 3px solid var(--focus); outline-offset: 2px; }
-  .menu-panel { display: none; flex: 0 0 100%; flex-direction: column; align-items: stretch; flex-wrap: nowrap; margin: 0; gap: var(--space-3); }
-  .menu-toggle:checked ~ .menu-panel { display: flex; }
-  .menu-panel .btn { order: -1; }
+  .menu-btn { display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap); min-width: 4.5rem; padding: 0 var(--space-3); margin-left: auto; background: none; border: 2px solid var(--muted); border-radius: 0; color: var(--text); font: 700 0.85rem var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+  .menu-btn:hover, .menu-btn:has(+ .menu-panel:popover-open) { border-color: var(--accent); color: var(--accent); }
+  .menu-panel { position: absolute; z-index: 20; top: var(--header-h); left: 0; right: 0; max-height: calc(100vh - var(--header-h)); overflow-y: auto; flex-direction: column; align-items: stretch; flex-wrap: nowrap; margin: 0; padding: 0 var(--space-4) var(--space-4); gap: var(--space-3); background: var(--bg); border-bottom: 2px solid var(--rule); }
+  .menu-panel:not(:popover-open) { display: none; }
+  .menu-panel .btn { order: -1; margin-top: var(--space-3); }
   .site-nav ul { flex-direction: column; flex-wrap: nowrap; gap: 0; }
   .site-nav a { display: flex; white-space: normal; border-top: 1px solid var(--rule); }
-  .has-menu > a::after { display: none; }
-  .dropdown { display: block; position: static; max-width: none; margin: 0; padding: 0 0 var(--space-3) var(--space-3); background: transparent; border: 0; border-left: 3px solid var(--accent); }
-  .dropdown::before { display: none; }
+  .has-menu { border-top: 1px solid var(--rule); }
+  .site-nav .dd-trigger { display: none; }
+  .dropdown { display: block; position: static; width: auto; max-width: none; margin: 0; padding: 0 0 var(--space-3) var(--space-3); background: transparent; border: 0; border-left: 3px solid var(--accent); }
   .site-nav .dd-items { grid-template-columns: 1fr; gap: 0; padding: 0; }
   .site-nav .dd-items a { border-top: 0; }
   .site-nav .dd-hub { border-top: 0; }
@@ -81,12 +85,28 @@ a:hover { color: var(--text); }
 @media (max-width: 30em) {
   .brand { font-size: 0.75rem; letter-spacing: 0.04em; gap: var(--space-2); }
 }
+/* Panels in the top layer are placed from the page origin; with anchor positioning they follow the real header height. */
+@supports (top: anchor(bottom)) {
+  .dropdown { position-anchor: --site-header; top: calc(anchor(bottom) - 2px); }
+  .menu-panel { position-anchor: --site-header; top: anchor(bottom); }
+}
+/* No popover support: the buttons do nothing, so hide them and show every group expanded and stacked, links intact. */
+@supports not selector(:popover-open) {
+  .menu-btn, .site-nav .dd-trigger { display: none; }
+  .site-header .bar { flex-wrap: wrap; }
+  .menu-panel { flex: 0 0 100%; flex-direction: column; align-items: stretch; flex-wrap: nowrap; }
+  .site-nav ul { flex-direction: column; flex-wrap: nowrap; gap: 0; }
+  .dropdown { display: block; position: static; width: auto; max-width: none; margin: 0; padding: 0 0 var(--space-3) var(--space-3); background: transparent; border: 0; border-left: 3px solid var(--accent); }
+  .site-nav .dd-items { grid-template-columns: 1fr; gap: 0; }
+}
 .page { min-width: 0; }
 .lede { color: var(--muted); font-size: var(--text-lg); }
 .answer { color: var(--muted); font-size: var(--text-lg); border-left: 3px solid var(--accent); padding-left: var(--space-4); margin: 0 0 var(--space-5); }
 .page-faq h2 { margin-top: var(--space-6); }
 .page-list { padding-left: var(--space-5); }
 .site-nav a[aria-current="page"] { color: var(--accent); }
+/* The skip link target takes focus (tabindex -1); a ring around the whole page body would only be noise. */
+main:focus-visible { outline: none; }
 
 .site-footer { border-top: 2px solid var(--muted); background: var(--bg); color: var(--muted); font-size: var(--text-sm); }
 .site-footer .bar { max-width: var(--shell); margin: 0 auto; padding: var(--space-4); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2) var(--space-5); }
@@ -140,9 +160,21 @@ main.home { max-width: var(--shell); margin: 0 auto; padding: var(--space-5) var
 .partner-tile { display: flex; align-items: center; justify-content: center; min-height: 10.5rem; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--rule); text-align: center; }
 .partner-tile .name { margin: 0; padding: 1rem; font-family: var(--font-display); font-size: 1.1rem; line-height: 1.3; font-weight: 600; color: var(--text); }
 .partner-logo { display: block; height: auto; }
+/* Forced colors (issue #91): the logo artwork is light-on-dark, so the tile that carries an image keeps its dark surface
+   (forced-color-adjust: none) with a system-color edge; every other element stays on the user's system colors. */
+@media (forced-colors: active) {
+  .partner-tile:has(.partner-logo) { forced-color-adjust: none; background: var(--surface); border: 1px solid CanvasText; }
+}
 .partner-logo.zone-shield { max-width: calc(100% - 6rem); margin: 3rem; }
 /* Cointelegraph: free space is half the icon height (about 22 px at this size), 1.5rem all round. */
 .partner-logo.zone-half-icon { max-width: calc(100% - 3rem); margin: 1.5rem; }
+/* Logos with no stated clear space: 1.5rem all round. */
+.partner-logo.zone-default { max-width: calc(100% - 3rem); margin: 1.5rem; }
+/* The one effect allowed on a logo, only on files whose provenance treatment is mono-light (a mark that is
+   dark on transparent, or sits on an opaque white background). Grayscale then invert makes the mark light and
+   a white background black; the screen blend lets that black vanish into the dark tile, so no light plate is
+   drawn; the fixed opacity gives the muted light tone. The kit logos never carry this class. */
+.partner-logo--mono { filter: grayscale(1) invert(1); mix-blend-mode: screen; opacity: 0.8; }
 .grid.fill-last > :last-child:nth-child(odd) { grid-column: span 12; }
 .steps { margin: 0; }
 .step { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }

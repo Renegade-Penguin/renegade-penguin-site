@@ -42,7 +42,7 @@
 <a class="skip" href="#main">Skip to content</a>
 {{ partial "header.html" . }}
 {{ partial "case-strip.html" . }}
-<main id="main"{{ if .IsHome }} class="home"{{ else if and .IsSection (in (slice "services" "who-we-help") .Section) }} class="hub"{{ end }}>
+<main id="main" tabindex="-1"{{ if .IsHome }} class="home"{{ else if and .IsSection (in (slice "services" "who-we-help") .Section) }} class="hub"{{ end }}>
 {{ block "main" . }}{{ end }}
 </main>
 {{ partial "footer.html" . }}
