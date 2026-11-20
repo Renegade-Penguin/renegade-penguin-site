@@ -30,7 +30,7 @@ DASHES = (chr(0x2014), chr(0x2013))
 ALLOWED = {
     "/services/advisory/", "/services/projects/", "/services/education-speaking/", "/services/",
     "/who-we-help/small-business/", "/who-we-help/", "/how-we-work/", "/pricing/",
-    "/sample-scope-of-work/", "/contact/", "/when-not-to-hire/", "/ohio/",
+    "/sample-scope-of-work/", "/contact/", "/when-not-to-hire/", "/ohio/", "/guides/what-is-a-vciso/",
 }
 HUB = ("/guides/", "Guides", "Cybersecurity Guides | Renegade Penguin")
 GUIDES = [
@@ -40,6 +40,8 @@ GUIDES = [
      "A virtual CISO leads security decisions, while a virtual chief information officer"),
     ("/guides/ai-security-review-small-organizations/", "AI Security Reviews for Small Organizations",
      "AI Security Review Guide | Renegade Penguin", "An AI security review is a fixed-scope examination"),
+    ("/guides/why-hands-on-advice-holds-up/", "Why Hands-On Security Advice Holds Up",
+     "Why Hands-On Advice Holds Up | Renegade Penguin", "Advice holds up when it accounts for how systems actually behave"),
 ]
 
 
@@ -119,7 +121,7 @@ else:
 for e in errs:
     print(e)
 assert not errs, "%d violation(s)" % len(errs)
-assert len(docs) == 3, "collected %d guide pages, wanted 3" % len(docs)
+assert len(docs) == 4, "collected %d guide pages, wanted 4" % len(docs)
 
 # negative cases: each guard bites on a mutated copy of a real page
 url, title, seo, first = GUIDES[0]
