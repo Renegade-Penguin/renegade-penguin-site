@@ -31,4 +31,4 @@ Yes. An advisory retainer provides ongoing access for security decisions, vendor
 
 Compare the available [services](/services/) or [contact Renegade Penguin](/contact/) to discuss an assessment or advisory retainer.
 
-Small-business leaders can learn [what a virtual CISO does](/guides/what-is-a-vciso/), compare [virtual CISO and virtual CIO roles](/guides/vciso-vs-vcio/), explore [ongoing advisory support](/services/advisory/), and review [pricing and assessments](/pricing/).
+You can also learn [what a virtual CISO is](/guides/what-is-a-vciso/), or see how advisory work applies to [medical and dental practices](/who-we-help/healthcare-dental/), [private aviation](/who-we-help/aviation/), and [critical infrastructure](/who-we-help/critical-infrastructure/).

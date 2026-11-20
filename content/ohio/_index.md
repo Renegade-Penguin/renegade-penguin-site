@@ -22,4 +22,4 @@ The practical work is familiar: choose an appropriate framework, document the pr
 
 Businesses considering the Ohio provisions should speak with qualified counsel about whether the law applies to them and what evidence they should maintain. Review the available [services](/services/) or [contact Renegade Penguin](/contact/) to discuss the security work.
 
-Ohio organizations can explore [small-business security support](/who-we-help/small-business/), [ongoing advisory services](/services/advisory/), and [fixed-scope security projects](/services/projects/), then [schedule a free fit call](/contact/).
+Ohio organizations can explore guidance for [small businesses](/who-we-help/small-business/), [medical and dental practices](/who-we-help/healthcare-dental/), and [critical infrastructure](/who-we-help/critical-infrastructure/), then schedule a [free 30 minute fit call](/contact/).

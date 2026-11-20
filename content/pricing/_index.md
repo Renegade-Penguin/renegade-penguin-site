@@ -60,4 +60,4 @@ Quotes exclude software licenses, hardware, travel expenses, taxes, legal servic
 
 Quotes assume timely access, accurate information, an authorized decision-maker, and staff who can answer questions.
 
-For more context, read [what a virtual CISO does](/guides/what-is-a-vciso/), review a [sample retainer scope](/sample-scope-of-work/), see [how engagements run](/how-we-work/), and consider [when not to hire](/when-not-to-hire/).
+For more context, read [what a virtual CISO does](/guides/what-is-a-vciso/), review [a sample retainer scope](/sample-scope-of-work/), see [how engagements run](/how-we-work/), or explore [education and speaking](/services/education-speaking/).
