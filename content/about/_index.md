@@ -17,3 +17,7 @@ I have spent about 16 years working in the field, learning security by building,
 I have seen both the defensive and underground sides of security, and I know Tor and I2P beyond the usual boogeyman stories. I research and build heavily in open source, track work such as Veilid and post-quantum cryptography, and explain complex subjects without stripping away the details that matter. I will not ask someone else to do work I have not tried to understand myself, and I bring that same standard to executive claims: clear questions, technical evidence, and no fluff.
 
 Bring the hard questions to a call, and I will answer them directly.
+
+I started in networking, Linux and system administration, then moved into cybersecurity. Linux remains my daily driver, and I have used it in production alongside hands-on work in networking architecture, identity, detection and response, cloud security and automation.
+
+That systems background affects how I approach security work. I want to understand how something is built, who operates it and what can realistically be maintained before I recommend controls around it.
