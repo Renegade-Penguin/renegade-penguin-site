@@ -2,7 +2,17 @@
   <img src="/brand/penguin-color.png" alt="Renegade Penguin mascot: a penguin holding a rifle" width="512" height="512">
   <div class="hero-copy">
     <p class="eyebrow">{{ .eyebrow }}</p>
-    <h1 id="hero-title">{{ .title }}</h1>
+    {{- $lines := findRE `[^.!?]+[.!?]` .title }}
+    <h1 id="hero-title">
+      {{- if $lines -}}
+        {{- range $i, $l := $lines -}}
+          {{- if $i }} {{ end -}}
+          <span class="hero-line">{{ trim $l " " }}</span>
+        {{- end -}}
+      {{- else -}}
+        {{ .title }}
+      {{- end -}}
+    </h1>
     <p class="sub">{{ .body }}</p>
     <p class="intro">{{ .intro }}</p>
     <p class="actions">

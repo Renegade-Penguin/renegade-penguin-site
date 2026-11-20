@@ -258,6 +258,67 @@ for bad in (re.sub(r"grid-n11", "grid-x", html), re.sub(r"grid-n3", "", html, co
         raise SystemExit("guard did not fail on a grid without its count class")
 PY
 
+# (f) hero title renders as one block line per sentence (issue #99): exactly two .hero-line spans,
+# the h1 text with tags stripped still equals the title in hero.toml, and the checker bites on bad input.
+python3 -I - "$OUT" <<'PY' || soft "(f) hero title lines"
+import re
+import sys
+import tomllib
+from html.parser import HTMLParser
+
+title = tomllib.load(open("data/home/hero.toml", "rb"))["title"]
+
+
+class H(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.in_h1 = False
+        self.line = None
+        self.lines = []
+        self.text = ""
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "h1":
+            self.in_h1 = True
+        if self.in_h1 and tag == "span" and "hero-line" in (dict(attrs).get("class") or "").split():
+            self.line = ""
+
+    def handle_endtag(self, tag):
+        if tag == "h1":
+            self.in_h1 = False
+        if tag == "span" and self.line is not None:
+            self.lines.append(self.line)
+            self.line = None
+
+    def handle_data(self, d):
+        if self.in_h1:
+            self.text += d
+            if self.line is not None:
+                self.line += d
+
+
+def check(html):
+    h = H()
+    h.feed(html)
+    assert h.lines == ["IT is not expensive.", "IT disasters are."], h.lines
+    assert re.sub(r"\s+", " ", h.text).strip() == title, (h.text, title)
+    assert re.search(r"\s", h.text.strip()), "no space between sentences"
+
+
+check(open(sys.argv[1] + "/index.html", encoding="utf-8").read())
+for bad in (
+    '<h1 id="x">IT is not expensive. IT disasters are.</h1>',
+    '<h1><span class="hero-line">IT is not expensive.</span><span class="hero-line">IT disasters are.</span></h1>',
+    '<h1><span class="hero-line">IT is not expensive. IT disasters are.</span></h1>',
+):
+    try:
+        check(bad)
+    except AssertionError:
+        pass
+    else:
+        raise SystemExit("hero line guard did not fail on: " + bad)
+PY
+
 # (d) end to end: a banned word in a home data file reaches the page and check-claims fails it.
 S="$TMP/scratch"
 mkdir -p "$S"
