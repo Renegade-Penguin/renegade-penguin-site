@@ -40,8 +40,8 @@ for n in names:
                 assert it.get("url") == "https://github.com/ChiefGyk3D/" + it["title"], (n, it)
                 assert "{{OWNER:" not in it["title"] + it["body"], (n, it)
         if n == "not-typical":
-            assert len(d["items"]) == 8, (n, len(d["items"]))
-            assert [i["title"] for i in d["items"]][4:6] == ["Travel Data Exposure", "Darknet Perspective"], d["items"]
+            assert len(d["items"]) == 10, (n, len(d["items"]))
+            assert [i["title"] for i in d["items"]][4:10] == ["Travel Data Exposure", "Darknet Perspective", "Every Angle Tested", "Emerging Technology Tracked", "Beyond Compliance", "Evidence Before Claims"], d["items"]
         if n == "engagement":
             assert [i.get("stamp") for i in d["items"]] == ["FREE", "CREDITED", "DELIVERED"]
 b = tomllib.load(open("data/home/behind.toml", "rb"))
@@ -159,9 +159,11 @@ out = sys.argv[1]
 css = "".join(open(f, encoding="utf-8").read() for f in glob.glob(out + "/**/*.css", recursive=True))
 assert css, "no built css collected"
 # wide span per item for the counts that exist on the home page, plus the stretch rules
-for n, span in ((3, 4), (4, 3), (6, 4), (8, 3)):
+for n, span in ((3, 4), (4, 3), (6, 4), (8, 3), (9, 4), (10, 3), (11, 3), (12, 3)):
     assert re.search(r"\.grid\.grid-n%d>\*(?:,[^{]*)?\{[^}]*span %d" % (n, span), css), "grid-n%d wide rule missing" % n
 assert re.search(r"\.grid\.grid-n5>:nth-child\(n\+4\)\{[^}]*span 6", css), "grid-n5 stretch rule missing"
+assert re.search(r"\.grid\.grid-n10>:nth-child\(n\+9\)\{[^}]*span 6", css), "grid-n10 stretch rule missing"
+assert re.search(r"\.grid\.grid-n11>:nth-child\(n\+9\)\{[^}]*span 4", css), "grid-n11 stretch rule missing"
 assert re.search(r"@media[^{]*560px[^{]*\{[^@]*span 12", css), "phone one column rule missing"
 assert re.search(r"@media[^{]*900px[^{]*\{[^@]*span 6", css), "medium two column rule missing"
 assert re.search(r"@media[^{]*900px[^{]*\{[^@]*:last-child:nth-child\(odd\)[^}]*span 12", css), "medium odd last item rule missing"
@@ -217,11 +219,11 @@ def check(html):
 
 html = open(out + "/index.html", encoding="utf-8").read()
 counts = check(html)
-assert {3, 4, 6, 8} <= set(counts.values()), counts
-assert counts["not-typical"] == 8, counts
+assert {3, 4, 6, 10} <= set(counts.values()), counts
+assert counts["not-typical"] == 10, counts
 assert "grid-six" not in html
 # negative case: the guard bites when a grid loses its count class
-for bad in (re.sub(r"grid-n8", "grid-x", html), re.sub(r"grid-n3", "", html, count=1)):
+for bad in (re.sub(r"grid-n10", "grid-x", html), re.sub(r"grid-n3", "", html, count=1)):
     try:
         check(bad)
     except AssertionError:
