@@ -70,8 +70,12 @@ def check_page(url, title, seo, first, doc, sitemap):
     if len(h1) != 1 or text(h1[0]) != title:
         errs.append("%s: h1 is not exactly %r" % (url, title))
     art = article(doc)
-    if first and first not in text(art):
-        errs.append("%s: first paragraph missing" % url)
+    if first:
+        # The first <p> element after the h1 inside the article must open with the expected sentence.
+        after_h1 = art.split("</h1>", 1)[-1]
+        p1 = re.search(r"<p[ >].*?</p>", after_h1, re.S)
+        if not p1 or not text(p1.group(0)).startswith(first):
+            errs.append("%s: the first paragraph does not open with the expected sentence" % url)
     if any(d in doc for d in DASHES):
         errs.append("%s: contains an em or en dash" % url)
     if "<loc>https://" not in sitemap or not re.search(r"<loc>[^<]*" + re.escape(url) + r"</loc>", sitemap):
@@ -126,6 +130,11 @@ def bad(label, mutated, **kw):
 bad("wrong seoTitle", base, seo="Some Other Title | Renegade Penguin")
 bad("wrong h1", base, title="Not The Title")
 bad("missing first paragraph", base.replace("provides ongoing security leadership", "provides something"))
+# the sentence moved out of the first paragraph into a later one must fail
+fp = re.search(r"<p[ >].*?</p>", article(base).split("</h1>", 1)[-1], re.S).group(0)
+moved = base.replace(fp, "<p>Some other opening paragraph.</p>", 1).replace("</article>", fp + "</article>", 1)
+assert first in text(article(moved)), "negative fixture lost the sentence"
+bad("sentence moved to a later paragraph", moved)
 bad("dash", base.replace("</article>", " " + DASHES[0] + "</article>"))
 bad("not in sitemap", base, sm="<loc>https://x.test/other/</loc>")
 bad("broken link", base.replace('href=/services/advisory/', 'href=/services/nope/').replace('href="/services/advisory/"', 'href="/services/nope/"'))

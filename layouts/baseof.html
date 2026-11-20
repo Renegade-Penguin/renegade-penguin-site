@@ -6,6 +6,7 @@
 <title>{{ if .Params.seoTitle }}{{ .Params.seoTitle }}{{ else if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }} | {{ site.Title }}{{ end }}</title>
 {{ with .Description }}<meta name="description" content="{{ . }}">{{ end }}
 {{ if eq site.Params.environment "staging" }}<meta name="robots" content="noindex, nofollow">{{ end }}
+{{ if eq .Params.owner_review "pending" }}<meta name="x-owner-review" content="pending">{{ end }}
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#0F0F0F">
 {{- $main := resources.Get "css/main.css" -}}

@@ -4,6 +4,7 @@ seoTitle = "What Is a Virtual CISO? | Renegade Penguin"
 description = "Learn what a virtual CISO does, how the role differs from project work, and when ongoing security leadership makes sense."
 summary = "A virtual CISO provides ongoing security leadership without adding a full-time executive."
 weight = 10
+owner_review = "pending"
 +++
 
 A virtual chief information security officer, or virtual CISO, provides ongoing security leadership without joining the organization as a full-time executive. An organization may need one when security decisions keep crossing departments, vendors, budgets, and leadership responsibilities without a qualified person coordinating the work.
