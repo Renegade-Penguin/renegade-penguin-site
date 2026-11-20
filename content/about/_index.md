@@ -25,4 +25,4 @@ That systems background affects how I approach security work. I want to understa
 
 Renegade Penguin is based in Ohio and works with organizations across Ohio and the United States. Ohio organizations can read about the state's cybersecurity framework affirmative defense on the [Ohio guidance page](/ohio/).
 
-Learn more about [my background](/experience/), [advisory retainers](/services/advisory/), [what a virtual CISO does](/guides/what-is-a-vciso/), and [education and speaking](/services/education-speaking/) for a fuller picture of the work.
+Learn more about [my background](/experience/), [advisory retainers](/services/advisory/), [what a virtual CISO does](/guides/what-is-a-vciso/), [education and speaking](/services/education-speaking/), and [why hands-on advice holds up](/guides/why-hands-on-advice-holds-up/) for a fuller picture of the work.
