@@ -1,0 +1,16 @@
+{
+  // PROPOSAL, NOT APPLIED (issue #102, docs/cutover.md). This is not the live config: wrangler reads
+  // wrangler.jsonc by default. scripts/deploy-production.sh copies this file as wrangler.jsonc into a
+  // clean staging directory and deploys from there. The project name is a proposal the owner confirms.
+  // Secrets (MAIL_SHARED_SECRET, TURNSTILE_SECRET) are set separately and are not in this file. Top-level
+  // vars and services also apply to preview deployments; once deployed from a file, the dashboard
+  // cannot edit them. The mail Worker is shared with staging and needs no change.
+  "name": "renegade-penguin-site-prod",
+  "pages_build_output_dir": "./public",
+  "compatibility_date": "2026-11-01",
+  "vars": {
+    "EXPECTED_HOSTNAME": "renegadepenguinllc.com",
+    "MAIL_FROM": "noreply@renegadepenguinllc.com"
+  },
+  "services": [{ "binding": "MAIL_WORKER", "service": "renegade-penguin-mail" }]
+}
