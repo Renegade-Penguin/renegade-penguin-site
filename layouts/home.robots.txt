@@ -1,6 +1,45 @@
+{{ if eq site.Params.environment "staging" -}}
 User-agent: *
-{{ if eq site.Params.environment "staging" }}Disallow: /
-{{ else }}Allow: /
+Disallow: /
+{{ else -}}
+# AI crawler policy (owner decision, issue #94): search and answer bots may fetch and cite this
+# site; crawlers that collect content to train models are blocked. Cloudflare's managed
+# robots.txt must stay OFF so this file is the single source of truth.
+User-agent: *
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
 
 Sitemap: {{ "sitemap.xml" | absURL }}
-{{ end }}
+{{ end -}}
