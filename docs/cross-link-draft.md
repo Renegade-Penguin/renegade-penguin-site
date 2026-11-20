@@ -20,6 +20,13 @@ Footer line:
 
 > Hire me through Renegade Penguin LLC: https://renegadepenguinllc.com/
 
+## How the link is switched on
+
+- In the personal site repository, `params.businessSiteURL` in `hugo.toml` ships empty, and a test there requires it to stay empty. Do not put the business apex in `hugo.toml`.
+- That repository's `deploy.yml` sets the staging host for the dev build.
+- The owner's private production pipeline sets the environment variable `HUGO_PARAMS_BUSINESSSITEURL=https://renegadepenguinllc.com` for the production build only.
+- Rollback: unset that variable and rebuild, or move the pin back.
+
 ## Mentor mention
 
 If the owner wants the mentor mention on chiefgyk3d.com to match the business site, use the same wording the business site uses, only after the owner confirms it.
