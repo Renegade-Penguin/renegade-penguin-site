@@ -42,7 +42,9 @@ python3 -I scripts/check-logos.py "$F" >"$TMP/neg2.out" || rc=$?
 grep -q "cointelegraph.png sha256" "$TMP/neg2.out" || soft "(6) the modified file was not named"
 python3 -I - <<'PY' || soft "(6) svg and css guard negatives"
 import importlib.util
+import sys
 
+sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("cl", "scripts/check-logos.py")
 cl = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cl)
