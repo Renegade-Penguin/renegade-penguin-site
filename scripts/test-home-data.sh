@@ -110,6 +110,7 @@ class P(HTMLParser):
         self.details = 0
         self.text_for = None
         self.repo_links = []
+        self.ww_h3 = 0
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -128,6 +129,8 @@ class P(HTMLParser):
             self.sec_idx = a.get("id")
             self.order.append(self.sec_idx)
             self.sec_text[self.sec_idx] = ""
+        if tag == "h3" and self.sec_idx == "worked-with":
+            self.ww_h3 += 1
         if tag == "details":
             self.details += 1
         if tag == "a" and self.sec_idx == "built-in-the-open":
@@ -161,6 +164,7 @@ assert p.order == ["what-we-do", "not-typical", "worked-with", "how-it-works", "
 assert "{{OWNER:" not in p.sec_text.get("built-in-the-open", ""), "owner placeholder remains"
 assert len(p.repo_links) == 6, p.repo_links
 assert all(h.startswith("https://github.com/ChiefGyk3D/") and r == "noopener" for h, r in p.repo_links), p.repo_links
+assert p.ww_h3 == 2, "worked-with h3 count %d (group labels only)" % p.ww_h3
 assert p.details == 5, "faq details %d" % p.details
 PY
 
