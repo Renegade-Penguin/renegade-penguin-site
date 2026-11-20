@@ -234,7 +234,7 @@ PY
 S="$TMP/scratch"
 mkdir -p "$S"
 cp -r hugo.toml content data layouts assets static "$S/"
-sed -i 's/^title = "Cold answers. Clear risk."/title = "Guaranteed 100% answers"/' "$S/data/home/hero.toml"
+sed -i 's/^title = "IT is not expensive. IT disasters are."/title = "Guaranteed 100% answers"/' "$S/data/home/hero.toml"
 grep -q 'Guaranteed' "$S/data/home/hero.toml" || soft "(d) scratch edit did not apply"
 "$HUGO" --source "$S" --destination "$S/out" >/dev/null 2>&1 || soft "(d) scratch build failed"
 rc=0
