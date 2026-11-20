@@ -6,7 +6,9 @@
 # (no checkbox hack); the footer links /case-studies/ and /who-we-help/ with the nav label text;
 # every nav target has a link outside a collapsed panel somewhere on the site; the on-this-page nav
 # is named; main takes focus (tabindex -1); the case strip sits in a landmark; the brand image is
-# decorative; no executable <script> anywhere in a default build (JSON-LD data excepted) (the CSP stays as it is); and the stylesheet
+# decorative; no executable <script> anywhere in a default build (JSON-LD data excepted) (the CSP stays as it is); on a
+# sitekey build (HUGO_PARAMS_TURNSTILESITEKEY=fixturekey) the same rule, except that /contact/ carries exactly the one
+# pinned Turnstile tag (the rule test-crosslinks.sh check_scripts and test-pages.sh pin); and the stylesheet
 # has a forced-colors rule that keeps the partner logo tiles dark. Negative cases prove each guard bites.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
@@ -23,14 +25,19 @@ fail() {
   cat "$TMP/build.err" >&2
   fail "hugo build failed"
 }
-python3 -I - "$TMP/out" data/nav.toml <<'PY' || fail "a11y checks"
+# The deployed configuration sets the Turnstile sitekey, which adds one script tag on /contact/.
+HUGO_PARAMS_TURNSTILESITEKEY=fixturekey "$HUGO" --minify --destination "$TMP/key" >/dev/null 2>"$TMP/build.err" || {
+  cat "$TMP/build.err" >&2
+  fail "sitekey build failed"
+}
+python3 -I - "$TMP/out" data/nav.toml "$TMP/key" <<'PY' || fail "a11y checks"
 import os
 import re
 import sys
 import tomllib
 from html.parser import HTMLParser
 
-out, navfile = sys.argv[1], sys.argv[2]
+out, navfile, keyout = sys.argv[1], sys.argv[2], sys.argv[3]
 VOID = {"meta", "link", "br", "img", "input", "hr", "source", "wbr"}
 INTERACTIVE = {"button", "input", "select", "textarea", "summary", "details", "iframe"}
 
@@ -218,10 +225,26 @@ def check_brand(root):
     return errs
 
 
-def check_no_script(root):
-    # JSON-LD is data, not executable, and needs no script-src; any other script would.
-    bad = [n for n in nodes(root, "script") if n.attrs.get("type") != "application/ld+json" or n.attrs.get("src")]
-    return ["executable <script> in the page"] if bad else []
+# The one script a non-default build may add, on /contact/ only: the exact src with async and defer, the pattern
+# scripts/test-crosslinks.sh check_scripts and scripts/test-pages.sh pin (layouts/contact/list.html).
+TURNSTILE = {"src": "https://challenges.cloudflare.com/turnstile/v0/api.js", "async": None, "defer": None}
+
+
+def check_no_script(root, name="", want_ts=False):
+    # JSON-LD is data, not executable, and needs no script-src; any other script would. The only exception is the
+    # pinned Turnstile tag on contact/index.html in a sitekey build (want_ts), and then it must be the only extra
+    # script. Inline content in any non-JSON-LD script is always rejected.
+    errs = []
+    scripts = nodes(root, "script")
+    extra = [n for n in scripts if n.attrs.get("type") != "application/ld+json"]
+    if any(n.attrs.get("type") == "application/ld+json" and n.attrs.get("src") for n in scripts):
+        errs.append("JSON-LD script with a src")
+    if any("".join(n.text).strip() for n in extra):
+        errs.append("inline script content")
+    allowed = [TURNSTILE] if want_ts and name == "contact/index.html" else []
+    if [n.attrs for n in extra] != allowed:
+        errs.append("executable <script> in the page")
+    return errs
 
 
 def check_forced_colors(css):
@@ -252,25 +275,35 @@ for t in nav["top"]:
     if "url" in t:
         urls.add(t["url"])
 
-pages = {}
-for dp, _, fs in os.walk(out):
-    for fn in fs:
-        if fn.endswith(".html"):
-            with open(os.path.join(dp, fn), encoding="utf-8") as f:
-                pages[os.path.relpath(os.path.join(dp, fn), out)] = parse(f.read())
+def load_pages(top):
+    found = {}
+    for dp, _, fs in os.walk(top):
+        for fn in fs:
+            if fn.endswith(".html"):
+                with open(os.path.join(dp, fn), encoding="utf-8") as f:
+                    found[os.path.relpath(os.path.join(dp, fn), top)] = parse(f.read())
+    return found
+
+
+pages = load_pages(out)
+key_pages = load_pages(keyout)
+assert len(key_pages) == len(pages), ("sitekey build has a different page set", len(key_pages), len(pages))
 assert len(pages) >= 20, ("too few pages collected", len(pages))
 header_pages = {k: v for k, v in pages.items() if nodes(v, "header")}
 assert len(header_pages) >= 20, "too few pages with a header"
 
 errs = []
 for name, root in pages.items():
-    es = check_no_haspopup(root) + check_no_script(root) + check_toc(root)
+    es = check_no_haspopup(root) + check_no_script(root, name) + check_toc(root)
     if name != "404.html":
         es += check_main(root)
     if name in header_pages:
         es += check_triggers(root, len(groups)) + check_panels(root, len(groups)) + check_menu_button(root)
         es += check_strip(root) + check_brand(root) + check_footer_links(root, foot_want)
     errs += ["%s: %s" % (name, e) for e in es]
+for name, root in key_pages.items():
+    errs += ["sitekey build %s: %s" % (name, e) for e in check_no_script(root, name, True)]
+assert [n.attrs for n in nodes(key_pages["contact/index.html"], "script") if n.attrs.get("type") != "application/ld+json"] == [TURNSTILE], "sitekey build lost its Turnstile tag (the positive fixture would prove nothing)"
 errs += check_reach(list(pages.values()), sorted(urls))
 tocs = [n for r in pages.values() for n in nodes(r, "nav") if n.attrs.get("id") == "TableOfContents"]
 assert len(tocs) >= 4, ("expected on-this-page navs to check", len(tocs))
@@ -319,6 +352,19 @@ assert check_no_script(parse("<script>x</script>")), "script guard does not bite
 assert check_no_script(parse('<script src="/x.js"></script>')), "script src guard does not bite"
 assert check_no_script(parse('<script type="application/ld+json" src="/x.js"></script>')), "ld+json src guard does not bite"
 assert not check_no_script(parse('<script type="application/ld+json">{}</script>')), "JSON-LD should be allowed"
+TS = '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
+LD = '<script type="application/ld+json">{}</script>'
+C = "contact/index.html"
+assert not check_no_script(parse(LD + TS), C, True), "sitekey contact fixture should pass"
+assert check_no_script(parse(LD + TS), "community/index.html", True), "Turnstile on another page guard does not bite"
+assert check_no_script(parse(LD + TS + '<script src="https://example.com/x.js"></script>'), C, True), "extra script on contact guard does not bite"
+assert check_no_script(parse(LD + TS + "<script>x()</script>"), C, True), "inline script on contact guard does not bite"
+assert check_no_script(parse(LD + TS.replace("turnstile/v0/api.js", "turnstile/v0/other.js")), C, True), "wrong src guard does not bite"
+assert check_no_script(parse(LD + TS.replace(" defer", "")), C, True), "missing defer guard does not bite"
+assert check_no_script(parse(LD + TS.replace("</script>", "x()</script>")), C, True), "inline content in the Turnstile tag guard does not bite"
+assert check_no_script(parse(LD + TS + TS), C, True), "second Turnstile tag guard does not bite"
+assert check_no_script(parse(LD + TS), C, False), "Turnstile tag in the default build guard does not bite"
+assert check_no_script(parse(LD + TS), C), "default argument must expect no extra script"
 assert check_forced_colors(".partner-tile{background:red}"), "forced-colors guard does not bite (no rule)"
 assert check_forced_colors("@media (forced-colors:active){.partner-tile{background:#202020}}"), "forced-colors guard does not bite (no adjust)"
 assert not check_forced_colors("@media (forced-colors:active){.partner-tile{forced-color-adjust:none;background:#202020;border:1px solid CanvasText}}"), "forced-colors good fixture should pass"
