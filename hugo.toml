@@ -10,7 +10,16 @@ enableGitInfo = false
   keepComments = true
 
 [outputs]
-  home = ["html", "robots"]
+  home = ["html", "robots", "llms"]
+
+# /llms.txt, the llms.txt convention (https://llmstxt.org): a Markdown summary of the site for language-model
+# readers (layouts/home.llms.txt). A plain text file Cloudflare Pages serves as text/plain, so _headers is
+# unchanged; it is not an alternate of the home page and is not in the sitemap (scripts/test-crosslinks.sh).
+[outputFormats.llms]
+  mediaType = "text/plain"
+  baseName = "llms"
+  isPlainText = true
+  notAlternative = true
 
 [params]
   # production by default; set HUGO_PARAMS_ENVIRONMENT=staging for the staging build.

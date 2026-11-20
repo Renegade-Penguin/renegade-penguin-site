@@ -1,0 +1,18 @@
+# Public profiles of the founder, rendered as the sameAs list of the Person node in the JSON-LD graph
+# (layouts/_partials/jsonld.html). Keep this list equal to the sameAs of the Person node on
+# https://chiefgyk3d.com/ (issue #134): same set, no additions, no removals. Twitch and Kick are listed
+# together, never one without the other. scripts/test-crosslinks.sh checks the built graph against this file.
+same_as = [
+  "https://twitch.tv/chiefgyk3d",
+  "https://youtube.com/@ChiefGyk3D",
+  "https://kick.com/chiefgyk3d",
+  "https://social.chiefgyk3d.com/@chiefgyk3d",
+  "https://bsky.app/profile/chiefgyk3d.com",
+  "https://tiktok.com/@chiefgyk3d",
+  "https://www.instagram.com/chiefgyk3d/",
+  "https://pics.chiefgyk3d.com/ChiefGyk3D",
+  "https://www.threads.com/@chiefgyk3d",
+  "https://discord.chiefgyk3d.com",
+  "https://matrix.to/#/#renegade-penguin:chiefgyk3d.com",
+  "https://github.com/ChiefGyk3D",
+]
