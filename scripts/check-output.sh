@@ -11,7 +11,9 @@
 # SKIP_NO_SCRIPT, SKIP_INLINE_HANDLER, SKIP_EXTERNAL_HOST, SKIP_NOINDEX, SKIP_SCRUB_TERMS,
 # SKIP_ROBOTS, SKIP_CSP, SKIP_ABOUT_LINK, SKIP_DASHES, SKIP_UNSAFE_SCHEME, SKIP_META_REFRESH,
 # SKIP_ACTIVE_EMBED, SKIP_BASE_ELEMENT, SKIP_DUPLICATE_ATTR, SKIP_CLAIMS, SKIP_OWNER_TOKENS,
-# SKIP_FRESH.
+# SKIP_FRESH, SKIP_OWNER_REVIEW.
+# Opt-in check: owner_review runs only when REQUIRE_OWNER_APPROVAL=1 and EXPECT_ENV=production (the real
+# cutover sets it; CI and staging do not) and fails on any page carrying the x-owner-review pending meta.
 # Opt-in check: owner_tokens (check-owner-tokens.py) runs only when REQUIRE_NO_OWNER_TOKENS=1 and
 # fails on any page text holding an unresolved owner placeholder.
 # fresh (check-fresh.py): no placeholder links or lorem, a current footer year, a security.txt
@@ -230,6 +232,27 @@ owner_tokens() {
   return 0
 }
 
+owner_review() {
+  # Opt-in (issue #98): pages not yet approved by the owner carry <meta name="x-owner-review"
+  # content="pending"> (front matter owner_review = "pending"). Only the real production cutover sets
+  # REQUIRE_OWNER_APPROVAL=1, so CI and staging builds stay green; staging never fails for it.
+  # Unset, empty and 0 skip; 1 runs; any other value fails closed.
+  case "${REQUIRE_OWNER_APPROVAL:-}" in
+    "" | 0) return 0 ;;
+    1) ;;
+    *)
+      report owner_review "REQUIRE_OWNER_APPROVAL must be 0, 1 or empty, got an unexpected value"
+      return 0
+      ;;
+  esac
+  [ "$EXPECT_ENV" = production ] || return 0
+  local f
+  while IFS= read -r f; do
+    [ -n "$f" ] && report owner_review "page awaits owner approval, remove owner_review from its front matter (${f#"$DIR"/})"
+  done < <(grep -rliE --include='*.html' --include='*.htm' '<meta[[:space:]]+name=["'"'"']?x-owner-review["'"'"']?[[:space:]]+content=["'"'"']?pending' "$DIR" | sort || true)
+  return 0
+}
+
 fresh() {
   # check-fresh.py exits 1 when it has findings (printed as "<file><TAB><detail>"); any other
   # non-zero status is a helper failure and is never read as a pass.
@@ -245,7 +268,7 @@ fresh() {
   return 0
 }
 
-for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms noindex robots csp about_link dashes claims owner_tokens fresh; do
+for c in no_script inline_handler external_host unsafe_scheme meta_refresh active_embed base_element duplicate_attr scrub_terms noindex robots csp about_link dashes claims owner_tokens owner_review fresh; do
   if enabled "$c"; then "$c"; fi
 done
 

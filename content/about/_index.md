@@ -24,3 +24,5 @@ I started in networking, Linux and system administration, then moved into cybers
 That systems background affects how I approach security work. I want to understand how something is built, who operates it and what can realistically be maintained before I recommend controls around it.
 
 Renegade Penguin is based in Ohio and works with organizations across Ohio and the United States. Ohio organizations can read about the state's cybersecurity framework affirmative defense on the [Ohio guidance page](/ohio/).
+
+Learn more about [my background](/experience/), [advisory retainers](/services/advisory/), [what a virtual CISO does](/guides/what-is-a-vciso/), and [education and speaking](/services/education-speaking/) for a fuller picture of the work.

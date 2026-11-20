@@ -3,6 +3,13 @@ title = "Pricing"
 description = "Cybersecurity advisory pricing covers retainers, assessments, and focused projects, with clear starting points for planning the work."
 seoTitle = "Cybersecurity Advisory Pricing | Renegade Penguin"
 weight = 40
+lede = "Renegade Penguin publishes starting points, not automatic quotes. A free 30-minute fit call checks for fit, then a scoping call confirms the work before a paid assessment or other engagement begins."
+faq = [
+  {q = "Does every advisory engagement start with an assessment?", a = "Yes. Ongoing advisory work starts with a paid assessment before moving to a retainer."},
+  {q = "How do retainers work?", a = "Retainers run month to month with 30 days notice. Unused hours reset each month, with limited carry."},
+  {q = "What is excluded from the listed starting points?", a = "Unless included in writing, fees exclude licenses, hardware, travel, taxes, legal services, penetration testing, continuous monitoring, managed services, emergency response, and outside specialists."},
+  {q = "Does Renegade Penguin charge for speaking and education?", a = "Fees apply to corporate and vendor speaking. Community and non-corporate education is free, provided at cost, or arranged separately."},
+]
 +++
 
 Pricing starts with the work, the access required, and who needs to be involved. The ranges below are starting points, not automatic quotes. A scoping call is used to confirm the problem, boundaries, assumptions, and deliverables before work begins.
@@ -52,3 +59,5 @@ Common factors include the size and complexity of the environment, the number of
 Quotes exclude software licenses, hardware, travel expenses, taxes, legal services, penetration testing, continuous monitoring, managed services, emergency response, and outside specialists unless they are listed in the scope.
 
 Quotes assume timely access, accurate information, an authorized decision-maker, and staff who can answer questions.
+
+For more context, read [what a virtual CISO does](/guides/what-is-a-vciso/), review [a sample retainer scope](/sample-scope-of-work/), see [how engagements run](/how-we-work/), or explore [education and speaking](/services/education-speaking/).

@@ -26,3 +26,5 @@ Incident plans should define decision authority, communication paths, vendor con
 Renegade Penguin can assess the environment, help prioritize improvements, and support alignment to the NIST Cybersecurity Framework and relevant sector guidance. Alignment describes the basis for the work. It is not a claim of compliance.
 
 Review the available [services](/services/) or [contact Renegade Penguin](/contact/) to discuss the environment and its constraints.
+
+Critical infrastructure teams can explore [ongoing advisory support](/services/advisory/), review [fixed-scope security projects](/services/projects/), compare [virtual CISO and virtual CIO roles](/guides/vciso-vs-vcio/), or [schedule a free fit call](/contact/).

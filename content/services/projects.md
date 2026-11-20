@@ -4,6 +4,13 @@ description = "Cybersecurity projects address defined needs through assessments,
 seoTitle = "Cybersecurity Projects | Renegade Penguin"
 summary = "Fixed-scope defensive engineering, hardening, and AI security reviews."
 weight = 20
+lede = "Renegade Penguin handles fixed-scope defensive engineering, hardening, and AI security reviews. These projects are for organizations that need defined security work, documented deliverables, and clear exclusions."
+faq = [
+  {q = "What systems can a defensive engineering project cover?", a = "Projects can cover identity and access, endpoints, servers, networks, cloud services, SaaS, logging, recovery, secure baselines, incident playbooks, architecture, and data flows."},
+  {q = "Can a project include a security roadmap?", a = "Yes. Roadmaps can be aligned to NIST CSF, CIS Controls, ISO 27001, or the HIPAA Security Rule."},
+  {q = "How is a project scoped and quoted?", a = "A scoping call establishes the work before it is quoted. The written scope defines the deliverables and exclusions."},
+  {q = "What can the final deliverables include?", a = "Deliverables may include findings, prioritized recommendations, configuration changes, diagrams, runbooks, decision records, and a handoff session."},
+]
 +++
 
 Some security work needs advice. Other work needs someone to inspect the system, change the configuration, document the result, and leave it in better shape.
@@ -47,3 +54,5 @@ Each project has written boundaries, assumptions, client responsibilities, and a
 When specialist work is needed, trusted experts in areas such as penetration testing or telecom can be brought in as a coordinated team. That involvement is disclosed and agreed on before work begins.
 
 Projects have a minimum fee and are quoted after a scoping call.
+
+Read the [AI security review guide](/guides/ai-security-review-small-organizations/), see [how engagements run](/how-we-work/), review [pricing and assessments](/pricing/), or consider [ongoing advisory support](/services/advisory/).

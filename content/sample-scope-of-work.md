@@ -61,3 +61,5 @@ Work outside the agreed scope is billed at {{< pricing tier="advisory" field="ex
 After the assessment, the retainer continues month to month with no long-term lock-in. Either party may end it under the notice terms in the final written agreement.
 
 At the end, Renegade Penguin will provide current handover notes, identify unresolved items, remove or return access, and delete client data on request.
+
+To place this scope in context, explore [ongoing advisory support](/services/advisory/), read [what a virtual CISO does](/guides/what-is-a-vciso/), review [pricing and assessments](/pricing/), and see [how engagements run](/how-we-work/).

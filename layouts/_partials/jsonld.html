@@ -74,4 +74,12 @@
 {{- end }}
 {{- $graph = $graph | append (dict "@type" "FAQPage" "@id" (printf "%s#faq" .Permalink) "mainEntity" $qs) }}
 {{- end }}
+{{- /* Issue #95: pages with a faq front matter array render it (page-faq.html); the markup is built from that same array. */ -}}
+{{- with .Params.faq }}
+{{- $qs := slice }}
+{{- range . }}
+{{- $qs = $qs | append (dict "@type" "Question" "name" .q "acceptedAnswer" (dict "@type" "Answer" "text" .a)) }}
+{{- end }}
+{{- $graph = $graph | append (dict "@type" "FAQPage" "@id" (printf "%s#faq" $.Permalink) "mainEntity" $qs) }}
+{{- end }}
 <script type="application/ld+json">{{ dict "@context" "https://schema.org" "@graph" $graph | jsonify | safeJS }}</script>

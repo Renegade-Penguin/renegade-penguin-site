@@ -3,6 +3,13 @@ title = "Cybersecurity Guidance for Ohio Organizations"
 description = "Cybersecurity consultant services in Ohio include virtual CISO guidance, assessments, AI security reviews, and practical program support."
 seoTitle = "Cybersecurity Consultant Ohio | Renegade Penguin"
 weight = 60
+lede = "Renegade Penguin helps Ohio organizations assess controls and build written cybersecurity programs aligned to recognized frameworks. This work may support businesses evaluating the affirmative defense described in Ohio Revised Code sections 1354.02 and 1354.03."
+faq = [
+  {q = "What do these Ohio Revised Code sections provide?", a = "They give certain covered businesses an affirmative defense in some data breach lawsuits when they create, maintain, and follow a qualifying written cybersecurity program."},
+  {q = "What must the cybersecurity program address?", a = "It must reasonably conform to a recognized framework and fit the business's size, activities, information, and resources."},
+  {q = "Does the affirmative defense prevent a breach or lawsuit?", a = "No. An affirmative defense is not immunity, does not prevent a breach, and does not prevent someone from filing a lawsuit."},
+  {q = "Can Renegade Penguin determine whether a business is eligible?", a = "Eligibility depends on the facts. The firm can assess controls and help build a framework-aligned program, but it does not provide legal advice. Organizations should talk to qualified counsel."},
+]
 +++
 
 Ohio organizations have a state-law reason to treat a written cybersecurity program as more than internal paperwork.
@@ -14,3 +21,5 @@ An affirmative defense is not immunity. It does not prevent a breach, stop a law
 The practical work is familiar: choose an appropriate framework, document the program, assign responsibility, implement safeguards, retain evidence, review changes, and keep the program current. Renegade Penguin can help an organization assess its existing controls and build a program aligned to an applicable recognized framework. That technical work does not replace legal advice.
 
 Businesses considering the Ohio provisions should speak with qualified counsel about whether the law applies to them and what evidence they should maintain. Review the available [services](/services/) or [contact Renegade Penguin](/contact/) to discuss the security work.
+
+Ohio organizations can explore guidance for [small businesses](/who-we-help/small-business/), [medical and dental practices](/who-we-help/healthcare-dental/), and [critical infrastructure](/who-we-help/critical-infrastructure/), then schedule a [free 30 minute fit call](/contact/).

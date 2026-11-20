@@ -30,3 +30,5 @@ An incident is a bad time to exchange introductions. Planning establishes who ma
 Yes. An advisory retainer provides ongoing access for security decisions, vendor reviews, planning, and follow-through. When a question requires another specialty, Renegade Penguin can bring in a trusted specialist.
 
 Compare the available [services](/services/) or [contact Renegade Penguin](/contact/) to discuss an assessment or advisory retainer.
+
+You can also learn [what a virtual CISO is](/guides/what-is-a-vciso/), or see how advisory work applies to [medical and dental practices](/who-we-help/healthcare-dental/), [private aviation](/who-we-help/aviation/), and [critical infrastructure](/who-we-help/critical-infrastructure/).
