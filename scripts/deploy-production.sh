@@ -137,7 +137,7 @@ if [ "$DERIVE_TERMS" = 1 ]; then
   echo "step 1c: derive the scrub terms from stg_scrub (read-only)"
   old_umask="$(umask)"
   umask 077
-  mkdir -p -m 700 "$SCRUB_TMP_BASE"
+  mkdir -p "$SCRUB_TMP_BASE" # umask 077 makes any directory created here mode 700
   TERMS_DIR="$(mktemp -d "$SCRUB_TMP_BASE/scrub-terms.XXXXXX")"
   chmod 700 "$TERMS_DIR"
   doppler_status=0
