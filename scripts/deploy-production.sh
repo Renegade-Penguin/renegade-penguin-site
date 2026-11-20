@@ -165,9 +165,44 @@ EXPECT_ENV=production REQUIRE_NO_OWNER_TOKENS=1 REQUIRE_OWNER_APPROVAL=1 SCRUB_T
 echo "step 4: artifact checks"
 [ -f public/sitemap.xml ] || fail "public/sitemap.xml missing"
 [ -f public/robots.txt ] || fail "public/robots.txt missing"
-if grep -qE '^[[:space:]]*Disallow:[[:space:]]*/[[:space:]]*$' public/robots.txt; then
-  fail "public/robots.txt disallows everything"
-fi
+# Only the record that applies to all crawlers may not disallow the root. A record is one or more
+# User-agent lines followed by rules; blank lines and comments never end it, and it applies to all
+# crawlers if any of its User-agent lines is "*". A root disallow under named bots (the AI training
+# crawlers of issue #94) is the intended policy and passes. Exit 0 when the star record holds an
+# exact "Disallow: /", 1 when it does not; any other status is an error.
+robots_blocks_all() { # <robots.txt>
+  awk '
+    {
+      line = $0
+      sub(/\r$/, "", line)
+      sub(/#.*/, "", line)
+      pos = index(line, ":")
+      if (pos == 0) next
+      field = tolower(substr(line, 1, pos - 1))
+      value = substr(line, pos + 1)
+      gsub(/^[ \t]+|[ \t]+$/, "", field)
+      gsub(/^[ \t]+|[ \t]+$/, "", value)
+      if (field == "user-agent") {
+        if (!in_agents) star = 0
+        in_agents = 1
+        if (value == "*") star = 1
+      } else if (field == "sitemap") {
+        next
+      } else {
+        in_agents = 0
+        if (field == "disallow" && value == "/" && star) found = 1
+      }
+    }
+    END { exit(found ? 0 : 1) }
+  ' "$1"
+}
+robots_status=0
+robots_blocks_all public/robots.txt || robots_status=$?
+case "$robots_status" in
+  0) fail "public/robots.txt disallows everything" ;;
+  1) ;;
+  *) fail "public/robots.txt could not be checked (awk status $robots_status)" ;;
+esac
 if grep -rqiE '<meta[^>]*name="?robots"?[^>]*noindex' public --include='*.html'; then
   fail "a built page has a noindex meta"
 fi
