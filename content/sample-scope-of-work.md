@@ -51,9 +51,9 @@ The client will:
 
 ## Fees
 
-The one-time assessment is {{< pricing tier="assessment" field="price" >}}. The advisory retainer is offered at three levels: {{< pricing tier="advisory" field="retainer_small" >}}; {{< pricing tier="advisory" field="retainer_standard" >}}; or {{< pricing tier="advisory" field="retainer_plus" >}}. Work outside the agreed scope is billed at {{< pricing tier="advisory" field="hourly" >}} only after written approval.
+Work begins with {{< pricing tier="assessment" field="price" >}}. Ongoing advisory work is available at three retainer levels: {{< pricing tier="advisory" field="retainer_small" >}}, {{< pricing tier="advisory" field="retainer_standard" >}}, or {{< pricing tier="advisory" field="retainer_plus" >}}. A signed retainer includes {{< pricing tier="assessment" field="credit" >}}.
 
-Retainers are {{< pricing tier="advisory" field="retainer_terms" >}}.
+Work outside the agreed scope is billed at {{< pricing tier="advisory" field="hourly" >}} only after written approval. Retainers are {{< pricing tier="advisory" field="retainer_terms" >}}.
 
 ## Term and Ending the Engagement
 
