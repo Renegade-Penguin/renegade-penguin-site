@@ -113,16 +113,25 @@ else
   echo "ok: missing field fails the build"
 fi
 
-# Every tier in the real data file defines every field and carries the approval flag.
+# Every tier in the real data file defines every field, and nothing is still pending approval.
 python3 -I - <<'PY' || soft "data/pricing.toml does not define every tier and field"
 import tomllib
 d = tomllib.load(open("data/pricing.toml", "rb"))
-for t in ("advisory", "projects", "ai_review", "speaking"):
-    for f in ("hourly", "retainer", "minimum", "drivers"):
-        v = d.get(t, {}).get(f)
+want = {
+    "advisory": ("hourly", "incident", "retainer_small", "retainer_standard", "retainer_plus", "retainer_terms", "extra_hours"),
+    "assessment": ("price", "credit", "small_practice"),
+    "projects": ("minimum", "hourly", "drivers"),
+    "ai_review": ("minimum", "drivers"),
+    "speaking": ("keynote", "virtual", "workshops", "community", "drivers"),
+}
+assert set(d) == set(want), sorted(d)
+for t, fields in want.items():
+    assert set(d[t]) == set(fields), (t, sorted(d[t]))
+    for f in fields:
+        v = d[t][f]
         assert isinstance(v, str) and v.strip(), (t, f)
 src = open("data/pricing.toml", encoding="utf-8").read()
-assert src.count("# owner approval pending") >= 4
+assert "owner approval pending" not in src
 PY
 
 if [ "$FAILS" -gt 0 ]; then

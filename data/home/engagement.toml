@@ -8,10 +8,10 @@ stamp = "FREE"
 
 [[items]]
 title = "Assessment"
-body = "A paid review covers goals, starting point, and compliance needs. Its cost is credited if the engagement continues."
+body = "A paid review covers goals, starting point, and compliance needs, and part of the fee is credited if a retainer is signed within 60 days."
 stamp = "CREDITED"
 
 [[items]]
 title = "Plan and build"
-body = "Receive clear priorities, requirements, and hands-on work shaped around the agreed scope and minimums."
+body = "Receive clear priorities, requirements, and hands-on work shaped around the agreed scope."
 stamp = "DELIVERED"
