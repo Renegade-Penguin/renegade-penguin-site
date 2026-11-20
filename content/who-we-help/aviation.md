@@ -1,6 +1,7 @@
 +++
 title = "Cybersecurity for Private Aviation"
-description = "Security advice for flight departments, FBOs, charter operators, and flight schools with connected operations and specialized vendors."
+description = "Private aviation cybersecurity guidance addresses business systems, sensitive data, vendors, operational dependencies, and security planning."
+seoTitle = "Private Aviation Cybersecurity | Renegade Penguin"
 weight = 40
 +++
 

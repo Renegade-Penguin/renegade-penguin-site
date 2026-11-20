@@ -1,6 +1,6 @@
 +++
 title = "Security and Information Handling"
-description = "Procurement information about confidentiality, agreements, access, data handling, and incident reporting."
+description = "Procurement details explain confidentiality, agreements, access, data handling, and the process for reporting security incidents."
 weight = 40
 +++
 

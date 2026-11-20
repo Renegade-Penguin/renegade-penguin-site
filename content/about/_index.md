@@ -1,6 +1,7 @@
 +++
 title = "About"
-description = "Renegade Penguin provides practical, defense-first cybersecurity and IT consulting without a preferred vendor or predetermined answer."
+description = "A hands-on cybersecurity practitioner runs this Ohio advisory for small and mid-size organizations and regulated sectors nationwide."
+seoTitle = "About Our Cybersecurity Practice | Renegade Penguin"
 weight = 20
 +++
 
@@ -21,3 +22,5 @@ Bring the hard questions to a call, and I will answer them directly.
 I started in networking, Linux and system administration, then moved into cybersecurity. Linux remains my daily driver, and I have used it in production alongside hands-on work in networking architecture, identity, detection and response, cloud security and automation.
 
 That systems background affects how I approach security work. I want to understand how something is built, who operates it and what can realistically be maintained before I recommend controls around it.
+
+Renegade Penguin is based in Ohio and works with organizations across Ohio and the United States. Ohio organizations can read about the state's cybersecurity framework affirmative defense on the [Ohio guidance page](/ohio/).

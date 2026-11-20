@@ -1,6 +1,7 @@
 +++
 title = "Case Studies"
-description = "Anonymized examples of defensive engineering, advisory, and AI security work."
+description = "Cybersecurity case studies show how advisory, assessment, and project work addresses defined security and IT needs in real settings."
+seoTitle = "Cybersecurity Case Studies | Renegade Penguin"
 weight = 60
 +++
 

@@ -1,6 +1,6 @@
 +++
 title = "Terms of Use"
-description = "These terms explain the limits that apply when you use the Renegade Penguin website."
+description = "Website use has limits. Content is informational only, carries no warranty, and use of this Ohio website is governed by Ohio law."
 weight = 90
 +++
 

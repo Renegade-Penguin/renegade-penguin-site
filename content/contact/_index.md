@@ -1,6 +1,7 @@
 +++
 title = "Contact"
-description = "Tell Renegade Penguin what you need, and expect a response within two business days."
+description = "Contact a cybersecurity advisor to discuss virtual CISO or CIO support, a security assessment, an AI security review, or speaking."
+seoTitle = "Contact a Cybersecurity Advisor | Renegade Penguin"
 weight = 40
 +++
 

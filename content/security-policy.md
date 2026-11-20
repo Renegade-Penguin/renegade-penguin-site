@@ -1,6 +1,6 @@
 +++
 title = "Security Policy"
-description = "This policy explains how to report a security issue affecting the Renegade Penguin website."
+description = "Report security issues affecting this website to Renegade Penguin, including clear steps, evidence, impact, and contact details."
 weight = 75
 +++
 

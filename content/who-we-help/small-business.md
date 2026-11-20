@@ -1,6 +1,7 @@
 +++
 title = "Cybersecurity for Small Businesses"
-description = "Clear security priorities, budgets, and incident planning for small businesses without a full-time security hire."
+description = "Small business cybersecurity support provides fractional CISO guidance, assessments, and security program help sized to the organization."
+seoTitle = "Small Business Cybersecurity | Renegade Penguin"
 weight = 20
 +++
 

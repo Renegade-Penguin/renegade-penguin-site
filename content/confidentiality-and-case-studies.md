@@ -1,6 +1,6 @@
 +++
 title = "Confidentiality and Case Studies"
-description = "How Renegade Penguin protects client identities while showing the substance of its work."
+description = "Client identities stay confidential. Case studies use anonymized composites unless the client approves identification in writing."
 weight = 50
 +++
 

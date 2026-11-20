@@ -1,6 +1,7 @@
 ---
 title: "Experience"
-description: "Work that spans environments where technology, safety, privacy, and daily operations meet."
+description: "Cybersecurity experience across security, IT, regulated environments, and operational risk informs practical advisory and assessment work."
+seoTitle: "Cybersecurity Experience | Renegade Penguin"
 ---
 
 The work spans environments where technology, safety, privacy, and daily operations meet.

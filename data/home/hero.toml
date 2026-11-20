@@ -1,6 +1,7 @@
 eyebrow = "Independent security advisory"
 title = "IT is not expensive. IT disasters are."
 body = "Straight answers and direct IT security guidance from someone who does the work, without the sales pitch."
+intro = "Renegade Penguin is run by a hands-on practitioner offering virtual CISO and CIO style advisory, security assessments, and AI security reviews. Based in Ohio and serving clients nationwide, the firm works with small and mid-size organizations, including medical, dental, legal, aviation, and critical infrastructure organizations."
 primary_label = "Book a fit call"
 secondary_label = "See how we build"
 chips = ["Private aviation", "Critical infrastructure", "Cryptocurrency", "Healthcare", "Legal", "Dental"]

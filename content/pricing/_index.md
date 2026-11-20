@@ -1,6 +1,7 @@
 +++
 title = "Pricing"
-description = "Starting prices and engagement assumptions for advisory, project, AI review, and speaking work."
+description = "Cybersecurity advisory pricing covers retainers, assessments, and focused projects, with clear starting points for planning the work."
+seoTitle = "Cybersecurity Advisory Pricing | Renegade Penguin"
 weight = 40
 +++
 

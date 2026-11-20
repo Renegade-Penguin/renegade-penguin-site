@@ -1,6 +1,7 @@
 +++
 title = "When Not to Hire Renegade Penguin"
-description = "An honest guide to when an advisory retainer or vCISO-style service is the wrong fit."
+description = "Cybersecurity advisory is not a fit for every need. Review the work this practice does not take on before starting a conversation."
+seoTitle = "When Advisory Is Not a Fit | Renegade Penguin"
 weight = 50
 +++
 

@@ -1,6 +1,7 @@
 +++
 title = "Security Projects"
-description = "Fixed-scope defensive engineering, hardening, and AI security reviews built around clearly defined deliverables."
+description = "Cybersecurity projects address defined needs through assessments, program development, AI security reviews, and policy or control work."
+seoTitle = "Cybersecurity Projects | Renegade Penguin"
 summary = "Fixed-scope defensive engineering, hardening, and AI security reviews."
 weight = 20
 +++
