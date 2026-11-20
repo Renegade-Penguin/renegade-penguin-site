@@ -1,27 +1,38 @@
-# Pricing data. Every value here is a PROPOSAL until the owner approves it.
-# Pages show these values only through the pricing shortcode; no page types a price by hand.
-# Each tier defines hourly, retainer, minimum and drivers.
+# Pricing data. The owner approved these values on 2026-11-19.
+# Pages show them only through the pricing shortcode; no page types a price by hand.
+# Tiers and fields (reference list; scripts/test-claims.sh enforces them):
+#   advisory: hourly, incident, retainer_small, retainer_standard, retainer_plus, retainer_terms, extra_hours
+#   assessment: price, credit, small_practice
+#   projects: minimum, hourly, drivers
+#   ai_review: minimum, drivers
+#   speaking: keynote, virtual, workshops, community, drivers
 
 [advisory]
-hourly = "$225 to $300 per hour"  # owner approval pending
-retainer = "$3,000 to $9,000 per month"  # owner approval pending
-minimum = "one-time assessment first, then month to month"  # owner approval pending
-drivers = "Organization size, number of systems and vendors, regulated data, how often you need access, and urgency."  # owner approval pending
+hourly = "$250 per hour"
+incident = "$350 per hour for short-notice or incident work"
+retainer_small = "$3,000 per month for about 12 hours"
+retainer_standard = "$5,500 per month for about 24 hours"
+retainer_plus = "$9,000 per month for about 40 hours"
+retainer_terms = "month to month with 30 days' notice; unused hours reset monthly, with up to 25% carried for one month"
+extra_hours = "$225 per hour"
+
+[assessment]
+price = "a paid assessment starting at $4,000 and typically ranging from $4,000 to $12,000, depending on size and scope"
+credit = "a credit equal to 50% of the assessment fee if the retainer is signed within 60 days"
+small_practice = "an assessment followed by hourly help, with no retainer required"
 
 [projects]
-hourly = "$200 to $250 per hour"  # owner approval pending
-retainer = "not offered"  # owner approval pending
-minimum = "from $5,000 per project"  # owner approval pending
-drivers = "Scope, number of systems, size of the environment, regulated data, and urgency."  # owner approval pending
+minimum = "from $5,000 per project"
+hourly = "$250 per hour"
+drivers = "quoted after a scoping call, with no retainer required"
 
 [ai_review]
-hourly = "fixed scope, from $7,500"  # owner approval pending
-retainer = "not offered"  # owner approval pending
-minimum = "scoped after a call"  # owner approval pending
-drivers = "Number of AI tools and teams in use, sensitive or regulated data, vendor count, and urgency."  # owner approval pending
+minimum = "a fixed scope starting at $7,500"
+drivers = "acceptable use, shadow AI inventory, data flows, and vendor questions"
 
 [speaking]
-hourly = "per engagement"  # owner approval pending
-retainer = "not offered"  # owner approval pending
-minimum = "keynotes from $5,000 for corporate and vendor events"  # owner approval pending
-drivers = "length, audience size, custom material, workshop versus talk, travel, and whether the event is corporate, vendor, or community"  # owner approval pending
+keynote = "from $5,000 plus travel"
+virtual = "from $3,500"
+workshops = "from $5,000"
+community = "free, at cost, or arranged"
+drivers = "the organizer covers admission and, depending on the event, lodging and travel"
