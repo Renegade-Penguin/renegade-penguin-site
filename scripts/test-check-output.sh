@@ -569,7 +569,7 @@ set -e
 if [ "$RC" != "0" ] && grep -q '^FAIL owner_tokens:' <<<"$OUT"; then echo "ok: crashing check-owner-tokens.py fails the build"; else soft "crashing check-owner-tokens.py must fail the build: rc=$RC $OUT"; fi
 
 # A crashing helper must fail the build (fail closed): swap one helper for a stub.
-for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check-claims.py; do
+for helper in check-headers.py check-html.py check-scrub.py check-shapes.py find-dashes.py check-claims.py; do
   stub="$(mktemp -d "$WORK/stub.XXXXXX")"
   cp -R scripts/. "$stub/"
   printf '%s\n' 'raise RuntimeError("stub crash")' >"$stub/$helper"
@@ -587,7 +587,7 @@ for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check
 done
 
 # Each helper catches its own unexpected exceptions and exits 70 (here: missing arguments).
-for helper in check-headers.py check-html.py check-scrub.py find-dashes.py check-claims.py check-owner-tokens.py; do
+for helper in check-headers.py check-html.py check-scrub.py check-shapes.py find-dashes.py check-claims.py check-owner-tokens.py; do
   set +e
   OUT="$(python3 -I "scripts/$helper" 2>&1)"
   RC=$?

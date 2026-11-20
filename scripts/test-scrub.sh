@@ -118,4 +118,139 @@ expect_fail "NUL byte" "line 2"
 no_term_in_stderr "NUL byte"
 
 echo "ok: derive-scrub-terms.sh"
+
+# ---------------------------------------------------------------------------------------------
+# 2. The scrub_shapes rule (scripts/check-shapes.py through scripts/check-output.sh).
+# Positives use CLEARLY FAKE shapes. Each case is one tiny page; the helper must report the category
+# and the file, and must never print the matched text.
+H=scripts/check-shapes.py
+[ -f "$H" ] || fail "$H missing"
+TAB="$(printf '\t')"
+
+shape_run() { # <dir> [allow-file]: sets RC and OUT from the helper
+  RC=0
+  OUT="$(python3 -I "$H" "$@" 2>&1)" || RC=$?
+}
+page() { # <dir> <file> <body>: writes a minimal page
+  mkdir -p "$1"
+  printf '<!doctype html><html><head><title>t</title></head><body>%s</body></html>\n' "$3" >"$1/$2"
+}
+positive() { # <label> <category phrase> <matched text that must not be echoed> <html body> [file]
+  local label="$1" phrase="$2" secret="$3" body="$4" file="${5:-index.html}"
+  local dir="$TMP/pos-$label"
+  rm -rf "$dir"
+  if [ "$file" = index.html ]; then page "$dir" index.html "$body"; else
+    mkdir -p "$dir"
+    printf '%s\n' "$body" >"$dir/$file"
+  fi
+  shape_run "$dir"
+  [ "$RC" -eq 0 ] || fail "positive $label: helper exit $RC: $OUT"
+  printf '%s\n' "$OUT" | grep -q "^scrub_shapes${TAB}.*${file}${TAB}.*${phrase}" ||
+    fail "positive $label: no '$phrase' finding for $file: $OUT"
+  if printf '%s' "$OUT" | grep -qF -- "$secret"; then fail "positive $label: the matched text was printed"; fi
+}
+negative() { # <label> <html body>
+  local dir="$TMP/neg-$1"
+  rm -rf "$dir"
+  page "$dir" index.html "$2"
+  shape_run "$dir"
+  [ "$RC" -eq 0 ] || fail "negative $1: helper exit $RC: $OUT"
+  [ -z "$OUT" ] || fail "negative $1: expected no finding, got: $OUT"
+}
+
+positive callsign callsign N0XYZ '<p>Reach me at N0XYZ anytime</p>'
+positive callsign-two-prefix callsign KD9ZZZ '<p>KD9ZZZ is on the air</p>'
+positive doc-placeholder-n0call callsign N0CALL '<p>use N0CALL</p>'
+positive doc-placeholder-n0tst callsign N0TST '<p>use N0TST.</p>'
+positive callsign-encoded callsign 'N0XYZ' '<p>N&#48;XYZ</p>'
+positive callsign-split-by-tag callsign 'N0XYZ' '<p>N0<b>XYZ</b></p>'
+positive callsign-attribute callsign N0XYZ '<img src="/a.png" alt="op N0XYZ">'
+positive callsign-jsonld callsign N0XYZ '<script type="application/ld+json">{"name":"N0XYZ"}</script>'
+positive callsign-in-path callsign N0XYZ '<a href="/qrz/N0XYZ/">x</a>'
+positive callsign-text-file callsign N0XYZ 'op N0XYZ' notes.txt
+positive grid6 grid FN31xx '<p>Grid FN31xx here</p>'
+positive doc-placeholder-grid grid FN31pr '<p>locator FN31pr</p>'
+positive grid4-with-context grid FN31 '<p>my grid square is FN31</p>'
+positive grid4-locator grid FN31 '<p>locator: FN31</p>'
+positive ip10 'private IPv4' 10.9.8.7 '<p>ssh 10.9.8.7</p>'
+positive ip172 'private IPv4' 172.16.5.4 '<p>172.16.5.4</p>'
+positive ip172-31 'private IPv4' 172.31.255.254 '<p>172.31.255.254</p>'
+positive ip192 'private IPv4' 192.168.1.50 '<p>http://192.168.1.50/</p>'
+positive name-internal 'private hostname' host.example.internal '<p>host.example.internal</p>'
+positive name-local 'private hostname' nas.local '<p>nas.local</p>'
+positive name-lan 'private hostname' box.lan '<p>box.lan</p>'
+positive name-homearpa 'private hostname' router.home.arpa '<p>router.home.arpa</p>'
+positive name-in-attribute 'private hostname' nas.local '<a href="http://nas.local/x">x</a>'
+
+negative words '<p>Hello world, a vCISO for small organizations.</p>'
+negative frameworks '<p>ISO 27001, SOC 2, NIST SP800-53, CVE-2024-1234, TLS1.3, AES256, W3C, B2B and B2C.</p>'
+negative versions '<p>version 1.2.3 and v10.2.3 and 2.0</p>'
+negative hash '<p>sha256-deadbeefcafe0123456789abcdef0123456789abcdef0123</p>'
+negative public-ips '<p>172.32.0.1, 172.15.0.1, 192.169.0.1, 11.0.0.1 and 10.0.0</p>'
+negative public-names '<p>example.com, localhost, a.localhost, my.localized.page and lan.example.org</p>'
+negative four-char-no-context '<p>FN31 ID10 AB12 and OK23 are codes</p>'
+negative lowercase '<p>n0xyz and fn31xx are lowercase</p>'
+negative one-letter-suffix '<p>H1B visa, A1C level, B2B</p>'
+negative css-class '<div class="btn-primary col-md-6 h1 w3-bar"></div>'
+
+# Allowlist: an exact token with a reason exempts that token only; a reason is mandatory.
+printf '# exact tokens the site legitimately contains, one per line: TOKEN<TAB>reason\n' >"$TMP/allow-empty.txt"
+printf 'N0XYZ\tfake token used only by this test\n' >"$TMP/allow-one.txt"
+printf 'N0XYZ\n' >"$TMP/allow-noreason.txt"
+dir="$TMP/allow"
+rm -rf "$dir"
+page "$dir" index.html '<p>N0XYZ and KD9ZZZ</p>'
+shape_run "$dir" "$TMP/allow-empty.txt"
+printf '%s\n' "$OUT" | grep -q "callsign shape: 2 " || fail "allowlist: expected two callsign hits without an allowlist: $OUT"
+shape_run "$dir" "$TMP/allow-one.txt"
+printf '%s\n' "$OUT" | grep -q "callsign shape: 1 " || fail "allowlist: the exact token should leave exactly one hit: $OUT"
+page "$dir" index.html '<p>N0XYZ only</p>'
+shape_run "$dir" "$TMP/allow-one.txt"
+[ -z "$OUT" ] && [ "$RC" -eq 0 ] || fail "allowlist: an allowlisted token was still reported: $OUT"
+page "$dir" index.html '<p>N0XYZA is a different token, and N0XYZABC is too long to be a callsign</p>'
+shape_run "$dir" "$TMP/allow-one.txt"
+printf '%s\n' "$OUT" | grep -q "callsign shape: 1 " || fail "allowlist: a different token must still be reported (exact match only): $OUT"
+shape_run "$dir" "$TMP/allow-noreason.txt"
+[ "$RC" -ne 0 ] || fail "allowlist: an entry without a reason must fail closed"
+echo "ok: check-shapes.py fixtures"
+
+# check-output.sh: a hit fails the rule in staging AND production (scrub_terms behaves the same: it is
+# not environment dependent, the staging site is public too), and SKIP_SCRUB_SHAPES=1 proves the bite.
+FIX=scripts/fixtures
+TERMS="$TMP/terms.txt"
+printf '%s\n' 'zzbannedtermzz' >"$TERMS"
+for mode in production staging; do
+  base=clean
+  [ "$mode" = staging ] && base=clean-staging
+  tree="$TMP/co-$mode"
+  rm -rf "$tree"
+  mkdir -p "$tree"
+  cp -R "$FIX/$base/." "$tree/"
+  RC=0
+  OUT="$(SKIP_FRESH=1 EXPECT_ENV=$mode SCRUB_TERMS_FILE="$TERMS" scripts/check-output.sh "$tree" 2>&1)" || RC=$?
+  [ "$RC" -eq 0 ] || fail "check-output $mode: the clean fixture should pass: $OUT"
+  robots=''
+  [ "$mode" = staging ] && robots='<meta name="robots" content="noindex">'
+  printf '<!doctype html><html><head><title>t</title>%s</head><body><p>op N0XYZ at 10.9.8.7</p></body></html>\n' "$robots" >"$tree/shape.html"
+  RC=0
+  OUT="$(SKIP_FRESH=1 EXPECT_ENV=$mode SCRUB_TERMS_FILE="$TERMS" scripts/check-output.sh "$tree" 2>&1)" || RC=$?
+  [ "$RC" -ne 0 ] || fail "check-output $mode: a callsign shape did not fail the gate"
+  printf '%s\n' "$OUT" | grep -q '^FAIL scrub_shapes: .*(.*shape.html)' || fail "check-output $mode: no scrub_shapes failure line: $OUT"
+  if printf '%s' "$OUT" | grep -qE 'N0XYZ|10\.9\.8\.7'; then fail "check-output $mode: the matched text was printed"; fi
+  RC=0
+  OUT="$(SKIP_SCRUB_SHAPES=1 SKIP_FRESH=1 EXPECT_ENV=$mode SCRUB_TERMS_FILE="$TERMS" scripts/check-output.sh "$tree" 2>&1)" || RC=$?
+  [ "$RC" -eq 0 ] || fail "check-output $mode: SKIP_SCRUB_SHAPES=1 should pass the same tree: $OUT"
+done
+echo "ok: check-output.sh scrub_shapes in production and staging"
+
+# The real site, built in both variants, holds no shape (the rule is tuned on this output).
+HUGO="${HUGO:-hugo}"
+"$HUGO" --minify --destination "$TMP/real-prod" >/dev/null 2>"$TMP/build.err" || fail "production build failed: $(cat "$TMP/build.err")"
+HUGO_PARAMS_ENVIRONMENT=staging "$HUGO" --minify --destination "$TMP/real-staging" >/dev/null 2>"$TMP/build.err" || fail "staging build failed: $(cat "$TMP/build.err")"
+for v in prod staging; do
+  shape_run "$TMP/real-$v"
+  [ "$RC" -eq 0 ] || fail "real $v build: helper exit $RC: $OUT"
+  [ -z "$OUT" ] || fail "real $v build: shape findings: $OUT"
+done
+echo "ok: the real site has no shapes"
 echo "ok: scrub"

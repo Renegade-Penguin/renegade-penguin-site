@@ -1,0 +1,4 @@
+# Exact tokens the built site legitimately contains that scripts/check-shapes.py would flag.
+# One per line as TOKEN<TAB>reason (a line without a reason is an error). Exact match only; add an
+# entry only after looking at the hit, and never to hide a real identifier.
+# (none needed: the rule was tuned on the production and staging builds and they hold no shape)
