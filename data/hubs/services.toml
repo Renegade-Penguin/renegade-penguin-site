@@ -32,7 +32,7 @@ outcome = "Month-to-month virtual CISO and CIO guidance, with no lock-in, ground
 best_for = "Best for organizations needing senior guidance without a full-time hire"
 button = "Explore Advisory"
 url = "/services/advisory/"
-price_label = "Retainers from"
+price_label = "Retainers:"
 price_tier = "advisory"
 price_field = "retainer_small"
 
@@ -42,7 +42,7 @@ outcome = "Fixed-scope defensive engineering for hardening, architecture, data f
 best_for = "Best for teams with defined security work that needs doing"
 button = "Explore Projects"
 url = "/services/projects/"
-price_label = "Projects"
+price_label = "Projects:"
 price_tier = "projects"
 price_field = "minimum"
 
@@ -52,7 +52,7 @@ outcome = "See how AI is actually used, where data goes and which practical cont
 best_for = "Best for organizations managing approved tools and shadow AI"
 button = "Review AI Use"
 url = "/services/projects/#ai-security-review"
-price_label = "AI review"
+price_label = "AI review:"
 price_tier = "ai_review"
 price_field = "minimum"
 
@@ -62,6 +62,6 @@ outcome = "Workshops, talks and tabletop exercises built around real decisions, 
 best_for = "Best for teams, events and community groups seeking practical education"
 button = "Explore Education"
 url = "/services/education-speaking/"
-price_label = "Keynotes"
+price_label = "Keynotes:"
 price_tier = "speaking"
 price_field = "keynote"
