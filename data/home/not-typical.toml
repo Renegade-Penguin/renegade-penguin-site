@@ -3,6 +3,10 @@ title = "Not the Typical vCISO or vCIO"
 intro = "Renegade Penguin brings about 16 years of hands-on security work to the decisions most advisors only discuss. The advice comes from building, testing, and questioning the systems involved."
 
 [[items]]
+title = "Systems First"
+body = "I started in networking, Linux and system administration, so I understand how systems are built and run before I secure them."
+
+[[items]]
 title = "Hands-On Judgment"
 body = "I have worked incidents and outages firsthand, stayed hands-on, and managed teams through them. My advice comes from that direct experience, not books or vendor decks."
 
