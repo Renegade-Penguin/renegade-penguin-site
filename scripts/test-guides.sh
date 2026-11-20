@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Targeted test for the guides section (issue #98). Builds the site and asserts: the /guides/ hub and the
-# three guide pages exist with the exact titles and seoTitles, the hub links every guide, each guide's first
+# four guide pages exist with the exact titles and seoTitles, the hub links every guide, each guide's first
 # paragraph is present, each has at least 3 internal links from the allowed path list and every internal
 # link resolves to a built page, each has a Questions section with exactly 4 H3 questions, the sitemap
 # lists the hub and the guides, and no page carries an em or en dash. Negative cases prove each guard bites.

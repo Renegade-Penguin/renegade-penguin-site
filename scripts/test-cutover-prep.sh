@@ -408,7 +408,7 @@ REQUIRED_STRINGS = [
     "clean staging directory",
     "managed robots.txt",
     "REQUIRE_OWNER_APPROVAL=1",
-    "removing owner_review from the four files under content/guides",
+    "removing owner_review from the five files under content/guides",
     "layouts/home.robots.txt",
     "Claude-SearchBot",
     "ChatGPT-User",
