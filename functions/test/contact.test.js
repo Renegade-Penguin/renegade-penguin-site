@@ -165,10 +165,24 @@ test("success:false with the correct hostname and action still gets 400", async 
   assert.equal(d.sendMail.sent.length, 0);
 });
 
+// The fallback page must keep its address inside email_off markers, or Cloudflare Email Address
+// Obfuscation rewrites it: one pair, opener before the mailto anchor, closer after it.
+function assertEmailOff(body, name) {
+  const open = body.indexOf("<!--email_off-->");
+  const close = body.indexOf("<!--/email_off-->");
+  const anchor = body.indexOf('<a href="mailto:');
+  const anchorEnd = body.indexOf("</a>", anchor);
+  assert.ok(open >= 0 && close > open, "email_off markers missing or out of order: " + name);
+  assert.ok(open < anchor && anchorEnd + 4 <= close, "mailto anchor not between the markers: " + name);
+  assert.equal(body.split("<!--email_off-->").length - 1, 1, "need exactly one opener: " + name);
+  assert.equal(body.split("<!--/email_off-->").length - 1, 1, "need exactly one closer: " + name);
+}
+
 test("a non-ok Turnstile HTTP status gets 424 and sends nothing", async () => {
   const d = deps({ httpStatus: 500 });
   const res = await run(GOOD, d);
   assert.equal(res.status, 424);
+  assertEmailOff(await res.text(), "non-ok Turnstile status");
   assert.equal(d.sendMail.sent.length, 0);
 });
 
@@ -176,6 +190,7 @@ test("a malformed Turnstile json body gets 424 and sends nothing", async () => {
   const d = deps({ malformedJson: true });
   const res = await run(GOOD, d);
   assert.equal(res.status, 424);
+  assertEmailOff(await res.text(), "malformed Turnstile json");
   assert.equal(d.sendMail.sent.length, 0);
 });
 
@@ -215,6 +230,7 @@ test("an unreachable Turnstile endpoint gets 424 and sends nothing", async () =>
   const d = deps(new Error("network down"));
   const res = await run(GOOD, d);
   assert.equal(res.status, 424);
+  assertEmailOff(await res.text(), "unreachable Turnstile");
   assert.equal(d.sendMail.sent.length, 0);
 });
 
@@ -225,6 +241,7 @@ test("missing server configuration gets 424 and sends nothing", async () => {
     delete env[missing];
     const res = await run(GOOD, d, undefined, env);
     assert.equal(res.status, 424, missing);
+    assertEmailOff(await res.text(), missing);
     assert.equal(d.sendMail.sent.length, 0);
   }
 });
@@ -459,6 +476,7 @@ test("a mail failure returns 424 and logs no personal data", async () => {
   assert.equal(res.status, 424);
   const body = await res.text();
   assert.ok(body.length > 0);
+  assertEmailOff(body, "mail failure");
   const dump = JSON.stringify(logged) + body;
   for (const needle of ["ada@example.com", "Ada Example", "Example Org", "email security", "token-abc", ENV.TURNSTILE_SECRET]) {
     assert.ok(!dump.includes(needle), "log or body leaked " + needle);
@@ -574,6 +592,7 @@ test("a bad MAIL_FROM makes the real adapter throw, giving 424 and no mail", asy
     console.error = orig;
   }
   assert.equal(res.status, 424);
+  assertEmailOff(await res.text(), "bad MAIL_FROM");
   assert.equal(MAIL_WORKER.calls.length, 0);
   assert.ok(!JSON.stringify(logged).includes("ada@example.com"));
 });
@@ -624,6 +643,7 @@ test("every failure path returns a non-5xx HTML page with the fallback address",
     const body = await res.text();
     assert.ok(body.includes(FALLBACK), name);
     assert.ok(body.includes('href="mailto:' + FALLBACK + '"'), name);
+    assertEmailOff(body, name);
     assert.ok(body.includes('href="/contact/"'), name);
     assert.ok(!body.includes("ada@example.com") && !body.includes("Ada Example"), name);
   }

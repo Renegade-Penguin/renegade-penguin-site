@@ -32,7 +32,7 @@ Sending the form does not create an advisory relationship.
 
 ## Who processes it
 
-Cloudflare hosts the site, provides Turnstile, runs the Worker that handles submissions, and maintains ordinary server logs. The Worker sends form submissions to contact@renegadepenguinllc.com, where the mailbox provider processes the message.
+Cloudflare hosts the site, provides Turnstile, runs the Worker that handles submissions, and maintains ordinary server logs. The Worker sends form submissions to {{< email >}}, where the mailbox provider processes the message.
 
 Renegade Penguin does not sell personal information or share it with advertisers or data brokers. Information may be disclosed when required by law, needed to protect the site or its users, or necessary for service providers to operate the site and mailbox.
 

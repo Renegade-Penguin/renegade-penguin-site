@@ -1,0 +1,2 @@
+{{- /* The contact address as plain text, inside the email_off markers so Cloudflare Email Address Obfuscation leaves it alone. Markdown mailto links get the same markers from layouts/_markup/render-link.html. */ -}}
+{{- "<!--email_off-->" | safeHTML }}{{ site.Params.contactEmail }}{{ "<!--/email_off-->" | safeHTML -}}

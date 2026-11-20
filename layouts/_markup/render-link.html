@@ -16,4 +16,8 @@
     {{- errorf "render-link: disallowed link scheme in %s: %q" .Page.Path $dest -}}
   {{- end -}}
 {{- end -}}
-<a href="{{ $dest | safeURL }}"{{ with .Title }} title="{{ . }}"{{ end }}{{ if $ext }} rel="noopener"{{ end }}>{{ .Text | safeHTML }}</a>{{- "" -}}
+{{- /* Cloudflare Email Address Obfuscation rewrites mailto links unless they sit inside email_off markers (scripts/check-email-off.py). */ -}}
+{{- $mail := strings.HasPrefix $lower "mailto:" -}}
+{{- if $mail }}{{ "<!--email_off-->" | safeHTML }}{{ end -}}
+<a href="{{ $dest | safeURL }}"{{ with .Title }} title="{{ . }}"{{ end }}{{ if $ext }} rel="noopener"{{ end }}>{{ .Text | safeHTML }}</a>
+{{- if $mail }}{{ "<!--/email_off-->" | safeHTML }}{{ end -}}{{- "" -}}
