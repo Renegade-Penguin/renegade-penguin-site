@@ -9,12 +9,15 @@ BASE="${TEST_TMP_BASE:-$HOME/.local/share/renegade-penguin-site-dev}"
 mkdir -p "$BASE" || exit 1
 TMP="$(mktemp -d -p "$BASE" seo.XXXXXX)" || exit 1
 trap 'rm -rf "$TMP"' EXIT
-"$HUGO" --minify --destination "$TMP/out" >/dev/null 2>"$TMP/build.err" || {
-  cat "$TMP/build.err" >&2
-  echo "FAIL: hugo build failed" >&2
+fail() {
+  echo "FAIL: $*" >&2
   exit 1
 }
-python3 -I - "$TMP/out" <<'PY' || { echo "FAIL: seo titles and descriptions" >&2; exit 1; }
+"$HUGO" --minify --destination "$TMP/out" >/dev/null 2>"$TMP/build.err" || {
+  cat "$TMP/build.err" >&2
+  fail "hugo build failed"
+}
+python3 -I - "$TMP/out" <<'PY' || fail "seo titles and descriptions"
 import html
 import re
 import sys
