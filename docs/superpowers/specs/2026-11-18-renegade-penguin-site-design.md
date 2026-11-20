@@ -95,8 +95,9 @@ Owner chose A, with B as a follow-up.
   communities that lack resources, which has included houses of worship, and for
   domestic violence support organizations (OSINT, OPSEC, threat modeling to
   shake off abusive partners and stalking). Do not name faiths or groups.
-- A warning given in person to a large healthcare distributor years before it
-  was breached by ransomware, told anonymized. The company is not named.
+- A clear warning about serious security weaknesses, given to an organization
+  years ago and ignored until the cost became unavoidable. Kept vague by owner
+  decision (2026-11-19): no sector, no company type, no breach type, no name.
 - Look: quieter sibling of the personal brand (amber on dark charcoal, Jost,
   the penguin as a mark), not a corporate stock look. (Owner has not objected;
   treated as accepted.)
