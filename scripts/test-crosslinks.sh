@@ -29,6 +29,11 @@ fail() {
   cat "$TMP/build.err" >&2
   fail "production build failed"
 }
+# The deployed configuration sets the Turnstile sitekey, which adds one script tag on /contact/.
+HUGO_PARAMS_TURNSTILESITEKEY=fixturekey "$HUGO" --minify --destination "$TMP/key" >/dev/null 2>"$TMP/build.err" || {
+  cat "$TMP/build.err" >&2
+  fail "sitekey build failed"
+}
 HUGO_PARAMS_ENVIRONMENT=staging "$HUGO" --minify --destination "$TMP/stg" >/dev/null 2>"$TMP/build.err" || {
   cat "$TMP/build.err" >&2
   fail "staging build failed"
@@ -228,7 +233,7 @@ APPROVED = {
 
 
 class Section(HTMLParser):
-    """H2 headings in main, the paragraph after each, its anchors and every script tag."""
+    """H2 headings in main, the paragraph after each and its anchors."""
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -236,13 +241,10 @@ class Section(HTMLParser):
         self.mode = None
         self.h2 = []
         self.cur = None
-        self.scripts = 0
         self.targets = 0
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
-        if tag == "script":
-            self.scripts += 1
         if tag == "main":
             self.in_article = True
         if not self.in_article:
@@ -302,20 +304,65 @@ def check_added(root):
                 errs.append("%s: %s lacks noopener" % (rel, h))
         if p.targets:
             errs.append("%s: a link carries a target attribute" % rel)
-        # Only the JSON-LD block is a script on these pages.
-        if p.scripts != 1:
-            errs.append("%s: want one script (JSON-LD), got %d" % (rel, p.scripts))
     return errs
 
 
-def run(root, prod, want, expected):
-    return check_jsonld(root, want) + check_links(root) + check_added(root) + check_llms(root, expected) + check_policy(root, prod)
+class Scripts(HTMLParser):
+    """Attributes of every script tag, and whether any has inline content."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.tags = []
+        self.inline = 0
+        self.open = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "script":
+            self.tags.append(dict(attrs))
+            self.open = True
+
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self.open = False
+
+    def handle_data(self, data):
+        if self.open and data.strip() and self.tags and self.tags[-1].get("type") != "application/ld+json":
+            self.inline += 1
+
+
+def check_scripts(root, want_ts):
+    """No page gains a script: JSON-LD everywhere, plus on /contact/ only the one pinned Turnstile tag.
+
+    The Turnstile pattern is the one scripts/test-pages.sh pins: the exact src with async and defer.
+    It appears only in a build with a sitekey (layouts/contact/list.html)."""
+    errs = []
+    turnstile = {"src": "https://challenges.cloudflare.com/turnstile/v0/api.js", "async": None, "defer": None}
+    for p in pages(root):
+        rel = os.path.relpath(p, root)
+        s = Scripts()
+        with open(p, encoding="utf-8") as f:
+            s.feed(f.read())
+        extra = [t for t in s.tags if t.get("type") != "application/ld+json"]
+        if s.inline:
+            errs.append("%s: inline script content" % rel)
+        if rel == "contact/index.html":
+            if extra != ([turnstile] if want_ts else []):
+                errs.append("%s: want %s, got %r" % (rel, "the pinned Turnstile script" if want_ts else "no script besides JSON-LD", extra))
+        elif extra:
+            errs.append("%s: unexpected script: %r" % (rel, extra))
+        if len(s.tags) - len(extra) != 1 and rel in APPROVED:
+            errs.append("%s: want one JSON-LD script" % rel)
+    return errs
+
+
+def run(root, prod, want, expected, ts=False):
+    return check_jsonld(root, want) + check_links(root) + check_added(root) + check_scripts(root, ts) + check_llms(root, expected) + check_policy(root, prod)
 
 
 if __name__ == "__main__":
     mode, root = sys.argv[1], sys.argv[2]
     expected = open("scripts/fixtures/llms-business.txt", encoding="utf-8").read()
-    errs = run(root, mode == "prod", person_data(), expected)
+    errs = run(root, mode in ("prod", "key"), person_data(), expected, mode == "key")
     for e in errs:
         print(e)
     sys.exit(1 if errs else 0)
@@ -324,6 +371,8 @@ PY
 check() { python3 -I "$TMP/check.py" "$1" "$2"; }
 check prod "$TMP/prod" || fail "production cross-reference checks"
 check stg "$TMP/stg" || fail "staging cross-reference checks"
+check key "$TMP/key" || fail "sitekey (deployed configuration) cross-reference checks"
+grep -Eq '<script src="?https://challenges\.cloudflare\.com/turnstile/v0/api\.js"? async defer>' "$TMP/key/contact/index.html" || fail "sitekey build lost its Turnstile tag (the positive fixture would prove nothing)"
 # The staging build uses the same apex as the canonical links, never the staging host.
 grep -q 'https://renegadepenguinllc.com/about/' "$TMP/stg/llms.txt" || fail "staging llms.txt must use the apex"
 if grep -qi 'staging' "$TMP/stg/llms.txt"; then fail "staging llms.txt must not name the staging host"; fi
@@ -331,10 +380,10 @@ grep -Eq '<link rel="?canonical"? href="?https://renegadepenguinllc.com/about/' 
 
 # Negative fixtures: each mutated copy of the production output must be rejected.
 neg() {
-  local name="$1" file="$2" expr="$3" kind="${4:-prod}"
+  local name="$1" file="$2" expr="$3" kind="${4:-prod}" src="${5:-$TMP/prod}"
   rm -rf "$TMP/neg"
-  cp -r "$TMP/prod" "$TMP/neg"
-  cp "$TMP/prod/$file" "$TMP/neg/$file.orig"
+  cp -r "$src" "$TMP/neg"
+  cp "$src/$file" "$TMP/neg/$file.orig"
   sed -E -i "$expr" "$TMP/neg/$file"
   if cmp -s "$TMP/neg/$file" "$TMP/neg/$file.orig"; then
     fail "negative case $name did not change the file"
@@ -367,6 +416,17 @@ neg "community text edited" community/index.html 's#Join us wherever works best 
 neg "community wrong discord url" community/index.html 's#https://discord.chiefgyk3d.com#https://discord.example.com#'
 neg "community wrong matrix url" community/index.html 's#renegade-penguin:chiefgyk3d.com#renegade-penguin:example.com#'
 neg "community matrix link missing" community/index.html 's#<a href=[^>]*matrix.to[^>]*>Matrix</a>#Matrix#'
+TS='<script src=https://challenges.cloudflare.com/turnstile/v0/api.js async defer>'
+neg "turnstile script on the community page" community/index.html "s#</main>#${TS}</script></main>#"
+neg "turnstile script on the home page" index.html "s#</main>#${TS}</script></main>#"
+neg "turnstile script on contact without a sitekey" contact/index.html "s#</main>#${TS}</script></main>#"
+neg "second turnstile script on contact" contact/index.html "s#${TS}</script>#${TS}</script>${TS}</script>#" key "$TMP/key"
+neg "different turnstile src on contact" contact/index.html 's#turnstile/v0/api.js#turnstile/v0/other.js#' key "$TMP/key"
+neg "turnstile without defer on contact" contact/index.html 's#api.js async defer#api.js async#' key "$TMP/key"
+neg "extra script on contact" contact/index.html 's#</main>#<script src=https://example.com/x.js></script></main>#' key "$TMP/key"
+neg "inline script on contact" contact/index.html 's#</main>#<script>x()</script></main>#' key "$TMP/key"
+neg "turnstile script missing from the sitekey build" contact/index.html "s#${TS}</script>##" key "$TMP/key"
+neg "inline script on contact without a sitekey" contact/index.html 's#</main>#<script>x()</script></main>#'
 neg "community script added" community/index.html 's#</main>#<script>x()</script></main>#'
 # A second link to the same personal URL in one block: duplicate the home block link.
 rm -rf "$TMP/neg"
