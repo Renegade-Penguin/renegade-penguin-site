@@ -129,6 +129,10 @@ for tool in hugo wrangler; do
   printf '#!/bin/sh\necho "%s $*" >> "%s/calls"\nexit 0\n' "$tool" "$TMP" >"$TMP/bin/$tool"
   chmod +x "$TMP/bin/$tool"
 done
+# A fake doppler goes first on PATH in every run: /usr/bin may hold the real one, which a test must
+# never reach. It records its argv and fails, so no refusal case can read anything.
+printf '#!/bin/sh\necho "$*" >> "%s/dcalls"\nexit 1\n' "$TMP" >"$TMP/bin/doppler"
+chmod +x "$TMP/bin/doppler"
 # A dummy token proves it is never printed or echoed back.
 DUMMY_TOKEN="dummy-token-for-leak-test-0123"
 run() { # <name> <expected: zero|nonzero> <env assignments...> -- <args...>
@@ -141,6 +145,7 @@ run() { # <name> <expected: zero|nonzero> <env assignments...> -- <args...>
   done
   [ "$#" -gt 0 ] && shift
   : >"$TMP/calls"
+  : >"$TMP/dcalls"
   env -i PATH="$TMP/bin:/usr/bin:/bin" HOME="$HOME" HUGO="$TMP/bin/hugo" WRANGLER="$TMP/bin/wrangler" \
     CLOUDFLARE_API_TOKEN="$DUMMY_TOKEN" "${envs[@]}" \
     bash "$S" "$@" >"$TMP/out" 2>&1 || st=$?
@@ -149,6 +154,7 @@ run() { # <name> <expected: zero|nonzero> <env assignments...> -- <args...>
     nonzero) [ "$st" -ne 0 ] || fail "$name: expected non-zero exit" ;;
   esac
   [ ! -s "$TMP/calls" ] || fail "$name: ran a tool: $(cat "$TMP/calls")"
+  [ ! -s "$TMP/dcalls" ] || fail "$name: a refusal reached doppler: $(cat "$TMP/dcalls")"
   if grep -q "$DUMMY_TOKEN" "$TMP/out"; then fail "$name: the token was printed"; fi
 }
 
@@ -161,7 +167,8 @@ run "dry run (explicit)" zero -- --dry-run
 run "apply without approval" nonzero -- --apply
 run "apply with wrong approval value" nonzero OWNER_APPROVED_CUTOVER=true -- --apply
 grep -qi "OWNER_APPROVED_CUTOVER" "$TMP/out" || fail "refusal does not name OWNER_APPROVED_CUTOVER"
-run "approval but no scrub file variable" nonzero OWNER_APPROVED_CUTOVER=yes HUGO_PARAMS_TURNSTILESITEKEY=fixturekey -- --apply
+# (An unset SCRUB_TERMS_FILE is no longer a refusal: --apply derives it from stg_scrub. The derive
+# cases further down cover that path with a fake doppler.)
 run "approval but missing scrub file" nonzero OWNER_APPROVED_CUTOVER=yes HUGO_PARAMS_TURNSTILESITEKEY=fixturekey SCRUB_TERMS_FILE="$TMP/nope.txt" -- --apply
 grep -qi "SCRUB_TERMS_FILE" "$TMP/out" || fail "refusal does not name SCRUB_TERMS_FILE"
 : >"$TMP/empty.txt"
@@ -208,18 +215,32 @@ version_case "wrangler prints no version" "wrangler"
 # log. Nothing real is built, checked or deployed; no network.
 APPLY_REPO="$TMP/applyrepo"
 APPLY_LOG="$TMP/apply.log"
+APPLY_DERIVE=0
+APPLY_DOPPLER_RC=0
+APPLY_SECRET="$TMP/fake-secret.txt"
 apply_case() { # <name> <wrangler version> <fake check-output exit code> <expected exit: zero|nonzero>
   local name="$1" wver="$2" check_rc="$3" want="$4" st=0
   rm -rf "$APPLY_REPO" "$TMP/fakebin"
   mkdir -p "$APPLY_REPO/scripts" "$APPLY_REPO/functions/api" "$TMP/fakebin"
   cp "$S" "$APPLY_REPO/scripts/deploy-production.sh"
+  cp scripts/derive-scrub-terms.sh "$APPLY_REPO/scripts/derive-scrub-terms.sh"
   cp wrangler.production.jsonc "$APPLY_REPO/wrangler.production.jsonc"
   echo "export default {};" >"$APPLY_REPO/functions/api/fixture.js"
   : >"$APPLY_LOG"
   rm -f "$TMP/deploydir"
   printf '%s\n' '#!/bin/sh' \
     'echo "CHECK EXPECT_ENV=$EXPECT_ENV REQUIRE_NO_OWNER_TOKENS=$REQUIRE_NO_OWNER_TOKENS REQUIRE_OWNER_APPROVAL=$REQUIRE_OWNER_APPROVAL ARGS=$*" >>"$LOG"' \
+    'echo "CHECKFILE mode=$(stat -c %a "$SCRUB_TERMS_FILE") dirmode=$(stat -c %a "$(dirname "$SCRUB_TERMS_FILE")")" >>"$LOG"' \
+    'cat "$SCRUB_TERMS_FILE" >"$TERMS_COPY"' \
+    'echo "$SCRUB_TERMS_FILE" >"$TERMS_PATH"' \
+    'if [ "$FAKE_CHECK_RC" = TERM ]; then kill -TERM "$PPID"; sleep 2; exit 0; fi' \
     'exit "$FAKE_CHECK_RC"' >"$APPLY_REPO/scripts/check-output.sh"
+  # The fake doppler records its argv in the call log and prints the fake secret (or fails).
+  printf '%s\n' '#!/bin/sh' \
+    'echo "DOPPLER ARGS=$*" >>"$LOG"' \
+    'if [ "$FAKE_DOPPLER_RC" != 0 ]; then echo "fake doppler error echoing fake-employer-one" >&2; exit "$FAKE_DOPPLER_RC"; fi' \
+    'cat "$FAKE_SECRET_FILE"' >"$TMP/fakebin/doppler"
+  chmod +x "$TMP/fakebin/doppler"
   printf '%s\n' '#!/bin/sh' \
     'echo "HUGO ARGS=$* HUGO_ENVIRONMENT=$HUGO_ENVIRONMENT HUGO_PARAMS_ENVIRONMENT=$HUGO_PARAMS_ENVIRONMENT SITEKEY=$HUGO_PARAMS_TURNSTILESITEKEY" >>"$LOG"' \
     'dest=public; prev=""' \
@@ -244,10 +265,17 @@ apply_case() { # <name> <wrangler version> <fake check-output exit code> <expect
     'if [ -f "$PWD/public/index.html" ]; then echo "DETAIL public=present" >>"$LOG"; fi' \
     'echo "$PWD" >"$DEPLOYDIR_FILE"' >"$TMP/fakebin/wrangler"
   chmod +x "$APPLY_REPO/scripts/check-output.sh" "$TMP/fakebin/hugo" "$TMP/fakebin/wrangler"
+  # An explicit SCRUB_TERMS_FILE is used as is; with APPLY_DERIVE=1 it is left unset so the script derives it.
+  local scrub_env=()
+  [ "$APPLY_DERIVE" = 1 ] || scrub_env=(SCRUB_TERMS_FILE="$TMP/real.txt")
+  rm -rf "$TMP/scrubbase" "$TMP/termscopy" "$TMP/termspath"
+  mkdir -p "$TMP/scrubbase"
   env -i PATH="$TMP/fakebin:/usr/bin:/bin" HOME="$HOME" LOG="$APPLY_LOG" FAKE_CHECK_RC="$check_rc" \
     FAKE_WRANGLER_VERSION="$wver" PROD_CONFIG="$APPLY_REPO/wrangler.production.jsonc" \
     DEPLOYDIR_FILE="$TMP/deploydir" OWNER_APPROVED_CUTOVER=yes HUGO_PARAMS_TURNSTILESITEKEY=fixturekey \
-    SCRUB_TERMS_FILE="$TMP/real.txt" CLOUDFLARE_API_TOKEN="$DUMMY_TOKEN" \
+    FAKE_DOPPLER_RC="$APPLY_DOPPLER_RC" FAKE_SECRET_FILE="$APPLY_SECRET" SCRUB_TMP_BASE="$TMP/scrubbase" \
+    TERMS_COPY="$TMP/termscopy" TERMS_PATH="$TMP/termspath" "${scrub_env[@]}" \
+    CLOUDFLARE_API_TOKEN="$DUMMY_TOKEN" \
     bash "$APPLY_REPO/scripts/deploy-production.sh" --apply >"$TMP/out" 2>&1 || st=$?
   case "$want" in
     zero) [ "$st" -eq 0 ] || fail "$name: expected exit 0, got $st: $(tail -n 3 "$TMP/out")" ;;
@@ -256,7 +284,7 @@ apply_case() { # <name> <wrangler version> <fake check-output exit code> <expect
   if grep -q "$DUMMY_TOKEN" "$APPLY_LOG" "$TMP/out"; then fail "$name: the token appears in a call or in the output"; fi
 }
 # Tags of the recorded calls, in order, as one string.
-apply_order() { grep -E '^(W-VERSION|HUGO|CHECK|DEPLOY) ' "$APPLY_LOG" | cut -d' ' -f1 | tr '\n' ' '; }
+apply_order() { grep -E '^(W-VERSION|DOPPLER|HUGO|CHECK|DEPLOY) ' "$APPLY_LOG" | cut -d' ' -f1 | tr '\n' ' '; }
 
 apply_case "full apply" "3.45.0" 0 zero
 [ "$(apply_order)" = "W-VERSION HUGO CHECK DEPLOY " ] || fail "full apply: wrong call order: $(apply_order)"
@@ -290,6 +318,70 @@ if grep -q '^DEPLOY ' "$APPLY_LOG"; then fail "failing check-output: wrangler pa
 apply_case "old wrangler" "3.44.0" 0 nonzero
 [ "$(apply_order)" = "W-VERSION " ] || fail "old wrangler: expected only the version call, calls were: $(apply_order)"
 echo "ok: deploy-production.sh full apply path (fakes)"
+
+# Deriving the scrub terms (issue #9). With SCRUB_TERMS_FILE unset, --apply makes one read-only
+# `doppler secrets get` of the owner's stg_scrub list, derives plain terms into a private temp file, hands
+# that file to check-output, and removes it on success, on failure and on a signal. Everything here is a
+# fake doppler and clearly fake terms; the real list is never read.
+cat >"$TMP/fake-secret.txt" <<'EOF'
+# fake list for the test
+employer:fake-employer-one
+hostname:fake-host-one
+serial:FAKE-SERIAL-1
+allow:fake-allow
+employer:PLACEHOLDER-employer
+serial:PLACEHOLDER-serial
+EOF
+printf '%s\n' 'fake-employer-one' 'fake-host-one' 'FAKE-SERIAL-1' >"$TMP/derived.want"
+FAKE_TERM_RE='fake-employer|fake-host|FAKE-SERIAL|fake-allow'
+scrubbase_empty() { [ -z "$(ls -A "$TMP/scrubbase")" ]; }
+
+APPLY_DERIVE=1
+apply_case "derive: full apply" "3.45.0" 0 zero
+[ "$(apply_order)" = "W-VERSION DOPPLER HUGO CHECK DEPLOY " ] || fail "derive: wrong call order: $(apply_order)"
+[ "$(grep -c '^DOPPLER ' "$APPLY_LOG")" = 1 ] || fail "derive: doppler must be called exactly once"
+grep -qx 'DOPPLER ARGS=secrets get SCRUB_TERMS --project no-php-no-cry --config stg_scrub --plain' "$APPLY_LOG" ||
+  fail "derive: doppler argv is not the single read: $(grep '^DOPPLER ' "$APPLY_LOG")"
+if grep -E '^DOPPLER ' "$APPLY_LOG" | grep -qwE 'set|download|run|login|configure|update|delete'; then fail "derive: doppler got a forbidden subcommand"; fi
+grep -qx 'CHECKFILE mode=600 dirmode=700' "$APPLY_LOG" || fail "derive: temp file/dir modes are not 600/700: $(grep '^CHECKFILE' "$APPLY_LOG")"
+cmp -s "$TMP/termscopy" "$TMP/derived.want" || fail "derive: check-output did not receive the plain derived terms: $(cat "$TMP/termscopy")"
+if grep -qE '^(employer|hostname|serial|allow):' "$TMP/termscopy"; then fail "derive: a category prefix reached the terms file"; fi
+case "$(cat "$TMP/termspath")" in "$TMP/scrubbase"/*) ;; *) fail "derive: temp file is not under SCRUB_TMP_BASE" ;; esac
+scrubbase_empty || fail "derive: temp dir left behind after success: $(ls -A "$TMP/scrubbase")"
+if grep -qE "$FAKE_TERM_RE" "$TMP/out"; then fail "derive: a term appears in the script output"; fi
+if grep -qE "$FAKE_TERM_RE" "$APPLY_LOG"; then fail "derive: a term appears in a call log"; fi
+if grep -q 'DOPPLER' "$TMP/out"; then fail "derive: the output names the secret read call"; fi
+
+# Forced failure after the temp file exists: check-output fails; the temp dir must still be removed.
+apply_case "derive: failing check" "3.45.0" 1 nonzero
+[ "$(apply_order)" = "W-VERSION DOPPLER HUGO CHECK " ] || fail "derive failing check: wrong calls: $(apply_order)"
+scrubbase_empty || fail "derive: temp dir left behind after a failed check"
+if grep -qE "$FAKE_TERM_RE" "$TMP/out"; then fail "derive failing check: a term appears in the output"; fi
+
+# A signal while check-output runs: the trap removes the temp dir and nothing is deployed.
+apply_case "derive: TERM during check" "3.45.0" TERM nonzero
+if grep -q '^DEPLOY ' "$APPLY_LOG"; then fail "derive TERM: a deploy ran after the signal"; fi
+scrubbase_empty || fail "derive: temp dir left behind after SIGTERM"
+
+# Doppler fails: stop before any build; its stderr (which a fake makes echo a term) never reaches the output.
+APPLY_DOPPLER_RC=7
+apply_case "derive: doppler fails" "3.45.0" 0 nonzero
+APPLY_DOPPLER_RC=0
+[ "$(apply_order)" = "W-VERSION DOPPLER " ] || fail "derive doppler failure: wrong calls: $(apply_order)"
+scrubbase_empty || fail "derive: temp dir left behind after a doppler failure"
+if grep -qE "$FAKE_TERM_RE" "$TMP/out"; then fail "derive doppler failure: doppler stderr leaked a term into the output"; fi
+
+# Fail closed: a list with no real serial stops before the build, naming the category only.
+printf '%s\n' 'employer:fake-employer-one' 'hostname:fake-host-one' 'serial:PLACEHOLDER-serial' 'allow:fake-allow' >"$TMP/fake-secret-noserial.txt"
+APPLY_SECRET="$TMP/fake-secret-noserial.txt"
+apply_case "derive: no real serial" "3.45.0" 0 nonzero
+APPLY_SECRET="$TMP/fake-secret.txt"
+[ "$(apply_order)" = "W-VERSION DOPPLER " ] || fail "derive no serial: a build or check ran: $(apply_order)"
+grep -q 'serial' "$TMP/out" || fail "derive no serial: the refusal does not name the category"
+if grep -qE "$FAKE_TERM_RE" "$TMP/out"; then fail "derive no serial: a term appears in the output"; fi
+scrubbase_empty || fail "derive: temp dir left behind after a fail-closed list"
+APPLY_DERIVE=0
+echo "ok: deploy-production.sh derives the scrub terms from stg_scrub (fakes)"
 echo "ok: deploy-production.sh refusals and dry run"
 
 # The script text pins the production flags and orders the checks before the deploy.
@@ -306,7 +398,12 @@ REQUIRED = [
     "--project-name renegade-penguin-site-prod",
     "--branch main",
     "3.45.0",
+    "doppler secrets get SCRUB_TERMS --project no-php-no-cry --config stg_scrub --plain",
+    "trap cleanup EXIT",
+    "trap 'exit 130' INT",
+    "trap 'exit 143' TERM",
 ]
+READ = "doppler secrets get SCRUB_TERMS --project no-php-no-cry --config stg_scrub --plain"
 
 
 def check(text):
@@ -335,7 +432,12 @@ def check(text):
     build_at = code.find('"$HUGO" --minify')
     if version_at < 0 or build_at < 0 or version_at > build_at:
         errors.append("the wrangler version check must run before the build")
-    if "--config" in code:
+    # The only doppler call is the single read; the only --config is that call's stg_scrub.
+    if len(re.findall(r"\bdoppler\b", code)) != code.count(READ) or code.count(READ) != 1:
+        errors.append("doppler must appear only as the one read-only secrets get")
+    if re.search(r"doppler\s+(?:run|secrets\s+(?:set|download|delete|upload)|login|configure)", code):
+        errors.append("a forbidden doppler subcommand")
+    if "--config" in code.replace("--config stg_scrub --plain", ""):
         errors.append("deploy must not rely on --config (copy the file as wrangler.jsonc)")
     if re.search(r"\|\|\s*true", code):
         errors.append("|| true found")
@@ -362,6 +464,11 @@ mutants = {
     "old version floor": text.replace("3.45.0", "3.0.0"),
     "wrong project": text.replace("renegade-penguin-site-prod", "renegade-penguin-site"),
     "token in argv": text + "\nwrangler --token abc\n",
+    "doppler set": text + "\ndoppler secrets set SCRUB_TERMS --project no-php-no-cry --config stg_scrub\n",
+    "doppler run": text + "\ndoppler run -- true\n",
+    "other doppler config": text.replace("--config stg_scrub --plain", "--config prd --plain"),
+    "no exit trap": text.replace("trap cleanup EXIT", "true"),
+    "no term trap": text.replace("trap 'exit 143' TERM", "true"),
 }
 for label, mutant in mutants.items():
     if not check(mutant):
@@ -497,6 +604,7 @@ FILES = [
     "docs/cutover.md",
     "wrangler.production.jsonc",
     "scripts/deploy-production.sh",
+    "scripts/derive-scrub-terms.sh",
     "scripts/test-cutover-prep.sh",
     "scripts/test-pages-config.sh",
 ]
