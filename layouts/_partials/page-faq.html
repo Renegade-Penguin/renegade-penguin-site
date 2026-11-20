@@ -1,0 +1,12 @@
+{{- /* Issue #95: the visible FAQ for a page with a faq front matter array. Same markup and CSS as the home FAQ (home-faq.html). jsonld.html builds the FAQPage from this same .Params.faq, so markup and visible text cannot drift. */ -}}
+{{- with .Params.faq }}
+<section class="page-faq" aria-labelledby="questions">
+  <h2 id="questions">Questions</h2>
+  {{- range . }}
+  <details class="faq">
+    <summary>{{ .q }}</summary>
+    <p>{{ .a }}</p>
+  </details>
+  {{- end }}
+</section>
+{{- end }}

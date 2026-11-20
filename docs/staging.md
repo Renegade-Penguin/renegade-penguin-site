@@ -127,3 +127,7 @@ any file under the script's temp dir):
 ```
 for t in scripts/staging/test-*.sh; do [ "$t" = scripts/staging/test-lib.sh ] || bash "$t"; done
 ```
+
+## Pages awaiting owner approval
+
+A page with `owner_review = "pending"` in its front matter (today the four files under `content/guides/`) renders `<meta name="x-owner-review" content="pending">`. Staging builds and CI are unaffected, and the pages stay in the staging sitemap. The real production cutover must run `scripts/check-output.sh` with `REQUIRE_OWNER_APPROVAL=1` and `EXPECT_ENV=production`, which fails and names every page still pending. The owner approves the guides by removing `owner_review` from those four files.

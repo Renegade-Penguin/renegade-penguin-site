@@ -628,3 +628,66 @@ test("every failure path returns a non-5xx HTML page with the fallback address",
     assert.ok(!body.includes("ada@example.com") && !body.includes("Ada Example"), name);
   }
 });
+
+// Pages Function responses do not get the static _headers file, so every response carries its own set.
+import { createHash } from "node:crypto";
+
+function missingHeaders(res) {
+  const out = [];
+  const h = (n) => res.headers.get(n);
+  if (h("x-content-type-options") !== "nosniff") out.push("x-content-type-options");
+  if (h("referrer-policy") !== "same-origin") out.push("referrer-policy");
+  if (h("cache-control") !== "no-store") out.push("cache-control");
+  if (/^text\/html/i.test(h("content-type") ?? "")) {
+    const csp = h("content-security-policy") ?? "";
+    for (const d of ["default-src 'none'", "frame-ancestors 'none'", "base-uri 'none'", "form-action 'none'"]) {
+      if (!csp.includes(d)) out.push("csp:" + d);
+    }
+    if (/unsafe-inline|unsafe-eval|script-src/.test(csp)) out.push("csp:too-loose");
+  }
+  return out;
+}
+
+async function allResponsePaths() {
+  const quiet = console.error;
+  console.error = () => {};
+  try {
+    return {
+      ...(await failurePaths()),
+      "405": await handleContact(formRequest({}, { method: "GET" }), ENV, deps()),
+      "413": await run(GOOD, deps(), { headers: { "content-length": "20001" } }),
+      "400 validation": await run({ ...GOOD, name: "" }),
+      "400 no token": await run({ ...GOOD, "cf-turnstile-response": "" }),
+      "400 failed spam check": await run(GOOD, deps(turnstileOk({ success: false }))),
+      "303 honeypot": await run({ ...GOOD, website: "x" }),
+      "303 success": await run(GOOD),
+    };
+  } finally {
+    console.error = quiet;
+  }
+}
+
+test("every response path carries the full security header set", async () => {
+  const paths = await allResponsePaths();
+  assert.equal(Object.keys(paths).length, 10);
+  for (const [name, res] of Object.entries(paths)) {
+    assert.deepEqual(missingHeaders(res), [], name);
+  }
+});
+
+test("the 424 page CSP allows its inline style only by hash, and the hash matches", async () => {
+  const res = (await failurePaths())["config incomplete"];
+  const csp = res.headers.get("content-security-policy");
+  const body = await res.text();
+  const css = /<style>([^<]*)<\/style>/.exec(body)[1];
+  const hash = "sha256-" + createHash("sha256").update(css).digest("base64");
+  assert.ok(csp.includes("style-src '" + hash + "'"), csp);
+});
+
+test("the header guard bites: a bare response and a page without a CSP are flagged", () => {
+  assert.ok(missingHeaders(new Response("x", { status: 400 })).length >= 3);
+  const page = new Response("<p>x</p>", {
+    headers: { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff", "referrer-policy": "same-origin", "cache-control": "no-store" },
+  });
+  assert.ok(missingHeaders(page).some((m) => m.startsWith("csp:")));
+});

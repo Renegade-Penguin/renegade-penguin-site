@@ -83,6 +83,8 @@ a:hover { color: var(--text); }
 }
 .page { min-width: 0; }
 .lede { color: var(--muted); font-size: var(--text-lg); }
+.answer { color: var(--muted); font-size: var(--text-lg); border-left: 3px solid var(--accent); padding-left: var(--space-4); margin: 0 0 var(--space-5); }
+.page-faq h2 { margin-top: var(--space-6); }
 .page-list { padding-left: var(--space-5); }
 .site-nav a[aria-current="page"] { color: var(--accent); }
 
