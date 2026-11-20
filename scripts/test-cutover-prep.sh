@@ -433,8 +433,12 @@ def check(text):
     if version_at < 0 or build_at < 0 or version_at > build_at:
         errors.append("the wrangler version check must run before the build")
     # The only doppler call is the single read; the only --config is that call's stg_scrub.
-    if len(re.findall(r"\bdoppler\b", code)) != code.count(READ) or code.count(READ) != 1:
-        errors.append("doppler must appear only as the one read-only secrets get")
+    # Judged on executable command lines only: comments (whole-line and trailing) and words inside
+    # messages do not count, so documenting the call can never break or satisfy this check.
+    bare = [re.sub(r"\s#(?:\s.*)?$", "", ln) for ln in code.splitlines()]
+    doppler_cmds = [ln for ln in bare if re.search(r"(?:^|[|;&(])\s*doppler\b", ln)]
+    if len(doppler_cmds) != 1 or READ not in doppler_cmds[0]:
+        errors.append("doppler must be called only once, as the one read-only secrets get")
     if re.search(r"doppler\s+(?:run|secrets\s+(?:set|download|delete|upload)|login|configure)", code):
         errors.append("a forbidden doppler subcommand")
     if "--config" in code.replace("--config stg_scrub --plain", ""):
@@ -473,6 +477,15 @@ mutants = {
 for label, mutant in mutants.items():
     if not check(mutant):
         sys.exit("negative case did not fail: " + label)
+# Extra mentions of the call in comments or messages must NOT break the check (they are not commands).
+harmless = {
+    "whole-line comment": text + "\n# doppler secrets get SCRUB_TERMS --project no-php-no-cry --config stg_scrub --plain\n# doppler again\n",
+    "trailing comment": text + "\ntrue # doppler secrets get ... doppler\n",
+    "message text": text + '\necho "doppler is read-only here"\n',
+}
+for label, variant in harmless.items():
+    if check(variant):
+        sys.exit("a harmless mention counted as a command: " + label + ": " + "; ".join(check(variant)))
 print("ok: deploy script text")
 PY
 

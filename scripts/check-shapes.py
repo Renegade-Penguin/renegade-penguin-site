@@ -47,7 +47,11 @@ GRID_CONTEXT = re.compile(
 )
 OCTET = r"(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])"
 PRIVATE_IP = re.compile(
-    r"(?<![0-9.])(?:10\.%(o)s\.%(o)s\.%(o)s|172\.(?:1[6-9]|2[0-9]|3[01])\.%(o)s\.%(o)s|192\.168\.%(o)s\.%(o)s)(?!\.?[0-9])"
+    # An address is delimited on both sides: not glued to a letter, digit, underscore, hyphen or a
+    # dot before it (x10.9.8.7, 1.10.9.8.7), and not continued after it by such a character or by a dot
+    # plus one (10.9.8.7abc, 10.9.8.7.6, 10.9.8.7.example). A sentence-ending dot still matches.
+    r"(?<![A-Za-z0-9_.-])(?:10\.%(o)s\.%(o)s\.%(o)s|172\.(?:1[6-9]|2[0-9]|3[01])\.%(o)s\.%(o)s|192\.168\.%(o)s\.%(o)s)"
+    r"(?![A-Za-z0-9_-]|\.[A-Za-z0-9_-])"
     % {"o": OCTET}
 )
 PRIVATE_NAME = re.compile(
