@@ -55,7 +55,8 @@ const FAILURE_PAGE =
   "max-width:36rem;margin:3rem auto;padding:0 1rem}a{color:#FBB03B}</style></head><body><main>" +
   "<h1>We could not send your message</h1>" +
   "<p>Sorry, something went wrong on our side and your message did not go through.</p>" +
-  '<p>Please email us directly at <a href="mailto:' + FALLBACK_EMAIL + '">' + FALLBACK_EMAIL + "</a>.</p>" +
+  // email_off markers: Cloudflare Email Address Obfuscation would otherwise rewrite this address.
+  '<p>Please email us directly at <!--email_off--><a href="mailto:' + FALLBACK_EMAIL + '">' + FALLBACK_EMAIL + "</a><!--/email_off-->.</p>" +
   '<p><a href="/contact/">Go back to the contact form</a></p></main></body></html>';
 
 function failurePage() {

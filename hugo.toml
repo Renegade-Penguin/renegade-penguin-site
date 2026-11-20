@@ -4,6 +4,11 @@ locale = "en-US"
 disableKinds = ["taxonomy", "term", "RSS"]
 enableGitInfo = false
 
+# --minify drops HTML comments by default; the email_off markers must survive it
+# (scripts/test-email-off.sh). Templates emit no other comments (Hugo drops raw ones).
+[minify.tdewolff.html]
+  keepComments = true
+
 [outputs]
   home = ["html", "robots"]
 
@@ -16,6 +21,8 @@ enableGitInfo = false
   turnstileSitekey = ""
   # Public GitHub organization profile; the only sameAs entry on the organization JSON-LD node.
   githubOrg = "https://github.com/Renegade-Penguin"
+  # The public contact mailbox, for the email shortcode. Keep it in step with functions/api/_mail.js.
+  contactEmail = "contact@renegadepenguinllc.com"
 
 # The header menu is data-driven (data/nav.toml); the footer menu holds the trust and legal links only.
 [[menus.footer]]
