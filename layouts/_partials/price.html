@@ -1,0 +1,10 @@
+{{- /* Price line for a hub card: the value always sits in <span data-price>, as the pricing shortcode renders it, so scripts/check-claims.py allows it. Takes a dict with label, tier and field; fails the build when the tier or field is missing from data/pricing.toml. */ -}}
+{{- $t := index hugo.Data.pricing .tier -}}
+{{- if not $t -}}
+  {{- errorf "price: tier %q missing from data/pricing.toml" .tier -}}
+{{- end -}}
+{{- $v := index $t .field -}}
+{{- if not $v -}}
+  {{- errorf "price: field %q missing for tier %q in data/pricing.toml" .field .tier -}}
+{{- end -}}
+{{ .label }} <span data-price>{{ $v }}</span>

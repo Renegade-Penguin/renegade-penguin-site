@@ -192,3 +192,24 @@ main.home { max-width: var(--shell); margin: 0 auto; padding: var(--space-5) var
 .contact-form button:hover { text-decoration: underline; text-underline-offset: 0.2em; }
 .contact-form .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .contact-form .cf-turnstile { margin: 0 0 var(--space-4); min-height: 65px; }
+
+/* Hub landing pages (/services/, /who-we-help/, issue #88). main.hub uses the home shell width for the card
+   grids; the page body keeps the reading measure. Cards reuse .card and .exhibit; the button sits at the foot. */
+main.hub { max-width: var(--shell); margin: 0 auto; padding: var(--space-5) var(--space-4); }
+.hub-head { margin: 0 0 var(--space-5); }
+.hub-lede { max-width: 48rem; margin: 0; }
+.hub-card { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.hub-card h2 { margin: 0; font-size: 1.15rem; line-height: 1.3; letter-spacing: 0.03em; }
+.hub-card p { margin: 0; }
+.hub-card .hub-outcome { color: var(--text); }
+.hub-card .hub-best { font: 500 0.8rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.hub-card .hub-price { font-size: var(--text-sm); color: var(--muted); border-top: 1px dashed var(--rule); padding-top: var(--space-3); width: 100%; }
+.hub-card .hub-price [data-price] { color: var(--accent); font-weight: 600; }
+.hub-card .hub-quote { border-left: 3px solid var(--accent); padding-left: var(--space-3); font-size: var(--text-lg); line-height: 1.35; font-style: italic; color: var(--text); }
+.hub-card .btn { margin-top: auto; }
+.hub-start .step-no { font: 700 0.85rem var(--font-mono); letter-spacing: 0.1em; color: var(--accent); }
+.hub-start .step h3 { margin: 0; }
+.fit-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4) var(--space-5); margin: var(--space-6) 0; padding: var(--space-5) clamp(1.5rem, 4vw, 3rem); background: var(--surface); border: 2px solid var(--accent); }
+.fit-strip h2 { margin: 0 0 var(--space-2); font-size: 1.35rem; }
+.fit-strip p { margin: 0; color: var(--muted); max-width: 44rem; }
+.hub-body { max-width: var(--measure); }

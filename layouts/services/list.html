@@ -1,0 +1,37 @@
+{{ define "main" }}
+{{ $d := hugo.Data.hubs.services }}
+<article class="page hub-page">
+<header class="hub-head">
+<h1>{{ .Title }}</h1>
+<p class="lede hub-lede">{{ $d.intro }}</p>
+</header>
+<div class="grid grid-n{{ len $d.cards }}">
+  {{- range $d.cards }}
+  <article class="card exhibit hub-card">
+    <h2>{{ .title }}</h2>
+    <p class="hub-outcome">{{ .outcome }}</p>
+    <p class="hub-best">{{ .best_for }}</p>
+    <p class="hub-price">{{ partial "price.html" (dict "label" .price_label "tier" .price_tier "field" .price_field) }}</p>
+    <a class="btn btn-primary" href="{{ .url }}">{{ .button }}</a>
+  </article>
+  {{- end }}
+</div>
+<section class="hub-start" aria-labelledby="start-h">
+  {{ partial "section-head.html" (dict "n" "01" "title" $d.start.title "id" "start-h") }}
+  <ol class="grid steps grid-n{{ len $d.start.steps }}">
+    {{- range $i, $s := $d.start.steps }}
+    <li class="card step">
+      <span class="step-no">{{ printf "%02d" (add $i 1) }}</span>
+      <h3>{{ .title }}</h3>
+      <p>{{ .body }}</p>
+      {{ partial "stamp.html" .stamp }}
+    </li>
+    {{- end }}
+  </ol>
+</section>
+{{ partial "hub-fit.html" $d.fit }}
+<div class="hub-body">
+{{ .Content }}
+</div>
+</article>
+{{ end }}

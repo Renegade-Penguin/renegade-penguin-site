@@ -1,0 +1,67 @@
+# Copy for the /services/ landing page (issue #88). Rendered by layouts/services/list.html.
+# Each card's price comes from data/pricing.toml through the price partial; no price is typed here.
+intro = "Get direct, hands-on security and IT help from a practitioner who is not selling software or padding the work with vendor pitches."
+
+[start]
+title = "Start With a Real Look"
+
+[[start.steps]]
+title = "Fit Call"
+body = "Spend 30 minutes checking the problem, scope and whether working together makes sense."
+stamp = "FREE"
+
+[[start.steps]]
+title = "Paid Assessment"
+body = "Review current systems, risks, constraints and the work that should come first."
+stamp = "PAID"
+
+[[start.steps]]
+title = "Plan and Build"
+body = "Set the plan, then work hands-on through the agreed priorities."
+stamp = "BUILT"
+
+[fit]
+title = "Not Sure Where to Start?"
+body = "Use the free 30 minute fit call to talk through the problem without sitting through a sales pitch."
+button = "Book a Fit Call"
+url = "/contact/"
+
+[[cards]]
+title = "Security and IT Advisory"
+outcome = "Month-to-month virtual CISO and CIO guidance, with no lock-in, grounded in a paid assessment and practical priorities."
+best_for = "Best for organizations needing senior guidance without a full-time hire"
+button = "Explore Advisory"
+url = "/services/advisory/"
+price_label = "Retainers from"
+price_tier = "advisory"
+price_field = "retainer_small"
+
+[[cards]]
+title = "Security Projects"
+outcome = "Fixed-scope defensive engineering for hardening, architecture, data flows, incident readiness and security roadmaps."
+best_for = "Best for teams with defined security work that needs doing"
+button = "Explore Projects"
+url = "/services/projects/"
+price_label = "Projects"
+price_tier = "projects"
+price_field = "minimum"
+
+[[cards]]
+title = "AI Security Review"
+outcome = "See how AI is actually used, where data goes and which practical controls fit."
+best_for = "Best for organizations managing approved tools and shadow AI"
+button = "Review AI Use"
+url = "/services/projects/#ai-security-review"
+price_label = "AI review"
+price_tier = "ai_review"
+price_field = "minimum"
+
+[[cards]]
+title = "Education and Speaking"
+outcome = "Workshops, talks and tabletop exercises built around real decisions, with community education free or at cost."
+best_for = "Best for teams, events and community groups seeking practical education"
+button = "Explore Education"
+url = "/services/education-speaking/"
+price_label = "Keynotes"
+price_tier = "speaking"
+price_field = "keynote"

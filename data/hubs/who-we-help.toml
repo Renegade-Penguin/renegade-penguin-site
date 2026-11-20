@@ -1,0 +1,43 @@
+# Copy for the /who-we-help/ landing page (issue #88). Rendered by layouts/who-we-help/list.html.
+intro = "Security work should fit how your organization actually operates, including its people, vendors, regulatory questions and tolerance for disruption."
+
+[fit]
+title = "Not Sure Where to Start?"
+body = "Use the free 30 minute fit call to talk through the problem without sitting through a sales pitch."
+button = "Book a Fit Call"
+url = "/contact/"
+
+[[cards]]
+title = "Small Businesses"
+worry = "How do we cover security without a full-time hire?"
+body = "We sort priorities, guide decisions and handle practical work without adding a vendor pitch."
+button = "Explore Small Business"
+url = "/who-we-help/small-business/"
+
+[[cards]]
+title = "Medical and Dental Practices"
+worry = "Are patient data, vendors and ransomware plans getting enough scrutiny?"
+body = "We support HIPAA Security Rule risk analysis, vendor and business associate questions, and ransomware readiness."
+button = "Explore Medical"
+url = "/who-we-help/healthcare-dental/"
+
+[[cards]]
+title = "Private Aviation"
+worry = "Where could connected operations or specialized vendors create avoidable risk?"
+body = "We review systems, data flows and dependencies across flight departments, FBOs, charter operators and flight schools."
+button = "Explore Aviation"
+url = "/who-we-help/aviation/"
+
+[[cards]]
+title = "Critical Infrastructure"
+worry = "Can we improve security without risking availability or unsafe change?"
+body = "We put availability and safe change first, using NIST CSF as an alignment tool."
+button = "Explore Infrastructure"
+url = "/who-we-help/critical-infrastructure/"
+
+[[cards]]
+title = "Ohio Organizations"
+worry = "Could Ohio's cybersecurity framework matter to our risk decisions?"
+body = "We explain practical framework considerations and the affirmative defense context, without giving legal advice."
+button = "Explore Ohio"
+url = "/ohio/"
