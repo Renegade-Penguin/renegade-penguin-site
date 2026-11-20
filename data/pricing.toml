@@ -31,8 +31,8 @@ minimum = "a fixed scope starting at $7,500"
 drivers = "acceptable use, shadow AI inventory, data flows, and vendor questions"
 
 [speaking]
-keynote = "$5,000 plus travel"
-virtual = "$3,500"
-workshops = "$5,000"
+keynote = "$2,500 plus travel"
+virtual = "$1,500"
+workshops = "$3,500"
 community = "free, at cost, or arranged"
 drivers = "the organizer covers admission and, depending on the event, lodging and travel"

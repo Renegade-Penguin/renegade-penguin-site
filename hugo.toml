@@ -14,6 +14,8 @@ enableGitInfo = false
   # then builds without the widget and without the Turnstile script (no third-party request).
   # Set it per environment with HUGO_PARAMS_TURNSTILESITEKEY; the secret key never lives here.
   turnstileSitekey = ""
+  # Public GitHub organization profile; the only sameAs entry on the organization JSON-LD node.
+  githubOrg = "https://github.com/Renegade-Penguin"
 
 [[menus.main]]
   name = "Home"

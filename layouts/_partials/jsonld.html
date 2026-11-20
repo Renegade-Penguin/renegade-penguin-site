@@ -1,24 +1,77 @@
-{{- /* JSON-LD data blocks. Not executable, so the CSP (no script source) is untouched; scripts/check-html.py allows only this type. */ -}}
+{{- /* One JSON-LD @graph per page (issue #80), built only from facts already on the site: no review, rating, price, address or phone. A data block, not executable, so the CSP (no script source) is untouched; scripts/check-html.py allows only this type. Ids use the baseURL from config, which staging shares, so the graph shape is the same in both environments. scripts/test-jsonld.sh checks the result. */ -}}
+{{- $home := site.Home.Permalink -}}
+{{- $orgID := printf "%s#organization" $home -}}
+{{- /* The personal site names the same Person with this id in its own JSON-LD (no-php-no-cry head-meta: absURL "/" plus #person). */ -}}
+{{- $personID := "https://chiefgyk3d.com/#person" -}}
+{{- $behind := hugo.Data.home.behind -}}
+{{- $hasPerson := or .IsHome (eq .RelPermalink "/about/") -}}
 {{- $org := dict
-  "@context" "https://schema.org"
-  "@type" "Organization"
-  "@id" (printf "%s#organization" site.Home.Permalink)
+  "@type" (slice "Organization" "ProfessionalService")
+  "@id" $orgID
   "name" "Renegade Penguin LLC"
-  "url" site.Home.Permalink
+  "url" $home
   "logo" (absURL "brand/penguin-color.png")
-  "sameAs" (slice "https://chiefgyk3d.com/")
+  "description" site.Home.Description
+  "email" "contact@renegadepenguinllc.com"
+  "contactPoint" (dict "@type" "ContactPoint" "email" "contact@renegadepenguinllc.com")
+  "areaServed" (slice
+    (dict "@type" "AdministrativeArea" "name" "State of Ohio")
+    (dict "@type" "Country" "name" "United States"))
+  "knowsAbout" (slice "virtual CISO" "virtual CIO" "security assessments" "AI security review" "cybersecurity advisory" "incident response planning" "business continuity and disaster recovery")
+  "sameAs" (slice site.Params.githubOrg)
 -}}
-<script type="application/ld+json">{{ $org | jsonify | safeJS }}</script>
-{{- /* OWNER TO CONFIRM: the Person uses only the public handle and the title Founder. Add a real name or credentials only when the owner supplies them. */ -}}
-{{- if eq .RelPermalink "/about/" }}
+{{- /* The founder reference is emitted only where the Person node is in the same graph, so every reference resolves. */ -}}
+{{- if $hasPerson }}{{ $org = merge $org (dict "founder" (dict "@id" $personID)) }}{{ end -}}
+{{- $web := dict
+  "@type" "WebSite"
+  "@id" (printf "%s#website" $home)
+  "url" $home
+  "name" site.Title
+  "publisher" (dict "@id" $orgID)
+-}}
+{{- $graph := slice $org $web -}}
+{{- if $hasPerson }}
 {{- $person := dict
-  "@context" "https://schema.org"
   "@type" "Person"
-  "name" "ChiefGyk3D"
-  "jobTitle" "Founder"
-  "url" .Permalink
-  "worksFor" (dict "@id" (printf "%s#organization" site.Home.Permalink))
-  "sameAs" (slice "https://chiefgyk3d.com/")
+  "@id" $personID
+  "name" $behind.handle
+  "givenName" $behind.first_name
+  "jobTitle" "Founder, Renegade Penguin LLC"
+  "url" $behind.link_url
+  "sameAs" (slice $behind.link_url)
+  "worksFor" (dict "@id" $orgID)
 -}}
-<script type="application/ld+json">{{ $person | jsonify | safeJS }}</script>
+{{- $graph = $graph | append $person }}
 {{- end }}
+{{- if and (eq .Section "services") (eq .Kind "page") }}
+{{- $svc := dict
+  "@type" "Service"
+  "@id" (printf "%s#service" .Permalink)
+  "name" .Title
+  "description" .Description
+  "url" .Permalink
+  "provider" (dict "@id" $orgID)
+  "areaServed" (slice
+    (dict "@type" "AdministrativeArea" "name" "State of Ohio")
+    (dict "@type" "Country" "name" "United States"))
+-}}
+{{- $graph = $graph | append $svc }}
+{{- end }}
+{{- if not .IsHome }}
+{{- $items := slice }}
+{{- $pos := 0 }}
+{{- range (.Ancestors.Reverse | append .) }}
+{{- $pos = add $pos 1 }}
+{{- $items = $items | append (dict "@type" "ListItem" "position" $pos "name" (cond .IsHome "Home" .LinkTitle) "item" .Permalink) }}
+{{- end }}
+{{- $graph = $graph | append (dict "@type" "BreadcrumbList" "@id" (printf "%s#breadcrumb" .Permalink) "itemListElement" $items) }}
+{{- end }}
+{{- /* FAQPage only where the FAQ is visible: the home page renders data/home/faq.toml (home-faq.html); the text here is that same data. */ -}}
+{{- if .IsHome }}
+{{- $qs := slice }}
+{{- range hugo.Data.home.faq.items }}
+{{- $qs = $qs | append (dict "@type" "Question" "name" .title "acceptedAnswer" (dict "@type" "Answer" "text" .body)) }}
+{{- end }}
+{{- $graph = $graph | append (dict "@type" "FAQPage" "@id" (printf "%s#faq" .Permalink) "mainEntity" $qs) }}
+{{- end }}
+<script type="application/ld+json">{{ dict "@context" "https://schema.org" "@graph" $graph | jsonify | safeJS }}</script>
