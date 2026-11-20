@@ -210,6 +210,10 @@ assert {n: i["treatment"] for n, i in logos.items()} == {
 # 62 percent of the height of the supplied PNG, so the image height must be at least 70 px. The others
 # state no minimum: keep at least 24 px of height.
 MIN = {"Lorikeet Security": ("width", 140), "Cointelegraph": ("height", 70)}
+by_src = {i["logo"]: n for n, i in logos.items()}
+# A visible caption, the organization name, sits under the logos whose mark does not spell the name legibly
+# at its displayed size: an icon with no wordmark, the letters GC plus a badge, a badge with small text.
+assert {n for n, i in logos.items() if i.get("caption")} == {"Call Theory", "GC Dental", "Call Center Village"}, logos
 
 
 class T(HTMLParser):
@@ -222,13 +226,17 @@ class T(HTMLParser):
         self.imgs = []
         self.list_ok = []
         self.stack = []
+        self.cap = False
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         c = (a.get("class") or "").split()
         self.stack.append((tag, c))
+        if tag == "span" and "partner-caption" in c and self.cur is not None:
+            self.cur["caption"] = ""
+            self.cap = True
         if tag == "li" and "partner-tile" in c:
-            self.cur = {"text": "", "img": None}
+            self.cur = {"text": "", "img": None, "caption": None, "classes": c}
             self.tiles.append(self.cur)
             self.list_ok.append(any(t == "ul" and "partner-tiles" in cc for t, cc in self.stack[:-1]))
         if tag == "img":
@@ -241,12 +249,16 @@ class T(HTMLParser):
     def handle_endtag(self, tag):
         if self.stack:
             self.stack.pop()
+        if tag == "span":
+            self.cap = False
         if tag == "li":
             self.cur = None
 
     def handle_data(self, d):
         if self.cur is not None:
             self.cur["text"] += d
+            if self.cap:
+                self.cur["caption"] += d
 
 
 def parse(path):
@@ -265,10 +277,20 @@ def check(t, want):
             name = " ".join(tile["text"].split())
             assert name in names and name not in logos, ("text tile is not a text-only organization", name)
         else:
-            name = img.get("alt", "")
-            assert name in logos, ("logo alt is not a logo organization", name)
-            assert tile["text"].strip() == "", ("logo tile also carries text, read twice", name, tile["text"])
-            assert img["src"] == logos[name]["logo"], (img["src"], logos[name])
+            name = by_src.get(img.get("src"))
+            assert name in logos, ("logo src is not a logo organization", img.get("src"))
+            caption = None if tile["caption"] is None else " ".join(tile["caption"].split())
+            if logos[name].get("caption"):
+                # The visible caption carries the name, so the logo is decorative: the name is read once.
+                assert caption == name, ("caption differs from the organization name or is missing", name, caption)
+                assert "alt" in img and (img["alt"] or "").strip() == "", ("a captioned logo must have an empty alt", name, img.get("alt"))
+                assert " ".join(tile["text"].split()) == name, ("a captioned tile carries other text", name, tile["text"])
+                assert "has-caption" in tile["classes"], ("captioned tile lacks has-caption", name)
+            else:
+                assert caption is None, ("a caption on a tile that does not need one, read twice", name, caption)
+                assert img.get("alt") == name, ("logo alt is not the organization name", name, img.get("alt"))
+                assert tile["text"].strip() == "", ("logo tile also carries text, read twice", name, tile["text"])
+                assert "has-caption" not in tile["classes"], name
             for k in ("width", "height"):
                 assert re.fullmatch(r"[1-9][0-9]*", img.get(k, "")), (name, k, img.get(k))
             assert img.get("decoding") == "async", (name, "decoding")
@@ -284,12 +306,15 @@ def check(t, want):
                 assert classes[0] == "partner-logo" and all(c.startswith("zone-") or c == "partner-logo" for c in classes), (name, classes)
         seen.append(name)
     assert len(set(seen)) == len(seen), ("a tile appears twice", seen)
+    captioned = [id(tile["img"]) for tile in t.tiles if tile["img"] is not None and tile["caption"] is not None]
     for img in t.imgs:
         src = img.get("src", "")
         assert src.startswith("/") and not src.startswith("//"), ("external or relative img src", src)
         if img["_brand"]:
             # minify writes alt="" as a bare alt attribute, which parses as None
             assert "alt" in img and (img["alt"] or "").strip() == "", ("brand img must be decorative (empty alt)", src, img.get("alt"))
+        elif id(img) in captioned:
+            pass  # an empty alt is allowed only here: the visible caption beside it is the name (checked above)
         else:
             assert (img.get("alt") or "").strip(), ("img without alt", src)
     return seen
@@ -322,6 +347,11 @@ bad_docs = (
     ("missing tile", re.sub(r"<li[^>]*partner-tile[^>]*>", "<li>", html, count=1)),
     ("mono class on an unaltered logo", add_class(html, unaltered_name, "partner-logo--mono")),
     ("mono class missing", html.replace(" partner-logo--mono", "", 1)),
+    ("caption differs from the organization name", re.sub(r'(<span class="?partner-caption"?>)Call Theory', r"\1Call Theory Inc", html, count=1)),
+    ("missing caption on a captioned tile", re.sub(r'<span class="?partner-caption"?>[^<]*</span>', "", html, count=1)),
+    ("captioned logo with a non-empty alt (name read twice)", re.sub(r'(src=/brand/partners/call-theory.svg )alt ', r'\1alt="Call Theory" ', html, count=1)),
+    ("caption on a wordmark logo (name read twice)", re.sub(r'(alt="?Lorikeet Security"?[^>]*>)', r"\1<span class=partner-caption>Lorikeet Security</span>", html, count=1)),
+    ("captionless logo with empty alt", re.sub(r'alt="?NetJets"?', "alt", html, count=1)),
 )
 for label, bad in bad_docs:
     assert bad != html, "the fixture edit changed nothing: " + label

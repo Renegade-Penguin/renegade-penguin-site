@@ -1,11 +1,12 @@
 {{- /* A uniform dark tile per organization: the official logo as an img, or the name as text.
        Input: a dict with items (one data/home/worked-with.toml group) and an optional cols (the grid count class to use, with the last odd item stretched, for a narrow column). The grid-n<count> class is the site's
-       adaptive grid. The img alt is the only text in a logo tile, so a screen reader says the name once. */ -}}
+       adaptive grid. The name is read once per tile: by the img alt, or, when the item has a caption (a logo that does not spell the name legibly), by the visible caption with the img left decorative (empty alt). */ -}}
 <ul class="grid partner-tiles grid-n{{ default (len .items) .cols }}{{ if .cols }} fill-last{{ end }}">
   {{- range .items }}
-  <li class="partner-tile">
+  <li class="partner-tile{{ if .caption }} has-caption{{ end }}">
     {{- if .logo -}}
-    <img class="partner-logo zone-{{ .zone }}{{ if eq .treatment "mono-light" }} partner-logo--mono{{ end }}" src="{{ .logo }}" alt="{{ .title }}" width="{{ .width }}" height="{{ .height }}" decoding="async" loading="lazy">
+    <img class="partner-logo zone-{{ .zone }}{{ if eq .treatment "mono-light" }} partner-logo--mono{{ end }}" src="{{ .logo }}" alt="{{ if not .caption }}{{ .title }}{{ end }}" width="{{ .width }}" height="{{ .height }}" decoding="async" loading="lazy">
+    {{- if .caption }}<span class="partner-caption">{{ .title }}</span>{{ end -}}
     {{- else -}}
     <span class="name">{{ .title }}</span>
     {{- end -}}

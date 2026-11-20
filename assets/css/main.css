@@ -175,6 +175,12 @@ main.home { max-width: var(--shell); margin: 0 auto; padding: var(--space-5) var
    a white background black; the screen blend lets that black vanish into the dark tile, so no light plate is
    drawn; the fixed opacity gives the muted light tone. The kit logos never carry this class. */
 .partner-logo--mono { filter: grayscale(1) invert(1); mix-blend-mode: screen; opacity: 0.8; }
+/* A logo that does not spell the organization name legibly gets the name as a visible caption under it, in the
+   site's mono label style and muted color (about 7:1 on the tile). The tile keeps its size: the caption takes
+   the room of the logo's bottom margin, and the logo itself stays at its set size. */
+.partner-tile.has-caption { flex-direction: column; }
+.partner-tile.has-caption .partner-logo { margin-bottom: 0.4rem; }
+.partner-caption { margin: 0 1rem 1rem; font: 500 0.8rem var(--font-mono); line-height: 1.3; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 .grid.fill-last > :last-child:nth-child(odd) { grid-column: span 12; }
 .steps { margin: 0; }
 .step { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
