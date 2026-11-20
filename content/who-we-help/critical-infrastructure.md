@@ -1,6 +1,7 @@
 +++
 title = "Cybersecurity for Critical Infrastructure"
-description = "Careful security guidance for critical infrastructure and industrial environments where availability and safe change come first."
+description = "Critical infrastructure cybersecurity advisory helps organizations assess risk, strengthen programs, and plan around operational dependencies."
+seoTitle = "Critical Infrastructure Security | Renegade Penguin"
 weight = 50
 +++
 

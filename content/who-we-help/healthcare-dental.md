@@ -1,6 +1,7 @@
 +++
 title = "Cybersecurity for Medical and Dental Practices"
-description = "Practical security guidance for medical and dental practices managing patient information, clinical systems, vendors, and HIPAA Security Rule obligations."
+description = "HIPAA security risk analysis for dental practices and medical offices identifies risks, documents findings, and guides practical follow-up work."
+seoTitle = "Healthcare and Dental Security | Renegade Penguin"
 weight = 30
 +++
 

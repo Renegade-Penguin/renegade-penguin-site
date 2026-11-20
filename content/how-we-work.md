@@ -1,6 +1,7 @@
 +++
 title = "How We Work"
-description = "A practical engagement process with clear phases, written deliverables, and a clean handoff."
+description = "Cybersecurity advisory work starts with a defined need, clear scope, direct access to the practitioner, and practical written guidance."
+seoTitle = "How Our Cybersecurity Advisory Works | Renegade Penguin"
 weight = 20
 +++
 

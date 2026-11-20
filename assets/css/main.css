@@ -69,6 +69,7 @@ main.home { max-width: var(--shell); margin: 0 auto; padding: var(--space-5) var
 .hero .eyebrow { font: 500 0.8rem var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin: 0; }
 .hero h1 { font-size: clamp(2.25rem, 3.8vw, 3.5rem); line-height: 1.08; margin: 0; font-weight: 700; }
 .hero .sub { font-size: var(--text-lg); color: var(--muted); margin: 0; max-width: 42ch; }
+.hero .intro { color: var(--muted); margin: 0; max-width: 60ch; }
 .hero .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: 0; }
 .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .chip { border: 1px solid var(--rule); color: var(--muted); font: 500 0.8rem var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; padding: 0.35rem 0.8rem; }
@@ -105,7 +106,7 @@ main.home { max-width: var(--shell); margin: 0 auto; padding: var(--space-5) var
   .hero { grid-template-columns: 1fr; border-left: 0; border-top: 8px solid var(--accent); text-align: center; }
   .hero-copy { align-items: center; }
   .hero img { height: 200px; }
-  .hero .sub { max-width: none; }
+  .hero .sub, .hero .intro { max-width: none; }
   .hero .actions, .chips { justify-content: center; }
 }
 

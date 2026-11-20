@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }} | {{ site.Title }}{{ end }}</title>
+<title>{{ if .Params.seoTitle }}{{ .Params.seoTitle }}{{ else if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }} | {{ site.Title }}{{ end }}</title>
 {{ with .Description }}<meta name="description" content="{{ . }}">{{ end }}
 {{ if eq site.Params.environment "staging" }}<meta name="robots" content="noindex, nofollow">{{ end }}
 <meta name="color-scheme" content="dark">

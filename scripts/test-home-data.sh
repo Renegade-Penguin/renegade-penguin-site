@@ -49,6 +49,7 @@ b = tomllib.load(open("data/home/behind.toml", "rb"))
 assert b["handle"] == "ChiefGyk3D" and b["link_url"] == "https://chiefgyk3d.com/"
 assert b["first_name"].strip() and " " not in b["first_name"].strip()
 assert tomllib.load(open("data/home/hero.toml", "rb"))["chips"]
+assert tomllib.load(open("data/home/hero.toml", "rb"))["intro"].strip().startswith("Renegade Penguin is run by")
 PY
 
 python3 -I - <<'PY' || soft "(b) home templates hold a literal sentence"

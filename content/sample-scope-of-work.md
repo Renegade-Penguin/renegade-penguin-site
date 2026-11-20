@@ -1,6 +1,7 @@
 +++
 title = "Sample Advisory Retainer Scope of Work"
-description = "A plain-language example of how an advisory retainer may be structured."
+description = "A sample advisory retainer scope shows typical virtual CISO and CIO style activities, working terms, deliverables, and boundaries."
+seoTitle = "Sample Advisory Retainer Scope | Renegade Penguin"
 weight = 30
 +++
 

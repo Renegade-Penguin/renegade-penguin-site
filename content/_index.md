@@ -1,5 +1,6 @@
 +++
 title = "Renegade Penguin LLC"
-description = "Practical cybersecurity and IT consulting for businesses ranging from one person to organizations with many thousands of people."
+description = "Virtual CISO and CIO style advisory, assessments, and AI security reviews help small and mid-size organizations in Ohio and nationwide."
+seoTitle = "Virtual CISO and CIO Ohio | Renegade Penguin"
 weight = 1
 +++

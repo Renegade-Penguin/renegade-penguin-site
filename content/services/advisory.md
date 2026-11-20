@@ -1,6 +1,7 @@
 +++
 title = "Security and IT Advisory"
-description = "Practical security and IT guidance for organizations that need experienced direction without adding a full-time executive."
+description = "Virtual CISO and CIO style advisory gives small and mid-size organizations practical security and IT guidance without a full-time hire."
+seoTitle = "Virtual CISO and CIO Advisory | Renegade Penguin"
 summary = "Ongoing security and IT guidance without a full-time executive or long-term contract."
 weight = 10
 +++

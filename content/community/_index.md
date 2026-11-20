@@ -1,6 +1,7 @@
 ---
 title: "Community"
-description: "Community comes first. Much of the work is open source, and some help is provided at no cost to those without adequate resources."
+description: "Cybersecurity community work includes practical education, knowledge sharing, and support for stronger security skills and awareness."
+seoTitle: "Cybersecurity Community Work | Renegade Penguin"
 ---
 
 Community comes first. Much of the work is open source, and some help is provided at no cost to people and organizations without adequate resources.

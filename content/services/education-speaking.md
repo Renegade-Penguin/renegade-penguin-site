@@ -1,6 +1,7 @@
 +++
 title = "Education and Speaking"
-description = "Practical workshops and talks on OSINT, OPSEC, threat modeling, and defensive security."
+description = "Cybersecurity speaking and education turn technical security, risk, and AI topics into direct, useful sessions for professional audiences."
+seoTitle = "Cybersecurity Speaking | Renegade Penguin"
 summary = "Clear, practical workshops and talks for technical and nontechnical audiences."
 weight = 30
 +++

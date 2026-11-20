@@ -1,6 +1,7 @@
 +++
 title = "Who We Help"
-description = "Practical cybersecurity and IT advice for organizations that need clear answers and defensible decisions."
+description = "Small and mid-size organizations, regulated sectors, and teams without full-time security leadership get practical cybersecurity guidance."
+seoTitle = "Organizations We Help | Renegade Penguin"
 weight = 10
 +++
 
