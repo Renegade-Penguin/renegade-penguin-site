@@ -35,5 +35,9 @@ title = "Emerging Technology Tracked"
 body = "Active research covers developing systems and threats, including Veilid and post-quantum cryptography, with substantial work performed in the open source community."
 
 [[items]]
+title = "Beyond Compliance"
+body = "Compliance can set the floor, but security requires understanding how someone would actually attack the system, because the two are not the same."
+
+[[items]]
 title = "Evidence Before Claims"
 body = "Clear questions expose weak assumptions, separate working knowledge from polished talk, and give clients evidence they can use when making technical decisions."
