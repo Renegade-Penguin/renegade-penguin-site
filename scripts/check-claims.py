@@ -38,8 +38,10 @@ BANNED = (
     "battle-tested",
 )
 # The standalone word "crypto" is banned (owner rule: write cryptocurrency or cryptography).
-# Whole word only, so cryptography, cryptographic and cryptocurrency pass.
-CRYPTO_WORD = re.compile(r"(?<![^\W_])crypto(?![^\W_])")
+# Whole word only (underscore counts as a word character), so cryptography, cryptographic,
+# cryptocurrency and identifiers like crypto_token pass. Hyphenated or spaced use such as
+# crypto-agility is still flagged, because dashes normalize to spaces.
+CRYPTO_WORD = re.compile(r"(?<!\w)crypto(?!\w)")
 # Phrases removed before the banned list is applied.
 ALLOWED = ("not certified",)
 
