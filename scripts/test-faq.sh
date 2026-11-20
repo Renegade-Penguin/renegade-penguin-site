@@ -62,7 +62,7 @@ EXPECT = {
         "Renegade Penguin helps healthcare and dental practices examine how they protect patient information. The work covers HIPAA Security Rule risk analysis, vendor and business associate questions, and readiness for ransomware and operational disruption.",
         [
             ("What does a HIPAA Security Rule risk analysis examine?", "It describes how electronic protected health information moves through the practice, where it is stored, who can reach it, and what could affect it."),
-            ("Can a consultant certify a practice as HIPAA compliant?", "No. HIPAA certification does not exist, and no consultant can issue one."),
+            ("Can a consultant certify our practice or sign off on our HIPAA status?", "No. HIPAA certification does not exist, and no consultant can issue one."),
             ("Will Renegade Penguin sign a business associate agreement?", "The firm signs a business associate agreement when its work involves protected health information, subject to case-by-case review before work begins."),
             ("What does ransomware and disruption readiness cover?", "It examines whether backups can be restored, which systems return first, what downtime procedures apply, and who makes the necessary decisions."),
         ],
